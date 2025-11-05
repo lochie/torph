@@ -1,5 +1,9 @@
 import { TextMorphOptions } from "./types";
 
+type Block = {
+  id: string;
+  string: string;
+};
 type Measures = {
   [key: string]: { x: number; y: number };
 };
@@ -13,13 +17,9 @@ export class TextMorph {
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
 
+  static styleEl: HTMLStyleElement;
+
   constructor(options: TextMorphOptions) {
-    this.element = options.element;
-    this.element.setAttribute("torph-root", "");
-    if (options.debug) this.element.setAttribute("torph-debug", "");
-
-    this.data = this.element.innerHTML;
-
     this.options = {
       locale: "en",
       duration: 400,
@@ -27,10 +27,20 @@ export class TextMorph {
       ...options,
     };
 
+    this.element = options.element;
+    this.element.setAttribute("torph-root", "");
+    this.element.style.transitionDuration = `${this.options.duration}ms`;
+    this.element.style.transitionTimingFunction = this.options.ease!;
+
+    if (options.debug) this.element.setAttribute("torph-debug", "");
+
+    this.data = this.element.innerHTML;
+
     this.addStyles();
   }
 
   destroy() {
+    this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute("torph-root");
     this.element.removeAttribute("torph-debug");
     this.removeStyles();
@@ -42,6 +52,7 @@ export class TextMorph {
 
     if (this.data instanceof HTMLElement) {
       // TODO: handle HTMLElement case
+      throw new Error("HTMLElement not yet supported");
     } else {
       this.createTextGroup(this.data, this.element);
     }
@@ -115,7 +126,8 @@ export class TextMorph {
       const dx = (nextPos ? nextPos.x - (prev?.x || 0) : 0) * 0.5;
       const dy = (nextPos ? nextPos.y - (prev?.y || 0) : 0) * 0.5;
 
-      const animation = child.animate(
+      child.getAnimations().forEach((a) => a.cancel());
+      const animation: Animation = child.animate(
         {
           transform: `translate(${dx}px, ${dy}px) scale(0.95)`,
           opacity: 0,
@@ -134,18 +146,19 @@ export class TextMorph {
 
     element.style.width = "auto";
     element.style.height = "auto";
-    void element.offsetWidth;
+    void element.offsetWidth; // force reflow
 
     const newWidth = element.offsetWidth;
     const newHeight = element.offsetHeight;
 
     element.style.width = `${oldWidth}px`;
     element.style.height = `${oldHeight}px`;
-    void element.offsetWidth;
+    void element.offsetWidth; // force reflow
 
     element.style.width = `${newWidth}px`;
     element.style.height = `${newHeight}px`;
 
+    // TODO: move to `transitionend` event listener
     setTimeout(() => {
       element.style.width = "auto";
       element.style.height = "auto";
@@ -184,6 +197,7 @@ export class TextMorph {
       const deltaY = prev ? prev?.y - cy : 0;
       const isNew = !prev;
 
+      child.getAnimations().forEach((a) => a.cancel());
       child.animate(
         {
           transform: `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
@@ -201,18 +215,15 @@ export class TextMorph {
   }
 
   private addStyles() {
-    if (document.querySelector("style[data-torph]")) return;
+    if (TextMorph.styleEl) return;
 
     const style = document.createElement("style");
     style.dataset.torph = "true";
     style.innerHTML = `
-[torph-root],
-[torph-group] {
+[torph-root] {
   display: inline-flex; /* TODO: remove for multi-line support */
   position: relative;
   will-change: width, height;
-  transition-duration: ${this.options.duration}ms;
-  transition-timing-function: ${this.options.ease};
   transition-property: width, height;
 }
 
@@ -232,20 +243,20 @@ export class TextMorph {
 }
   `;
     document.head.appendChild(style);
+    TextMorph.styleEl = style;
   }
 
   private removeStyles() {
-    const style = document.querySelector("style[data-torph]");
-    if (style) style.remove();
+    if (TextMorph.styleEl) {
+      TextMorph.styleEl.remove();
+      TextMorph.styleEl = undefined!;
+    }
   }
 
   // utils
 
   private blocks(iterator: Intl.SegmentIterator<Intl.SegmentData>) {
-    const uniqueStrings: {
-      id: string;
-      string: string;
-    }[] = Array.from(iterator).reduce(
+    const uniqueStrings: Block[] = Array.from(iterator).reduce(
       (acc, string) => {
         if (string.segment === " ") {
           return [...acc, { id: `space-${string.index}`, string: "\u00A0" }];
@@ -267,10 +278,7 @@ export class TextMorph {
           },
         ];
       },
-      [] as {
-        id: string;
-        string: string;
-      }[],
+      [] as Block[],
     );
 
     return uniqueStrings;
@@ -316,5 +324,9 @@ export class TextMorph {
       bottom: unscaledY + unscaledHeight,
       left: unscaledX,
     };
+  }
+
+  private log(...args: any[]) {
+    if (this.options.debug) console.log("[TextMorph]", ...args);
   }
 }
