@@ -55,7 +55,6 @@ const frameworks = [
     logo: <Logos.ReactLogo />,
     example: examples.react,
   },
-  /*
   {
     name: "TypeScript",
     entrypoint: "torph",
@@ -74,7 +73,6 @@ const frameworks = [
     logo: <Logos.SvelteLogo />,
     example: examples.svelte,
   },
-  */
 ];
 
 export default function Home() {
@@ -99,7 +97,6 @@ export default function Home() {
               <strong>Text Morph</strong> for
             </span>
             <button
-              disabled
               onClick={() => setFrameworkIndex((i) => i + 1)}
               className={styles.frameworkButton}
             >

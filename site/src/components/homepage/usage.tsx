@@ -13,7 +13,6 @@ textmorph.update('{EXAMPLE_TEXT}');
   react: `import { TextMorph } from 'torph/react';
 
 <TextMorph>{EXAMPLE_TEXT}</TextMorph>`,
-  /*
   vue: `<template>
   <TextMorph>{EXAMPLE_TEXT}</TextMorph>
 </template>
@@ -31,7 +30,6 @@ export default {
 </script>
 
 <TextMorph>{EXAMPLE_TEXT}</TextMorph>`,
-*/
 };
 
 export const populateExample = (example: string, exampleText: string) => {
