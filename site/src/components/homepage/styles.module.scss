@@ -41,6 +41,19 @@
     align-items: center;
     gap: 0.375rem;
     font-size: 1rem;
+
+    .logo {
+      animation: fadeIn 200ms ease;
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    }
   }
 }
 

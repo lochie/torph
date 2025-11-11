@@ -3,10 +3,11 @@
   width: 100%;
 
   .copy {
+    z-index: 99;
     position: absolute;
     right: 0;
-    bottom: 100%;
-    padding: 0 0 0.5rem;
+    top: 0;
+    padding: 0.5rem;
     font-size: 0.875rem;
     font-weight: 500;
     letter-spacing: -0.00563rem;

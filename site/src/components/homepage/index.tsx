@@ -100,7 +100,9 @@ export default function Home() {
               onClick={() => setFrameworkIndex((i) => i + 1)}
               className={styles.frameworkButton}
             >
-              {frameworks[frameworkIndex % frameworks.length].logo}
+              <div className={styles.logo} key={frameworkIndex}>
+                {frameworks[frameworkIndex % frameworks.length].logo}
+              </div>
               <strong>
                 <TextMorph>
                   {frameworks[frameworkIndex % frameworks.length].name}
