@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import styles from "./styles.module.scss";
-import { TextMorph } from "torph";
+import { TextMorph } from "torph/react";
 
 const pkgCmds = {
   npm: "npm i torph",

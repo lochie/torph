@@ -2,7 +2,7 @@ import styles from "./styles.module.scss";
 
 import { useEffect, useState } from "react";
 
-import { TextMorph } from "torph";
+import { TextMorph } from "torph/react";
 
 import { Footer } from "../footer";
 import { Button } from "../button";

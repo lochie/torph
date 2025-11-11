@@ -2,7 +2,7 @@
   "compilerOptions": {
     "lib": ["DOM", "ES2022", "DOM.Iterable"],
     "esModuleInterop": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "skipLibCheck": true,
@@ -11,5 +11,5 @@
     "noEmit": true,
     "moduleDetection": "force"
   },
-  "include": [".eslintrc.cjs", "src/**/*.ts", "src/*.ts"]
+  "include": [".eslintrc.cjs", "src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.d.ts"]
 }

@@ -1,4 +1,4 @@
 export { version } from "./../package.json";
 
-export { TextMorph } from "./components/react";
-export type { TextMorphProps } from "./components/react";
+export { TextMorph } from "./lib/text-morph";
+export type { TextMorphOptions } from "./lib/text-morph/types";

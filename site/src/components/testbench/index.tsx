@@ -1,7 +1,7 @@
 import styles from "./styles.module.css";
 
 import React from "react";
-import { TextMorph } from "torph";
+import { TextMorph } from "torph/react";
 import { Button } from "../button";
 import { Box } from "../box";
 
