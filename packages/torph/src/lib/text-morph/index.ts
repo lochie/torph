@@ -18,6 +18,7 @@ export class TextMorph {
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
+  private isInitialRender = true;
 
   static styleEl: HTMLStyleElement;
 
@@ -110,6 +111,11 @@ export class TextMorph {
     this.updateStyles();
 
     exiting.forEach((child) => {
+      if (this.isInitialRender) {
+        child.remove();
+        return;
+      }
+
       const id = child.getAttribute("torph-id")!;
 
       const prev = this.prevMeasures[id];
@@ -143,6 +149,13 @@ export class TextMorph {
       );
       animation.onfinish = () => child.remove();
     });
+
+    if (this.isInitialRender) {
+      this.isInitialRender = false;
+      element.style.width = "auto";
+      element.style.height = "auto";
+      return;
+    }
 
     if (oldWidth === 0 || oldHeight === 0) return;
 
@@ -184,6 +197,8 @@ export class TextMorph {
   }
 
   private updateStyles() {
+    if (this.isInitialRender) return;
+
     const children = Array.from(this.element.children) as HTMLElement[];
 
     children.forEach((child, index) => {
