@@ -17,16 +17,19 @@ yarn add torph
 ### React
 
 ```tsx
-import { TextMorph } from 'torph/react';
+import { TextMorph } from "torph/react";
 
 function App() {
-  const [text, setText] = useState('Hello World');
+  const [text, setText] = useState("Hello World");
 
   return (
     <TextMorph
       duration={400}
       ease="cubic-bezier(0.19, 1, 0.22, 1)"
       locale="en"
+      onAnimationComplete={() => console.log("Animation done!")}
+      className="my-text"
+      as="h1"
     >
       {text}
     </TextMorph>
@@ -37,7 +40,7 @@ function App() {
 #### React Hook
 
 ```tsx
-import { useTextMorph } from 'torph/react';
+import { useTextMorph } from "torph/react";
 
 function CustomComponent() {
   const { ref, update } = useTextMorph({
@@ -46,7 +49,7 @@ function CustomComponent() {
   });
 
   useEffect(() => {
-    update('Hello World');
+    update("Hello World");
   }, []);
 
   return <div ref={ref} />;
@@ -57,10 +60,14 @@ function CustomComponent() {
 
 ```vue
 <script setup>
-import { ref } from 'vue';
-import { TextMorph } from 'torph/vue';
+import { ref } from "vue";
+import { TextMorph } from "torph/vue";
 
-const text = ref('Hello World');
+const text = ref("Hello World");
+
+const handleComplete = () => {
+  console.log("Animation done!");
+};
 </script>
 
 <template>
@@ -69,6 +76,9 @@ const text = ref('Hello World');
     :duration="400"
     ease="cubic-bezier(0.19, 1, 0.22, 1)"
     locale="en"
+    :onAnimationComplete="handleComplete"
+    class="my-text"
+    as="h1"
   />
 </template>
 ```
@@ -78,8 +88,12 @@ const text = ref('Hello World');
 ```svelte
 <script>
   import { TextMorph } from 'torph/svelte';
-  
+
   let text = 'Hello World';
+
+  const handleComplete = () => {
+    console.log('Animation done!');
+  };
 </script>
 
 <TextMorph
@@ -87,22 +101,27 @@ const text = ref('Hello World');
   duration={400}
   ease="cubic-bezier(0.19, 1, 0.22, 1)"
   locale="en"
+  onAnimationComplete={handleComplete}
+  class="my-text"
+  as="h1"
 />
 ```
 
 ### Vanilla JS
 
 ```js
-import { TextMorph } from 'torph';
+import { TextMorph } from "torph";
 
 const morph = new TextMorph({
-  element: document.getElementById('morph'),
+  element: document.getElementById("morph"),
   duration: 400,
-  ease: 'cubic-bezier(0.19, 1, 0.22, 1)',
-  locale: 'en',
+  ease: "cubic-bezier(0.19, 1, 0.22, 1)",
+  locale: "en",
+  onAnimationStart: () => console.log("Starting..."),
+  onAnimationComplete: () => console.log("Done!"),
 });
 
-morph.update('Hello World');
+morph.update("Hello World");
 ```
 
 ## API
@@ -116,6 +135,13 @@ All components accept the following props/options:
 - `ease?: string` - CSS easing function (default: "cubic-bezier(0.19, 1, 0.22, 1)")
 - `locale?: Intl.LocalesArgument` - Locale for text segmentation (default: "en")
 - `debug?: boolean` - Enable debug mode with visual indicators
+- `disabled?: boolean` - Disable all morphing animations (default: false)
+- `respectReducedMotion?: boolean` - Respect user's prefers-reduced-motion setting (default: true)
+- `onAnimationStart?: () => void` - Callback fired when animation begins
+- `onAnimationComplete?: () => void` - Callback fired when animation completes
+- `className?: string` - CSS class name (React/Vue: `class`)
+- `style?: object | string` - Inline styles
+- `as?: string` - HTML element type (default: "div")
 
 ## Found this useful?
 

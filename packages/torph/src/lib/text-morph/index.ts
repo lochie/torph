@@ -19,6 +19,8 @@ export class TextMorph {
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
   private isInitialRender = true;
+  private prefersReducedMotion = false;
+  private mediaQuery?: MediaQueryList;
 
   static styleEl: HTMLStyleElement;
 
@@ -27,36 +29,81 @@ export class TextMorph {
       locale: "en",
       duration: 400,
       ease: "cubic-bezier(0.19, 1, 0.22, 1)",
+      respectReducedMotion: true,
       ...options,
     };
 
     this.element = options.element;
-    this.element.setAttribute("torph-root", "");
-    this.element.style.transitionDuration = `${this.options.duration}ms`;
-    this.element.style.transitionTimingFunction = this.options.ease!;
 
-    if (options.debug) this.element.setAttribute("torph-debug", "");
+    // reduced motion detection
+    if (typeof window !== "undefined" && this.options.respectReducedMotion) {
+      this.mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      this.prefersReducedMotion = this.mediaQuery.matches;
+
+      const listener = (event: MediaQueryListEvent) => {
+        this.prefersReducedMotion = event.matches;
+      };
+
+      this.mediaQuery.addEventListener("change", listener);
+    }
+
+    if (!this.isDisabled()) {
+      this.element.setAttribute("torph-root", "");
+      this.element.style.transitionDuration = `${this.options.duration}ms`;
+      this.element.style.transitionTimingFunction = this.options.ease!;
+
+      if (options.debug) this.element.setAttribute("torph-debug", "");
+    }
 
     this.data = this.element.innerHTML;
 
-    this.addStyles();
+    if (!this.isDisabled()) {
+      this.addStyles();
+    }
   }
 
   destroy() {
+    if (this.mediaQuery) {
+      this.mediaQuery.removeEventListener(
+        "change",
+        this.handleMediaQueryChange,
+      );
+    }
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute("torph-root");
     this.element.removeAttribute("torph-debug");
     this.removeStyles();
   }
 
+  private handleMediaQueryChange = (event: MediaQueryListEvent) => {
+    this.prefersReducedMotion = event.matches;
+  };
+
+  private isDisabled(): boolean {
+    return Boolean(
+      this.options.disabled ||
+        (this.options.respectReducedMotion && this.prefersReducedMotion),
+    );
+  }
+
   update(value: HTMLElement | string) {
     if (value === this.data) return;
     this.data = value;
+
+    if (this.isDisabled()) {
+      if (typeof value === "string") {
+        this.element.textContent = value;
+      }
+      return;
+    }
 
     if (this.data instanceof HTMLElement) {
       // TODO: handle HTMLElement case
       throw new Error("HTMLElement not yet supported");
     } else {
+      if (this.options.onAnimationStart && !this.isInitialRender) {
+        this.options.onAnimationStart();
+      }
       this.createTextGroup(this.data, this.element);
     }
   }
@@ -66,11 +113,18 @@ export class TextMorph {
     const oldHeight = element.offsetHeight;
 
     const byWord = value.includes(" ");
-    const segmenter = new Intl.Segmenter(this.options.locale, {
-      granularity: byWord ? "word" : "grapheme",
-    });
-    const iterator = segmenter.segment(value)[Symbol.iterator]();
-    const blocks = this.blocks(iterator);
+    let blocks: Block[];
+
+    if (typeof Intl.Segmenter !== "undefined") {
+      const segmenter = new Intl.Segmenter(this.options.locale, {
+        granularity: byWord ? "word" : "grapheme",
+      });
+      const iterator = segmenter.segment(value)[Symbol.iterator]();
+      blocks = this.blocks(iterator);
+    } else {
+      // Fallback for browsers without Intl.Segmenter
+      blocks = this.blocksFallback(value, byWord);
+    }
 
     this.prevMeasures = this.measure();
     const oldChildren = Array.from(element.children) as HTMLElement[];
@@ -177,6 +231,9 @@ export class TextMorph {
     setTimeout(() => {
       element.style.width = "auto";
       element.style.height = "auto";
+      if (this.options.onAnimationComplete) {
+        this.options.onAnimationComplete();
+      }
     }, this.options.duration);
   }
 
@@ -299,6 +356,36 @@ export class TextMorph {
     );
 
     return uniqueStrings;
+  }
+
+  private blocksFallback(value: string, byWord: boolean): Block[] {
+    const segments = byWord ? value.split(" ") : value.split("");
+    const blocks: Block[] = [];
+
+    if (byWord) {
+      segments.forEach((segment, index) => {
+        if (index > 0) {
+          blocks.push({ id: `space-${index}`, string: "\u00A0" });
+        }
+        const existing = blocks.find((x) => x.string === segment);
+        if (existing) {
+          blocks.push({ id: `${segment}-${index}`, string: segment });
+        } else {
+          blocks.push({ id: segment, string: segment });
+        }
+      });
+    } else {
+      segments.forEach((segment, index) => {
+        const existing = blocks.find((x) => x.string === segment);
+        if (existing) {
+          blocks.push({ id: `${segment}-${index}`, string: segment });
+        } else {
+          blocks.push({ id: segment, string: segment });
+        }
+      });
+    }
+
+    return blocks;
   }
 
   private getUnscaledBoundingClientRect(element: HTMLElement) {

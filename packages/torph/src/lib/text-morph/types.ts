@@ -4,4 +4,8 @@ export interface TextMorphOptions {
   locale?: Intl.LocalesArgument;
   duration?: number; // in ms
   ease?: string; // css cubic-bezier
+  disabled?: boolean;
+  respectReducedMotion?: boolean;
+  onAnimationStart?: () => void;
+  onAnimationComplete?: () => void;
 }
