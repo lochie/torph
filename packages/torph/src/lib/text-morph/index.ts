@@ -61,13 +61,16 @@ export class TextMorph {
     if (!selection || selection.rangeCount === 0) return;
 
     const range = selection.getRangeAt(0);
-    const selectedText = range.toString();
 
     // If the selection is within this element
     if (this.element.contains(range.commonAncestorContainer)) {
       e.preventDefault();
+      // Get the selected portion of text by extracting text content from the selection range
+      const container = document.createElement("div");
+      container.appendChild(range.cloneContents());
+      const selectedText = container.textContent || "";
       // Set the clipboard data to the correct text without line breaks
-      e.clipboardData?.setData("text/plain", this.element.textContent || "");
+      e.clipboardData?.setData("text/plain", selectedText);
     }
   }
 
