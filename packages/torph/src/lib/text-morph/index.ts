@@ -245,7 +245,7 @@ export class TextMorph {
 }
 
 [torph-item] {
-  display: inline-block;
+  display: inline;
   will-change: opacity, transform;
   transform: none;
   opacity: 1;
