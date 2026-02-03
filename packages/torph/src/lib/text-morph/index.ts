@@ -20,6 +20,8 @@ export class TextMorph {
   private prevMeasures: Measures = {};
   private isInitialRender = true;
 
+  private copyHandler: (e: ClipboardEvent) => void;
+
   static styleEl: HTMLStyleElement;
 
   constructor(options: TextMorphOptions) {
@@ -39,6 +41,9 @@ export class TextMorph {
 
     this.data = this.element.innerHTML;
 
+    this.copyHandler = this.handleCopy.bind(this);
+    this.element.addEventListener("copy", this.copyHandler);
+
     this.addStyles();
   }
 
@@ -46,7 +51,24 @@ export class TextMorph {
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute("torph-root");
     this.element.removeAttribute("torph-debug");
+    this.element.removeEventListener("copy", this.copyHandler);
     this.removeStyles();
+  }
+
+  private handleCopy(e: ClipboardEvent) {
+    // Get the text content without line breaks
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const selectedText = range.toString();
+
+    // If the selection is within this element
+    if (this.element.contains(range.commonAncestorContainer)) {
+      e.preventDefault();
+      // Set the clipboard data to the correct text without line breaks
+      e.clipboardData?.setData("text/plain", this.element.textContent || "");
+    }
   }
 
   update(value: HTMLElement | string) {
@@ -245,7 +267,7 @@ export class TextMorph {
 }
 
 [torph-item] {
-  display: inline;
+  display: inline-block;
   will-change: opacity, transform;
   transform: none;
   opacity: 1;
