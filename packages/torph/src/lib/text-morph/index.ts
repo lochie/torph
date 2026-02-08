@@ -28,6 +28,7 @@ export class TextMorph {
     this.options = {
       locale: "en",
       duration: 400,
+      scale: true,
       ease: "cubic-bezier(0.19, 1, 0.22, 1)",
       respectReducedMotion: true,
       ...options,
@@ -191,7 +192,9 @@ export class TextMorph {
       child.getAnimations().forEach((a) => a.cancel());
       const animation: Animation = child.animate(
         {
-          transform: `translate(${dx}px, ${dy}px) scale(0.95)`,
+          transform: this.options.scale
+            ? `translate(${dx}px, ${dy}px) scale(0.95)`
+            : `translate(${dx}px, ${dy}px)`,
           opacity: 0,
           offset: 1,
         },
@@ -295,10 +298,11 @@ export class TextMorph {
     style.dataset.torph = "true";
     style.innerHTML = `
 [torph-root] {
-  display: inline-flex; /* TODO: remove for multi-line support */
+  display: inline-block;
   position: relative;
   will-change: width, height;
   transition-property: width, height;
+  white-space: nowrap;
 }
 
 [torph-item] {
