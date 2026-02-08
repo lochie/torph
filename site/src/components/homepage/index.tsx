@@ -11,6 +11,7 @@ import { CodeBlock } from "../codeblock";
 import { InstallCommands } from "./install-cmd";
 import { examples, populateExample } from "./usage";
 import * as Logos from "./logos";
+import { Examples } from "./examples";
 
 // a bunch of words that
 const locales = {
@@ -166,16 +167,16 @@ export default function Home() {
               texts[textIndex % texts.length],
             )}
           >
-            {`import { TextMorph } from '`}
             <TextMorph>
-              {frameworks[frameworkIndex % frameworks.length].entrypoint}
+              {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';`}
             </TextMorph>
-
-            {`';
+            {`
             
 ${populateExample(frameworks[frameworkIndex % frameworks.length].example, texts[textIndex % texts.length])}`}
           </CodeBlock>
         </div>
+
+        <Examples />
         <Footer />
       </div>
     </div>
