@@ -20,20 +20,13 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.25rem;
 
   h1 {
-    display: flex;
-    align-items: center;
-    gap: 0.125rem;
     font-size: 1rem;
-
-    strong {
-      color: #ffffff;
-      font-weight: 500;
-    }
+    font-weight: 500;
+    color: #ffffff;
+    font-weight: 500;
   }
 
   .framework {
@@ -121,6 +114,12 @@
 }
 
 .example {
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0 1rem;
+  }
 }
 
 .localeSwitcher {

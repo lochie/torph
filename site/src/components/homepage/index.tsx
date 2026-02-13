@@ -11,6 +11,7 @@ import { InstallCommands } from "./install-cmd";
 import { examples, populateExample } from "./usage";
 import * as Logos from "./logos";
 import { Examples } from "./examples";
+import { Button } from "../button";
 
 const frameworks = [
   {
@@ -46,30 +47,7 @@ export default function Home() {
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1>
-            <span>
-              <strong>Text Morph</strong> for
-            </span>
-
-            <Dropdown
-              options={frameworks.map((f, i) => ({
-                label: f.name,
-                icon: f.logo,
-                disabled: frameworkIndex === i,
-                onClick: () => setFrameworkIndex(i),
-              }))}
-            >
-              <div className={styles.framework}>
-                {frameworks[frameworkIndex % frameworks.length].logo}
-
-                <strong>
-                  <TextMorph>
-                    {frameworks[frameworkIndex % frameworks.length].name}
-                  </TextMorph>
-                </strong>
-              </div>
-            </Dropdown>
-          </h1>
+          <h1>&lt;TextMorph /&gt;</h1>
           <p>Dependency-free animated text component.</p>
         </div>
 
@@ -78,6 +56,19 @@ export default function Home() {
         <InstallCommands />
 
         <div className={styles.example}>
+          <div className={styles.controls}>
+            {frameworks.map((f, i) => (
+              <Button
+                key={f.name}
+                disabled={frameworkIndex === i}
+                onClick={() => setFrameworkIndex(i)}
+              >
+                {f.logo}
+                {f.name}
+              </Button>
+            ))}
+          </div>
+
           <CodeBlock
             code={populateExample(
               frameworks[frameworkIndex % frameworks.length].example,
