@@ -17,7 +17,7 @@ const states = [
       >
         <motion.g
           animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+          transition={{ repeat: Infinity, duration: 0.5, ease: "linear" }}
         >
           <path
             d="M21.313 11.4062C21.313 16.8775 16.8777 21.3128 11.4065 21.3128"
@@ -57,7 +57,7 @@ const states = [
           d="M6.09631 10.9828L8.83539 13.6439L14.8053 7.83789"
           stroke="black"
           strokeOpacity="0.85"
-          strokeWidth="3"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -78,17 +78,19 @@ export const ExampleAction = () => {
 
   return (
     <div className={styles.action}>
-      <AnimatePresence initial={false} mode="popLayout">
-        <motion.div
-          key={currentStateIndex}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.8 }}
-          transition={{ duration: 0.3 }}
-        >
-          {states[currentStateIndex].icon}
-        </motion.div>
-      </AnimatePresence>
+      <motion.div layout="position" transition={{ duration: 0.3 }}>
+        <AnimatePresence initial={false} mode="popLayout">
+          <motion.div
+            key={currentStateIndex}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.3 }}
+          >
+            {states[currentStateIndex].icon}
+          </motion.div>
+        </AnimatePresence>
+      </motion.div>
       <TextMorph>{states[currentStateIndex].label}</TextMorph>
     </div>
   );

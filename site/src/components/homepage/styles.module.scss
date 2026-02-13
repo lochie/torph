@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 42rem;
+  max-width: 40rem;
   min-height: 100svh;
   padding: 4rem 1rem;
   margin: 0 auto;
@@ -11,7 +11,6 @@
 
 .container {
   display: flex;
-  align-items: center;
   flex-direction: column;
   gap: 2.5rem;
   width: 100%;
@@ -22,6 +21,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
 
   h1 {
@@ -100,13 +100,10 @@
 .install {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
 
   .commands {
     display: flex;
-    align-items: center;
-    justify-content: center;
     a,
     button {
       padding: 1rem 0.5rem;
@@ -124,8 +121,6 @@
 }
 
 .example {
-  max-width: 34rem;
-  width: 100%;
 }
 
 .localeSwitcher {
