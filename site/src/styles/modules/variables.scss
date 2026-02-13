@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
+
 :root {
   --body: #000000;
   --body-light: rgba(255, 255, 255, 0.04);
@@ -14,12 +16,10 @@
   --selection-color: #fff;
   --selection-bg: rgba(255, 255, 255, 0.15);
 
-  --font-fallback:
+  --font-primary:
     "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-
-  --font-primary: var(--font-inter, var(--font-fallback));
   --font-secondary:
     "SF Pro Rounded", ui-rounded, "Nunito", -apple-system, BlinkMacSystemFont,
     "Segoe UI", Helvetica, "Apple Color Emoji", Arial, sans-serif,

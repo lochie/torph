@@ -6,7 +6,7 @@ import { TextMorph } from "torph/react";
 
 const states = [
   {
-    label: "Analyzing Transaction",
+    label: "Processing Action",
     icon: (
       <svg
         width="23"
@@ -36,7 +36,7 @@ const states = [
     ),
   },
   {
-    label: "Transaction Safe",
+    label: "Action Complete",
     icon: (
       <svg
         width="21"
@@ -66,7 +66,7 @@ const states = [
   },
 ];
 
-export const ExampleAnalyzingTransaction = () => {
+export const ExampleAction = () => {
   const [currentStateIndex, setCurrentStateIndex] = React.useState(0);
 
   React.useEffect(() => {
@@ -77,7 +77,7 @@ export const ExampleAnalyzingTransaction = () => {
   }, []);
 
   return (
-    <div className={styles.container}>
+    <div className={styles.action}>
       <AnimatePresence initial={false} mode="popLayout">
         <motion.div
           key={currentStateIndex}
@@ -89,7 +89,7 @@ export const ExampleAnalyzingTransaction = () => {
           {states[currentStateIndex].icon}
         </motion.div>
       </AnimatePresence>
-      <TextMorph scale={false}>{states[currentStateIndex].label}</TextMorph>
+      <TextMorph>{states[currentStateIndex].label}</TextMorph>
     </div>
   );
 };
