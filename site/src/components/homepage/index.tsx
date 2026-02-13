@@ -5,7 +5,6 @@ import { useState } from "react";
 import { TextMorph } from "torph/react";
 
 import { Footer } from "../footer";
-import { Dropdown } from "../dropdown";
 import { CodeBlock } from "../codeblock";
 import { InstallCommands } from "./install-cmd";
 import { examples, populateExample } from "./usage";
@@ -41,6 +40,7 @@ const frameworks = [
 ];
 
 export default function Home() {
+  const text = "Hello world";
   const [frameworkIndex, setFrameworkIndex] = useState(0);
 
   return (
@@ -78,7 +78,7 @@ export default function Home() {
             <CodeBlock
               code={populateExample(
                 frameworks[frameworkIndex % frameworks.length].example,
-                "yo",
+                text,
               )}
             >
               <TextMorph>
@@ -86,7 +86,7 @@ export default function Home() {
               </TextMorph>
               {`
             
-${populateExample(frameworks[frameworkIndex % frameworks.length].example, "yo")}`}
+${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}`}
             </CodeBlock>
           </div>
         </section>
