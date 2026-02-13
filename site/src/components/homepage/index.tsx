@@ -53,36 +53,43 @@ export default function Home() {
 
         <Examples />
 
-        <InstallCommands />
+        <section>
+          <h3>Install</h3>
+          <InstallCommands />
+        </section>
 
-        <div className={styles.example}>
-          <div className={styles.controls}>
-            {frameworks.map((f, i) => (
-              <Button
-                key={f.name}
-                disabled={frameworkIndex === i}
-                onClick={() => setFrameworkIndex(i)}
-              >
-                {f.logo}
-                {f.name}
-              </Button>
-            ))}
-          </div>
+        <section>
+          <h3>Usage</h3>
 
-          <CodeBlock
-            code={populateExample(
-              frameworks[frameworkIndex % frameworks.length].example,
-              "yo",
-            )}
-          >
-            <TextMorph>
-              {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';`}
-            </TextMorph>
-            {`
+          <div className={styles.example}>
+            <div className={styles.controls}>
+              {frameworks.map((f, i) => (
+                <Button
+                  key={f.name}
+                  disabled={frameworkIndex === i}
+                  onClick={() => setFrameworkIndex(i)}
+                >
+                  {f.logo}
+                  {f.name}
+                </Button>
+              ))}
+            </div>
+
+            <CodeBlock
+              code={populateExample(
+                frameworks[frameworkIndex % frameworks.length].example,
+                "yo",
+              )}
+            >
+              <TextMorph>
+                {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';`}
+              </TextMorph>
+              {`
             
 ${populateExample(frameworks[frameworkIndex % frameworks.length].example, "yo")}`}
-          </CodeBlock>
-        </div>
+            </CodeBlock>
+          </div>
+        </section>
 
         <Footer />
       </div>

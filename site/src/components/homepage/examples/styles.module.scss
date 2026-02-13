@@ -1,7 +1,7 @@
 .examples {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
+  gap: 1.5rem;
   width: 100%;
 
   .example {
@@ -9,11 +9,11 @@
     z-index: 1;
     overflow: hidden;
     width: 100%;
-    aspect-ratio: 2 / 1;
+    aspect-ratio: 1.6 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 1rem;
+    border-radius: 0.5rem;
     background: #131313;
     user-select: none;
   }
