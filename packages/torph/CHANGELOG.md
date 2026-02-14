@@ -1,5 +1,11 @@
 # torph
 
+## 0.0.4
+
+### Patch Changes
+
+- Fixed missing type export
+
 ## 0.0.3
 
 ### Patch Changes

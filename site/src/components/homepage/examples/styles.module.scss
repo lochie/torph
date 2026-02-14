@@ -1,0 +1,87 @@
+.examples {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+
+  .example {
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    width: 100%;
+    aspect-ratio: 1.6 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    background: #131313;
+    user-select: none;
+  }
+
+  svg {
+    display: block;
+  }
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1.5rem;
+  padding-left: 1.125rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+  color: #ffffff;
+  border-radius: 10rem;
+  background: var(--body-light);
+}
+
+.button {
+  padding: 0.5rem 1rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+  color: #ffffff;
+  border-radius: 0.75rem;
+  corner-shape: superellipse(1.25);
+  background: var(--body-light);
+}
+
+.codeblock {
+  position: absolute;
+  inset: 0;
+  transform: translate(-50%, 50%);
+  right: -5.5rem;
+  top: -2.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 0.625rem 1rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+  color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 1px -1px 0 0 var(--body-light);
+}
+
+.number {
+  position: absolute;
+  inset: 1rem 1.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.625rem 1rem;
+  font-family: var(--font-secondary);
+  font-size: 2.5rem;
+  font-weight: 600;
+  text-align: center;
+  color: #ffffff;
+  border-radius: 2rem 2rem 0 0;
+  box-shadow: 0 0 0 1px var(--body-light);
+}

@@ -6,16 +6,26 @@ import type { TextMorphOptions } from "../lib/text-morph/types";
 
 export type TextMorphProps = Omit<TextMorphOptions, "element"> & {
   children: string; //React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+  as?: keyof JSX.IntrinsicElements;
 };
 
-export const TextMorph = ({ children, ...props }: TextMorphProps) => {
+export const TextMorph = ({
+  children,
+  className,
+  style,
+  as = "div",
+  ...props
+}: TextMorphProps) => {
   const { ref, update } = useTextMorph(props);
 
   React.useEffect(() => {
     update(children);
   }, [children, update]);
 
-  return <div ref={ref} />;
+  const Component = as as any;
+  return <Component ref={ref} className={className} style={style} />;
 };
 
 export function useTextMorph(props: Omit<TextMorphOptions, "element">) {

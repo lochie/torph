@@ -1,53 +1,16 @@
 import styles from "./styles.module.scss";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { TextMorph } from "torph/react";
 
 import { Footer } from "../footer";
-import { Button } from "../button";
-import { Dropdown } from "../dropdown";
 import { CodeBlock } from "../codeblock";
 import { InstallCommands } from "./install-cmd";
 import { examples, populateExample } from "./usage";
 import * as Logos from "./logos";
-
-// a bunch of words that
-const locales = {
-  en: [
-    "Animate Text Easily",
-    "Animate Text Effortlessly",
-    "Animate Text Seamlessly",
-    "Fluidly Animate Text",
-  ],
-  /*
-  es: [
-    "Anima texto fácilmente",
-    "Anima texto sin esfuerzo",
-    "Anima texto sin interrupciones",
-    "Anima texto con fluidez",
-  ],
-  ja: [
-    "テキストを簡単にアニメーション",
-    "テキストをスムーズにアニメーション",
-    "テキストを自然にアニメーション",
-    "テキストを流れるようにアニメーション",
-  ],
-  ko: [
-    "텍스트를 쉽게 애니메이션화",
-    "텍스트를 원활하게 애니메이션화",
-    "텍스트를 자연스럽게 애니메이션화",
-    "텍스트를 부드럽게 애니메이션화",
-  ],
-  ar: [
-    "حرّك النص بسهولة",
-    "حرّك النص بانسيابية",
-    "تحريك النص بسلاسة",
-    "تحريك النص بشكل طبيعي",
-  ],
-  zh: ["轻松动画文字", "流畅动画文字", "自然动画文字", "无缝动画文字"],
-  */
-};
+import { Examples } from "./examples";
+import { Button } from "../button";
 
 const frameworks = [
   {
@@ -77,105 +40,57 @@ const frameworks = [
 ];
 
 export default function Home() {
+  const text = "Hello world";
   const [frameworkIndex, setFrameworkIndex] = useState(0);
-  const [textIndex, setTextIndex] = useState(0);
-
-  const texts = locales["en"];
-
-  useEffect(() => {
-    const interval = setTimeout(() => {
-      setTextIndex((textIndex) => textIndex + 1);
-    }, 1000);
-    return () => clearTimeout(interval);
-  }, []);
 
   return (
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1>
-            <span>
-              <strong>Text Morph</strong> for
-            </span>
-
-            <Dropdown
-              options={frameworks.map((f, i) => ({
-                label: f.name,
-                icon: f.logo,
-                disabled: frameworkIndex === i,
-                onClick: () => setFrameworkIndex(i),
-              }))}
-            >
-              <div className={styles.framework}>
-                {frameworks[frameworkIndex % frameworks.length].logo}
-
-                <strong>
-                  <TextMorph>
-                    {frameworks[frameworkIndex % frameworks.length].name}
-                  </TextMorph>
-                </strong>
-              </div>
-            </Dropdown>
-          </h1>
+          <h1>&lt;TextMorph /&gt;</h1>
           <p>Dependency-free animated text component.</p>
         </div>
 
-        <div className={styles.demo}>
-          <TextMorph>{texts[textIndex % texts.length]}</TextMorph>
+        <Examples />
 
-          <div>
-            <Button onClick={() => setTextIndex((i) => i + 1)}>
-              <svg
-                width="15"
-                height="12"
-                viewBox="0 0 15 12"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10.8516 0.613281C10.8516 0.453125 10.8945 0.330078 10.9805 0.244141C11.0703 0.154297 11.1953 0.109375 11.3555 0.109375C11.4297 0.109375 11.498 0.121094 11.5605 0.144531C11.623 0.167969 11.6797 0.201172 11.7305 0.244141L14.0918 2.22461C14.2129 2.32617 14.2734 2.44922 14.2734 2.59375C14.2734 2.73438 14.2129 2.85352 14.0918 2.95117L11.7305 4.93164C11.6797 4.97461 11.623 5.00977 11.5605 5.03711C11.498 5.06055 11.4297 5.07227 11.3555 5.07227C11.1953 5.07227 11.0703 5.02734 10.9805 4.9375C10.8945 4.84766 10.8516 4.72461 10.8516 4.56836V0.613281ZM-0.00585938 8.97461C-0.00585938 8.78711 0.0585938 8.63086 0.1875 8.50586C0.320312 8.38086 0.486328 8.31836 0.685547 8.31836H2.00391C2.34375 8.31836 2.63672 8.25391 2.88281 8.125C3.12891 7.99609 3.37695 7.7793 3.62695 7.47461L7.16016 3.21484C7.55078 2.74609 7.93945 2.42383 8.32617 2.24805C8.71289 2.06836 9.17969 1.97852 9.72656 1.97852H11.7129C11.8965 1.97852 12.0527 2.04492 12.1816 2.17773C12.3105 2.30664 12.375 2.46094 12.375 2.64062C12.375 2.82031 12.3105 2.97461 12.1816 3.10352C12.0527 3.23242 11.8965 3.29688 11.7129 3.29688H9.69141C9.45312 3.29688 9.24414 3.32422 9.06445 3.37891C8.88477 3.42969 8.71484 3.51758 8.55469 3.64258C8.39844 3.76367 8.23633 3.92578 8.06836 4.12891L4.42383 8.50586C4.08398 8.91211 3.74023 9.20117 3.39258 9.37305C3.04492 9.54492 2.61328 9.63086 2.09766 9.63086H0.685547C0.486328 9.63086 0.320312 9.56836 0.1875 9.44336C0.0585938 9.31836 -0.00585938 9.16211 -0.00585938 8.97461ZM10.8516 11.0195V7.06445C10.8516 6.9082 10.8945 6.78516 10.9805 6.69531C11.0703 6.60547 11.1953 6.56055 11.3555 6.56055C11.4297 6.56055 11.498 6.57422 11.5605 6.60156C11.623 6.625 11.6797 6.6582 11.7305 6.70117L14.0918 8.67578C14.2129 8.77734 14.2734 8.89844 14.2734 9.03906C14.2734 9.17969 14.2129 9.30078 14.0918 9.40234L11.7305 11.3887C11.6797 11.4277 11.623 11.459 11.5605 11.4824C11.498 11.5059 11.4297 11.5176 11.3555 11.5176C11.1953 11.5176 11.0703 11.4727 10.9805 11.3828C10.8945 11.2969 10.8516 11.1758 10.8516 11.0195ZM-0.00585938 2.66992C-0.00585938 2.48242 0.0585938 2.32617 0.1875 2.20117C0.320312 2.07617 0.486328 2.01367 0.685547 2.01367H2.09766C2.61328 2.01367 3.04492 2.09961 3.39258 2.27148C3.74023 2.44336 4.08398 2.73242 4.42383 3.13867L8.06836 7.51562C8.23633 7.71875 8.39844 7.88281 8.55469 8.00781C8.71484 8.12891 8.88477 8.2168 9.06445 8.27148C9.24414 8.32227 9.45312 8.34766 9.69141 8.34766H11.7129C11.8965 8.34766 12.0527 8.41211 12.1816 8.54102C12.3105 8.66992 12.375 8.82422 12.375 9.00391C12.375 9.18359 12.3105 9.33984 12.1816 9.47266C12.0527 9.60156 11.8965 9.66602 11.7129 9.66602H9.72656C9.17969 9.66602 8.71289 9.57812 8.32617 9.40234C7.93945 9.22266 7.55078 8.89648 7.16016 8.42383L3.62695 4.16992C3.37695 3.86523 3.12891 3.64844 2.88281 3.51953C2.63672 3.39062 2.34375 3.32617 2.00391 3.32617H0.685547C0.486328 3.32617 0.320312 3.26367 0.1875 3.13867C0.0585938 3.01367 -0.00585938 2.85742 -0.00585938 2.66992Z"
-                  fill="currentColor"
-                />
-              </svg>
-              Shuffle Words
-            </Button>
-            {/**
-            <div className={styles.localeSwitcher}>
-              {Object.keys(locales).map((loc) => {
-                return (
-                  <button
-                    key={loc}
-                    onClick={() => setLocale(loc as keyof typeof locales)}
-                    data-active={loc === locale}
-                  >
-                    {loc}
-                  </button>
-                );
-              })}
+        <section>
+          <h3>Install</h3>
+          <InstallCommands />
+        </section>
+
+        <section>
+          <h3>Usage</h3>
+
+          <div className={styles.example}>
+            <div className={styles.controls}>
+              {frameworks.map((f, i) => (
+                <Button
+                  key={f.name}
+                  disabled={frameworkIndex === i}
+                  onClick={() => setFrameworkIndex(i)}
+                >
+                  {f.logo}
+                  {f.name}
+                </Button>
+              ))}
             </div>
-             */}
-          </div>
-        </div>
 
-        <InstallCommands />
-
-        <div className={styles.example}>
-          <CodeBlock
-            code={populateExample(
-              frameworks[frameworkIndex % frameworks.length].example,
-              texts[textIndex % texts.length],
-            )}
-          >
-            {`import { TextMorph } from '`}
-            <TextMorph>
-              {frameworks[frameworkIndex % frameworks.length].entrypoint}
-            </TextMorph>
-
-            {`';
+            <CodeBlock
+              code={populateExample(
+                frameworks[frameworkIndex % frameworks.length].example,
+                text,
+              )}
+            >
+              <TextMorph>
+                {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';`}
+              </TextMorph>
+              {`
             
-${populateExample(frameworks[frameworkIndex % frameworks.length].example, texts[textIndex % texts.length])}`}
-          </CodeBlock>
-        </div>
+${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}`}
+            </CodeBlock>
+          </div>
+        </section>
+
         <Footer />
       </div>
     </div>

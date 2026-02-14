@@ -2,28 +2,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 1rem 2rem;
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4rem;
+  gap: 0.25rem;
+
+  padding: 0.5rem 1rem;
+  font-family: var(--font-secondary);
   font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
+  color: #ffffff;
+  border-radius: 0.75rem;
+  corner-shape: superellipse(1.25);
+  box-shadow: 0 0 0 1px #131313;
+
   transition: 100ms ease;
   transition-property: background, transform;
   will-change: transform;
 
   svg {
     display: block;
+    transform: translateX(-0.375rem);
   }
+
   &:active {
     transform: scale(0.96);
   }
+
   &:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: #131313;
   }
 
   &[disabled] {
-    opacity: 0.5;
+    background: #131313;
     pointer-events: none;
   }
 }
