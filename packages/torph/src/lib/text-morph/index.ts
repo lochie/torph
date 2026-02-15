@@ -166,19 +166,22 @@ export class TextMorph {
     });
 
     // Append elements in new order, reusing existing ones where possible
-    blocks.forEach((block) => {
+    blocks.forEach((block, i) => {
       const existingElement = existingElementsMap.get(block.id);
-
       if (existingElement) {
-        // Reuse existing element
-        element.appendChild(existingElement);
+        // Insert at correct position
+        const refNode = element.children[i] || null;
+        if (element.children[i] !== existingElement) {
+          element.insertBefore(existingElement, refNode);
+        }
       } else {
         // Create new element
         const span = document.createElement("span");
         span.setAttribute("torph-item", "");
         span.setAttribute("torph-id", block.id);
         span.textContent = block.string;
-        element.appendChild(span);
+        const refNode = element.children[i] || null;
+        element.insertBefore(span, refNode);
       }
     });
 
