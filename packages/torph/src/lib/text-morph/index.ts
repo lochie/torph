@@ -131,6 +131,15 @@ export class TextMorph {
     const oldChildren = Array.from(element.children) as HTMLElement[];
     const newIds = new Set(blocks.map((b) => b.id));
 
+    // Build a map of existing elements by ID for reuse
+    const existingElementsMap = new Map<string, HTMLElement>();
+    oldChildren.forEach((child) => {
+      const id = child.getAttribute("torph-id");
+      if (id) {
+        existingElementsMap.set(id, child);
+      }
+    });
+
     const exiting = oldChildren.filter(
       (child) =>
         !newIds.has(child.getAttribute("torph-id") as string) &&
@@ -149,17 +158,28 @@ export class TextMorph {
       child.style.height = `${rect.height}px`;
     });
 
+    // Clear all non-exiting children to rebuild in correct order
     oldChildren.forEach((child) => {
-      const id = child.getAttribute("torph-id") as string;
-      if (newIds.has(id)) child.remove();
+      if (!child.hasAttribute("torph-exiting")) {
+        child.remove();
+      }
     });
 
+    // Append elements in new order, reusing existing ones where possible
     blocks.forEach((block) => {
-      const span = document.createElement("span");
-      span.setAttribute("torph-item", "");
-      span.setAttribute("torph-id", block.id);
-      span.textContent = block.string;
-      element.appendChild(span);
+      const existingElement = existingElementsMap.get(block.id);
+
+      if (existingElement) {
+        // Reuse existing element
+        element.appendChild(existingElement);
+      } else {
+        // Create new element
+        const span = document.createElement("span");
+        span.setAttribute("torph-item", "");
+        span.setAttribute("torph-id", block.id);
+        span.textContent = block.string;
+        element.appendChild(span);
+      }
     });
 
     this.currentMeasures = this.measure();
