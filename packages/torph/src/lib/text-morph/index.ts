@@ -334,36 +334,30 @@ export class TextMorph {
   // utils
 
   private blocks(iterator: Intl.SegmentIterator<Intl.SegmentData>) {
-    const uniqueStrings: Block[] = Array.from(iterator).reduce(
-      (acc, string) => {
-        if (string.segment === " ") {
-          return [...acc, { id: `space-${string.index}`, string: "\u00A0" }];
-        }
+    const segments = Array.from(iterator);
+    const charCounts = new Map<string, number>();
 
-        const existingString = acc.find((x) => x.string === string.segment);
-        if (existingString) {
-          return [
-            ...acc,
-            { id: `${string.segment}-${string.index}`, string: string.segment },
-          ];
-        }
+    const blocks: Block[] = segments.map((string) => {
+      if (string.segment === " ") {
+        return { id: `space-${string.index}`, string: "\u00A0" };
+      }
 
-        return [
-          ...acc,
-          {
-            id: string.segment,
-            string: string.segment,
-          },
-        ];
-      },
-      [] as Block[],
-    );
+      const char = string.segment;
+      const count = charCounts.get(char) || 0;
+      charCounts.set(char, count + 1);
 
-    return uniqueStrings;
+      // Use character + occurrence count for stable IDs
+      const id = count === 0 ? char : `${char}-${count}`;
+
+      return { id, string: char };
+    });
+
+    return blocks;
   }
 
   private blocksFallback(value: string, byWord: boolean): Block[] {
     const segments = byWord ? value.split(" ") : value.split("");
+    const charCounts = new Map<string, number>();
     const blocks: Block[] = [];
 
     if (byWord) {
@@ -371,21 +365,20 @@ export class TextMorph {
         if (index > 0) {
           blocks.push({ id: `space-${index}`, string: "\u00A0" });
         }
-        const existing = blocks.find((x) => x.string === segment);
-        if (existing) {
-          blocks.push({ id: `${segment}-${index}`, string: segment });
-        } else {
-          blocks.push({ id: segment, string: segment });
-        }
+
+        const count = charCounts.get(segment) || 0;
+        charCounts.set(segment, count + 1);
+        const id = count === 0 ? segment : `${segment}-${count}`;
+
+        blocks.push({ id, string: segment });
       });
     } else {
-      segments.forEach((segment, index) => {
-        const existing = blocks.find((x) => x.string === segment);
-        if (existing) {
-          blocks.push({ id: `${segment}-${index}`, string: segment });
-        } else {
-          blocks.push({ id: segment, string: segment });
-        }
+      segments.forEach((segment) => {
+        const count = charCounts.get(segment) || 0;
+        charCounts.set(segment, count + 1);
+        const id = count === 0 ? segment : `${segment}-${count}`;
+
+        blocks.push({ id, string: segment });
       });
     }
 
