@@ -102,10 +102,25 @@ export class TextMorph {
       // TODO: handle HTMLElement case
       throw new Error("HTMLElement not yet supported");
     } else {
-      if (this.options.onAnimationStart && !this.isInitialRender) {
-        this.options.onAnimationStart();
+      // Wait for fonts and layout to be ready before animating
+      if (typeof document !== "undefined" && document.fonts) {
+        document.fonts.ready.then(() => {
+          requestAnimationFrame(() => {
+            if (this.options.onAnimationStart && !this.isInitialRender) {
+              this.options.onAnimationStart();
+            }
+            this.createTextGroup(this.data as string, this.element);
+          });
+        });
+      } else {
+        // Fallback for environments without font loading API
+        requestAnimationFrame(() => {
+          if (this.options.onAnimationStart && !this.isInitialRender) {
+            this.options.onAnimationStart();
+          }
+          this.createTextGroup(this.data as string, this.element);
+        });
       }
-      this.createTextGroup(this.data, this.element);
     }
   }
 
@@ -230,14 +245,35 @@ export class TextMorph {
     element.style.width = `${newWidth}px`;
     element.style.height = `${newHeight}px`;
 
-    // TODO: move to `transitionend` event listener
-    setTimeout(() => {
+    // Listen for transition completion
+    const handleTransitionEnd = (event: TransitionEvent) => {
+      // Only handle transitions on the root element itself
+      if (event.target !== element) return;
+      if (event.propertyName !== "width" && event.propertyName !== "height")
+        return;
+
       element.style.width = "auto";
       element.style.height = "auto";
+      element.removeEventListener("transitionend", handleTransitionEnd);
+
       if (this.options.onAnimationComplete) {
         this.options.onAnimationComplete();
       }
-    }, this.options.duration);
+    };
+
+    element.addEventListener("transitionend", handleTransitionEnd);
+
+    // Fallback timeout in case transitionend doesn't fire
+    setTimeout(() => {
+      element.removeEventListener("transitionend", handleTransitionEnd);
+      if (element.style.width !== "auto") {
+        element.style.width = "auto";
+        element.style.height = "auto";
+        if (this.options.onAnimationComplete) {
+          this.options.onAnimationComplete();
+        }
+      }
+    }, this.options.duration! + 100);
   }
 
   private measure() {

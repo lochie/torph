@@ -49,7 +49,7 @@ export const Demo = () => {
       setTextIndex((textIndex) => textIndex + 1);
     }, 1000);
     return () => clearTimeout(interval);
-  }, []);
+  }, [textIndex]);
 
   return (
     <div className={styles.demo}>

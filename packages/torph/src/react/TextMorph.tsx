@@ -31,20 +31,24 @@ export const TextMorph = ({
 export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
   const ref = React.useRef<HTMLDivElement | null>(null);
   const morphRef = React.useRef<Morph | null>(null);
+  const initializedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (ref.current) {
+    if (ref.current && !initializedRef.current) {
       morphRef.current = new Morph({ element: ref.current, ...props });
+      initializedRef.current = true;
     }
 
     return () => {
       morphRef.current?.destroy();
+      initializedRef.current = false;
     };
   }, []);
 
-  const update = (text: string) => {
-    morphRef.current?.update(text);
-  };
+  const update = React.useCallback((text: string) => {
+    if (!morphRef.current) return;
+    morphRef.current.update(text);
+  }, []);
 
   return { ref, update };
 }
