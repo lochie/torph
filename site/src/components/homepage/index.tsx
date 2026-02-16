@@ -6,6 +6,7 @@ import { TextMorph } from "torph/react";
 
 import { Footer } from "../footer";
 import { CodeBlock } from "../codeblock";
+import { HighlightedCode } from "../codeblock/highlighted-code";
 import { InstallCommands } from "./install-cmd";
 import { examples, populateExample } from "./usage";
 import * as Logos from "./logos";
@@ -42,6 +43,8 @@ const frameworks = [
 export default function Home() {
   const text = "Hello world";
   const [frameworkIndex, setFrameworkIndex] = useState(0);
+  const framework = frameworks[frameworkIndex % frameworks.length];
+  const body = populateExample(framework.example, text);
 
   return (
     <div className={styles.page}>
@@ -76,18 +79,23 @@ export default function Home() {
               ))}
             </div>
 
-            <CodeBlock
-              code={populateExample(
-                frameworks[frameworkIndex % frameworks.length].example,
-                text,
-              )}
-            >
-              <TextMorph>
-                {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';`}
-              </TextMorph>
-              {`
-            
-${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}`}
+            <CodeBlock code={body}>
+              <span style={{ color: "var(--sh-keyword)" }}>import</span>
+              <span style={{ color: "var(--sh-sign)" }}>{" { "}</span>
+              <span style={{ color: "var(--sh-identifier)" }}>
+                TextMorph
+              </span>
+              <span style={{ color: "var(--sh-sign)" }}>{" } "}</span>
+              <span style={{ color: "var(--sh-keyword)" }}>from</span>
+              {" "}
+              <span style={{ color: "var(--sh-string)" }}>
+                {"'"}
+                <TextMorph>{framework.entrypoint}</TextMorph>
+                {"'"}
+              </span>
+              <span style={{ color: "var(--sh-sign)" }}>;</span>
+              {"\n\n"}
+              <HighlightedCode code={body} />
             </CodeBlock>
           </div>
         </section>

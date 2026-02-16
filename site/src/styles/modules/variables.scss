@@ -7,6 +7,18 @@
   --color-muted: #6b6b6b;
   --border: #1c1c1c;
   --primary: #ffce44;
+
+  // Syntax highlighting (One Dark)
+  // https://github.com/atom/one-dark-syntax
+  --sh-class: #e5c07b;
+  --sh-identifier: #abb2bf;
+  --sh-keyword: #c678dd;
+  --sh-string: #98c379;
+  --sh-property: #61afef;
+  --sh-entity: #56b6c2;
+  --sh-jsxliterals: #e06c75;
+  --sh-sign: #636d83;
+  --sh-comment: #5c6370;
 }
 
 :root {
