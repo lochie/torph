@@ -137,9 +137,39 @@ export class TextMorph {
         !child.hasAttribute("torph-exiting"),
     );
 
-    const parentRect = this.getUnscaledBoundingClientRect(element);
+    // For each exiting char, find the nearest persistent neighbor in old order
+    // so we can make it follow that neighbor's FLIP movement
+    const exitingSet = new Set(exiting);
+    const exitingAnchorId = new Map<HTMLElement, string | null>();
+    for (let i = 0; i < oldChildren.length; i++) {
+      const child = oldChildren[i]!;
+      if (!exitingSet.has(child)) continue;
+
+      // Look forward for nearest persistent char
+      let anchor: string | null = null;
+      for (let j = i + 1; j < oldChildren.length; j++) {
+        const siblingId = oldChildren[j]!.getAttribute("torph-id") as string;
+        if (newIds.has(siblingId) && !exitingSet.has(oldChildren[j]!)) {
+          anchor = siblingId;
+          break;
+        }
+      }
+      // If none forward, look backward
+      if (!anchor) {
+        for (let j = i - 1; j >= 0; j--) {
+          const siblingId = oldChildren[j]!.getAttribute("torph-id") as string;
+          if (newIds.has(siblingId) && !exitingSet.has(oldChildren[j]!)) {
+            anchor = siblingId;
+            break;
+          }
+        }
+      }
+      exitingAnchorId.set(child, anchor);
+    }
+
+    const parentRect = element.getBoundingClientRect();
     exiting.forEach((child) => {
-      const rect = this.getUnscaledBoundingClientRect(child);
+      const rect = child.getBoundingClientRect();
       child.setAttribute("torph-exiting", "");
       child.style.position = "absolute";
       child.style.pointerEvents = "none";
@@ -163,7 +193,7 @@ export class TextMorph {
     });
 
     this.currentMeasures = this.measure();
-    this.updateStyles();
+    this.updateStyles(blocks);
 
     exiting.forEach((child) => {
       if (this.isInitialRender) {
@@ -171,36 +201,44 @@ export class TextMorph {
         return;
       }
 
-      const id = child.getAttribute("torph-id")!;
+      // Find the anchor neighbor's FLIP delta so we move in sync with it
+      const anchorId = exitingAnchorId.get(child);
+      let dx = 0;
+      let dy = 0;
 
-      const prev = this.prevMeasures[id];
-
-      const siblings = Array.from(element.children) as HTMLElement[];
-      const nearest = siblings.find((s) => {
-        const sRect = s.getBoundingClientRect();
-        const cRect = child.getBoundingClientRect();
-        return Math.abs(sRect.left - cRect.left) < 40;
-      });
-
-      const nextPos = nearest
-        ? this.currentMeasures[nearest.getAttribute("torph-id")!]
-        : prev;
-
-      const dx = (nextPos ? nextPos.x - (prev?.x || 0) : 0) * 0.5;
-      const dy = (nextPos ? nextPos.y - (prev?.y || 0) : 0) * 0.5;
+      if (
+        anchorId &&
+        this.prevMeasures[anchorId] &&
+        this.currentMeasures[anchorId]
+      ) {
+        const anchorPrev = this.prevMeasures[anchorId]!;
+        const anchorCurr = this.currentMeasures[anchorId]!;
+        dx = anchorCurr.x - anchorPrev.x;
+        dy = anchorCurr.y - anchorPrev.y;
+      }
 
       child.getAnimations().forEach((a) => a.cancel());
-      const animation: Animation = child.animate(
+      child.animate(
         {
           transform: this.options.scale
             ? `translate(${dx}px, ${dy}px) scale(0.95)`
             : `translate(${dx}px, ${dy}px)`,
-          opacity: 0,
           offset: 1,
         },
         {
           duration: this.options.duration,
           easing: this.options.ease,
+          fill: "both",
+        },
+      );
+      const animation: Animation = child.animate(
+        {
+          opacity: 0,
+          offset: 1,
+        },
+        {
+          duration: this.options.duration! * 0.25,
+          easing: "linear",
           fill: "both",
         },
       );
@@ -256,10 +294,14 @@ export class TextMorph {
     return measures;
   }
 
-  private updateStyles() {
+  private updateStyles(blocks: Block[]) {
     if (this.isInitialRender) return;
 
     const children = Array.from(this.element.children) as HTMLElement[];
+
+    const persistentIds = new Set(
+      blocks.map((b) => b.id).filter((id) => this.prevMeasures[id]),
+    );
 
     children.forEach((child, index) => {
       if (child.hasAttribute("torph-exiting")) return;
@@ -270,21 +312,62 @@ export class TextMorph {
       const cx = current?.x || 0;
       const cy = current?.y || 0;
 
-      const deltaX = prev ? prev?.x - cx : 0;
-      const deltaY = prev ? prev?.y - cy : 0;
+      let deltaX = prev ? prev.x - cx : 0;
+      let deltaY = prev ? prev.y - cy : 0;
       const isNew = !prev;
+
+      // For new chars, use the nearest persistent neighbor's FLIP delta
+      // so all new chars get the same consistent offset
+      if (isNew) {
+        const blockIndex = blocks.findIndex((b) => b.id === key);
+        let anchorId: string | null = null;
+
+        for (let j = blockIndex - 1; j >= 0; j--) {
+          if (persistentIds.has(blocks[j]!.id)) {
+            anchorId = blocks[j]!.id;
+            break;
+          }
+        }
+        if (!anchorId) {
+          for (let j = blockIndex + 1; j < blocks.length; j++) {
+            if (persistentIds.has(blocks[j]!.id)) {
+              anchorId = blocks[j]!.id;
+              break;
+            }
+          }
+        }
+
+        if (anchorId) {
+          const anchorPrev = this.prevMeasures[anchorId]!;
+          const anchorCurr = this.currentMeasures[anchorId]!;
+          deltaX = anchorPrev.x - anchorCurr.x;
+          deltaY = anchorPrev.y - anchorCurr.y;
+        }
+      }
 
       child.getAnimations().forEach((a) => a.cancel());
       child.animate(
         {
           transform: `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
-          opacity: isNew ? 0 : 1,
           offset: 0,
         },
         {
           duration: this.options.duration,
           easing: this.options.ease,
-          delay: isNew ? this.options.duration! * 0.2 : 0,
+          fill: "both",
+        },
+      );
+      const duration = isNew ? this.options.duration! * 0.25 : 0;
+      const delay = isNew ? this.options.duration! * 0.25 : 0;
+      child.animate(
+        {
+          opacity: isNew ? 0 : 1,
+          offset: 0,
+        },
+        {
+          duration: duration,
+          delay: delay,
+          easing: "linear",
           fill: "both",
         },
       );
@@ -311,7 +394,7 @@ export class TextMorph {
   transform: none;
   opacity: 1;
 }
-  
+
 [torph-root][torph-debug] {
   outline:2px solid magenta;
   [torph-item] {
@@ -390,48 +473,6 @@ export class TextMorph {
     }
 
     return blocks;
-  }
-
-  private getUnscaledBoundingClientRect(element: HTMLElement) {
-    const scaledRect = element.getBoundingClientRect();
-    const computedStyle = window.getComputedStyle(element);
-    const transform = computedStyle.transform;
-
-    let scaleX = 1;
-    let scaleY = 1;
-
-    const matrixRegex = /matrix\(([^)]+)\)/;
-    const match = transform.match(matrixRegex);
-
-    if (match) {
-      const values = match[1]?.split(",").map(Number);
-      if (values && values?.length >= 4) {
-        scaleX = values[0]!;
-        scaleY = values[3]!;
-      }
-    } else {
-      const scaleXMatch = transform.match(/scaleX\(([^)]+)\)/);
-      const scaleYMatch = transform.match(/scaleY\(([^)]+)\)/);
-      if (scaleXMatch) scaleX = parseFloat(scaleXMatch[1]!);
-      if (scaleYMatch) scaleY = parseFloat(scaleYMatch[1]!);
-    }
-
-    const unscaledWidth = scaledRect.width / scaleX;
-    const unscaledHeight = scaledRect.height / scaleY;
-
-    const unscaledX = scaledRect.x + (scaledRect.width - unscaledWidth) / 2;
-    const unscaledY = scaledRect.y + (scaledRect.height - unscaledHeight) / 2;
-
-    return {
-      x: unscaledX,
-      y: unscaledY,
-      width: unscaledWidth,
-      height: unscaledHeight,
-      top: unscaledY,
-      right: unscaledX + unscaledWidth,
-      bottom: unscaledY + unscaledHeight,
-      left: unscaledX,
-    };
   }
 
   private log(...args: any[]) {

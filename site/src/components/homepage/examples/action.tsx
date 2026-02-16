@@ -89,7 +89,9 @@ export const ExampleAction = () => {
           {states[currentStateIndex].icon}
         </motion.div>
       </AnimatePresence>
-      <TextMorph>{states[currentStateIndex].label}</TextMorph>
+      <TextMorph duration={400} ease="ease">
+        {states[currentStateIndex].label}
+      </TextMorph>
     </div>
   );
 };
