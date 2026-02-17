@@ -40,12 +40,7 @@ export class TextMorph {
     if (typeof window !== "undefined" && this.options.respectReducedMotion) {
       this.mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
       this.prefersReducedMotion = this.mediaQuery.matches;
-
-      const listener = (event: MediaQueryListEvent) => {
-        this.prefersReducedMotion = event.matches;
-      };
-
-      this.mediaQuery.addEventListener("change", listener);
+      this.mediaQuery.addEventListener("change", this.handleMediaQueryChange);
     }
 
     if (!this.isDisabled()) {
@@ -57,7 +52,6 @@ export class TextMorph {
     }
 
     this.data = this.element.innerHTML;
-
     if (!this.isDisabled()) {
       this.addStyles();
     }
@@ -182,6 +176,14 @@ export class TextMorph {
     oldChildren.forEach((child) => {
       const id = child.getAttribute("torph-id") as string;
       if (newIds.has(id)) child.remove();
+    });
+
+    // Disabled-mode updates set plain text via textContent; remove that text node
+    // before appending torph items so old content is not duplicated.
+    Array.from(element.childNodes).forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.remove();
+      }
     });
 
     blocks.forEach((block) => {
