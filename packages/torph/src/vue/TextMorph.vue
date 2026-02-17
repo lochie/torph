@@ -9,16 +9,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { DEFAULT_EASING, TextMorph as Morph } from "../lib/text-morph";
+import {
+  TEXT_MORPH_DEFAULT_AS,
+  TEXT_MORPH_DEFAULT_PROPS,
+  TextMorph as Morph,
+} from "../lib/text-morph";
 import type { TextMorphProps } from "./types";
 
 const props = withDefaults(defineProps<TextMorphProps>(), {
-  locale: "en",
-  duration: 400,
-  ease: DEFAULT_EASING,
-  disabled: false,
-  respectReducedMotion: true,
-  as: "div",
+  locale: TEXT_MORPH_DEFAULT_PROPS.locale,
+  duration: TEXT_MORPH_DEFAULT_PROPS.duration,
+  ease: TEXT_MORPH_DEFAULT_PROPS.ease,
+  disabled: TEXT_MORPH_DEFAULT_PROPS.disabled,
+  respectReducedMotion: TEXT_MORPH_DEFAULT_PROPS.respectReducedMotion,
+  as: TEXT_MORPH_DEFAULT_AS,
 });
 
 const containerRef = ref<HTMLElement | null>(null);

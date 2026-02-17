@@ -1,7 +1,11 @@
 "use client";
 
 import React from "react";
-import { TextMorph as Morph } from "../lib/text-morph";
+import {
+  DEFAULT_AS,
+  DEFAULT_TEXT_MORPH_OPTIONS,
+  TextMorph as Morph,
+} from "../lib/text-morph";
 import type { TextMorphOptions } from "../lib/text-morph/types";
 
 export type TextMorphProps = Omit<TextMorphOptions, "element"> & {
@@ -15,10 +19,24 @@ export const TextMorph = ({
   children,
   className,
   style,
-  as = "div",
+  locale = DEFAULT_TEXT_MORPH_OPTIONS.locale,
+  duration = DEFAULT_TEXT_MORPH_OPTIONS.duration,
+  ease = DEFAULT_TEXT_MORPH_OPTIONS.ease,
+  debug = DEFAULT_TEXT_MORPH_OPTIONS.debug,
+  disabled = DEFAULT_TEXT_MORPH_OPTIONS.disabled,
+  respectReducedMotion = DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion,
+  as = DEFAULT_AS,
   ...props
 }: TextMorphProps) => {
-  const { ref, update } = useTextMorph(props);
+  const { ref, update } = useTextMorph({
+    ...props,
+    locale,
+    duration,
+    ease,
+    debug,
+    disabled,
+    respectReducedMotion,
+  });
 
   React.useEffect(() => {
     update(children);
@@ -34,7 +52,11 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
 
   React.useEffect(() => {
     if (ref.current) {
-      morphRef.current = new Morph({ element: ref.current, ...props });
+      morphRef.current = new Morph({
+        element: ref.current,
+        ...DEFAULT_TEXT_MORPH_OPTIONS,
+        ...props,
+      });
     }
 
     return () => {
