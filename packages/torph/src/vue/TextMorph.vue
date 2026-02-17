@@ -10,19 +10,19 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
 import {
-  TEXT_MORPH_DEFAULT_AS,
-  TEXT_MORPH_DEFAULT_PROPS,
+  DEFAULT_AS,
+  DEFAULT_TEXT_MORPH_OPTIONS,
   TextMorph as Morph,
 } from "../lib/text-morph";
 import type { TextMorphProps } from "./types";
 
 const props = withDefaults(defineProps<TextMorphProps>(), {
-  locale: TEXT_MORPH_DEFAULT_PROPS.locale,
-  duration: TEXT_MORPH_DEFAULT_PROPS.duration,
-  ease: TEXT_MORPH_DEFAULT_PROPS.ease,
-  disabled: TEXT_MORPH_DEFAULT_PROPS.disabled,
-  respectReducedMotion: TEXT_MORPH_DEFAULT_PROPS.respectReducedMotion,
-  as: TEXT_MORPH_DEFAULT_AS,
+  locale: DEFAULT_TEXT_MORPH_OPTIONS.locale,
+  duration: DEFAULT_TEXT_MORPH_OPTIONS.duration,
+  ease: DEFAULT_TEXT_MORPH_OPTIONS.ease,
+  disabled: DEFAULT_TEXT_MORPH_OPTIONS.disabled,
+  respectReducedMotion: DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion,
+  as: DEFAULT_AS,
 });
 
 const containerRef = ref<HTMLElement | null>(null);

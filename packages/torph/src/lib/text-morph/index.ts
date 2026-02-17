@@ -5,13 +5,13 @@ export type { TextMorphOptions } from "./types";
 export const DEFAULT_AS = "div";
 export const DEFAULT_TEXT_MORPH_OPTIONS = {
   debug: false,
-  locale: "en" satisfies Intl.LocalesArgument,
+  locale: "en",
   duration: 400,
   scale: true,
   ease: "cubic-bezier(0.19, 1, 0.22, 1)",
   disabled: false,
   respectReducedMotion: true,
-} as const;
+} as const satisfies Omit<TextMorphOptions, "element">;
 
 type Block = {
   id: string;
