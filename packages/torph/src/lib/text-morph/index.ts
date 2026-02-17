@@ -1,6 +1,7 @@
 import type { TextMorphOptions } from "./types";
 
 export type { TextMorphOptions } from "./types";
+export const DEFAULT_EASING = "cubic-bezier(0.19, 1, 0.22, 1)";
 
 type Block = {
   id: string;
@@ -29,7 +30,7 @@ export class TextMorph {
       locale: "en",
       duration: 400,
       scale: true,
-      ease: "cubic-bezier(0.19, 1, 0.22, 1)",
+      ease: DEFAULT_EASING,
       respectReducedMotion: true,
       ...options,
     };

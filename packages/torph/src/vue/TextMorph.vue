@@ -9,13 +9,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from "vue";
-import { TextMorph as Morph } from "../lib/text-morph";
+import { DEFAULT_EASING, TextMorph as Morph } from "../lib/text-morph";
 import type { TextMorphProps } from "./types";
 
 const props = withDefaults(defineProps<TextMorphProps>(), {
   locale: "en",
   duration: 400,
-  ease: "cubic-bezier(0.19, 1, 0.22, 1)",
+  ease: DEFAULT_EASING,
   disabled: false,
   respectReducedMotion: true,
   as: "div",

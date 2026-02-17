@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { TextMorph as Morph } from '../lib/text-morph';
+  import { DEFAULT_EASING, TextMorph as Morph } from '../lib/text-morph';
 
   export let text: string;
   export let locale: Intl.LocalesArgument = 'en';
   export let duration: number = 400;
-  export let ease: string = 'cubic-bezier(0.19, 1, 0.22, 1)';
+  export let ease: string = DEFAULT_EASING;
   export let debug: boolean = false;
   export let disabled: boolean = false;
   export let respectReducedMotion: boolean = true;
@@ -48,4 +48,3 @@
 
 <svelte:element this={as} bind:this={containerRef} class={className} {style}>
 </svelte:element>
-
