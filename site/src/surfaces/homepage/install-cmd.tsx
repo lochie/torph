@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import styles from "./styles.module.scss";
 import { TextMorph } from "torph/react";
-import { CodeBlock } from "../codeblock";
+import { CodeBlock } from "@/components/codeblock";
 
 const pkgCmds = {
   npm: "npm i torph",

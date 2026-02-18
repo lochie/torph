@@ -1,7 +1,9 @@
+"use client";
+
 import styles from "./styles.module.scss";
 
 import { TextMorph } from "torph/react";
-import { Button } from "../button";
+import { Button } from "@/components/button";
 import { useEffect, useState } from "react";
 
 const locales = {
@@ -38,7 +40,7 @@ const locales = {
   zh: ["轻松动画文字", "流畅动画文字", "自然动画文字", "无缝动画文字"],
 };
 
-export const Demo = () => {
+export const LocaleDemo = () => {
   const [textIndex, setTextIndex] = useState(0);
   const [locale, setLocale] = useState<keyof typeof locales>("en");
 

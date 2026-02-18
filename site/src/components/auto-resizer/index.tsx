@@ -1,4 +1,4 @@
-import { useAutoResize } from "./../../hooks/useAutoResize";
+import { useAutoResize } from "@/hooks/useAutoResize";
 
 export const AutoResize = ({
   children,

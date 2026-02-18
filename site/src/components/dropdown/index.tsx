@@ -2,7 +2,7 @@ import * as React from "react";
 
 import styles from "./styles.module.scss";
 import { AnimatePresence, motion } from "motion/react";
-import { useClickOutside } from "../../hooks/useClickOutside";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 export const Dropdown = ({
   children,
@@ -22,7 +22,11 @@ export const Dropdown = ({
 
   return (
     <div ref={ref} className={styles.container}>
-      <button onClick={() => setOpen(!open)} className={styles.trigger}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={styles.trigger}
+      >
         {children}
         <motion.svg
           width="16"
@@ -58,6 +62,7 @@ export const Dropdown = ({
               {options.map((option, index) => (
                 <button
                   key={index}
+                  type="button"
                   onClick={() => {
                     option.onClick();
                     setOpen(false);

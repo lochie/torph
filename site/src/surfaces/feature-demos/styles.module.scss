@@ -1,0 +1,45 @@
+.demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 4rem;
+  padding: 6rem 2rem 3rem;
+  font-family: var(--font-secondary);
+  font-size: 2.5rem;
+  font-weight: 500;
+  text-align: center;
+  color: #ffffff;
+  border-radius: 1rem;
+  background: var(--body-light);
+
+  @media (max-width: 600px) {
+    font-size: 2.25rem;
+    padding: 4rem 1rem 2rem;
+  }
+
+  @media (max-width: 420px) {
+    font-size: 1.75rem;
+  }
+}
+
+.localeSwitcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 0 0;
+
+  button {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: #ffffff;
+    opacity: 0.35;
+    transition: opacity 100ms ease;
+    &:hover,
+    &[data-active="true"] {
+      opacity: 1;
+    }
+  }
+}

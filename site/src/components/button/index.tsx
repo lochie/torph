@@ -1,3 +1,4 @@
+import { CSSProperties } from "react";
 import styles from "./styles.module.scss";
 
 export const Button = ({
@@ -10,9 +11,9 @@ export const Button = ({
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
   return (
     <button
-      className={styles.button}
       {...props}
-      style={{ width: wide ? "100%" : "auto", ...props.style }}
+      className={styles.button}
+      style={{ width: wide ? "100%" : "auto", ...props.style } as CSSProperties}
     >
       {children}
     </button>
