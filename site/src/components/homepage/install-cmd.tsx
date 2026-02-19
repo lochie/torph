@@ -8,6 +8,7 @@ const pkgCmds = {
   npm: "npm i torph",
   pnpm: "pnpm i torph",
   yarn: "yarn add torph",
+  bun: "bun i torph",
 };
 
 export const InstallCommands = () => {
