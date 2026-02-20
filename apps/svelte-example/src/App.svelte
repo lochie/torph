@@ -22,7 +22,7 @@
     clearInterval(interval);
   });
 
-  $: text = texts[index];
+  const text = $derived(texts[index]);
 </script>
 
 <div class="container">

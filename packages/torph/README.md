@@ -89,7 +89,7 @@ const handleComplete = () => {
 <script>
   import { TextMorph } from 'torph/svelte';
 
-  let text = 'Hello World';
+  let text = $state('Hello World');
 
   const handleComplete = () => {
     console.log('Animation done!');
