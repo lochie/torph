@@ -50,7 +50,9 @@
       morphInstance.update(text);
     }
 
-    return morphInstance?.destroy;
+    return () => {
+		  morphInstance?.destroy();
+		};
   });
 
   $effect(() => {
