@@ -25,7 +25,7 @@ export default defineConfig((options) => [
     dts: false,
     sourcemap: true,
     target: "es2022",
-    external: ["vue", "../lib/text-morph"],
+    external: ["vue"],
     minify: !options.watch,
     loader: {
       ".vue": "copy",
@@ -40,7 +40,7 @@ export default defineConfig((options) => [
     dts: {
       only: true,
     },
-    external: ["vue", "../lib/text-morph/types"],
+    external: ["vue"],
   },
   // Svelte - JS build
   {
@@ -51,7 +51,7 @@ export default defineConfig((options) => [
     dts: false,
     sourcemap: true,
     target: "es2022",
-    external: ["svelte", "../lib/text-morph"],
+    external: ["svelte"],
     minify: !options.watch,
     loader: {
       ".svelte": "copy",
@@ -66,6 +66,6 @@ export default defineConfig((options) => [
     dts: {
       only: true,
     },
-    external: ["svelte", "../lib/text-morph/types"],
+    external: ["svelte"],
   },
 ]);
