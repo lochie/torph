@@ -1,17 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph } from '../lib/text-morph';
+  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph, type TextMorphOptions } from '../lib/text-morph';
   
-  type Props = {
+  type Props = Omit<TextMorphOptions, "element"> & {
     text: string;
-    locale?: Intl.LocalesArgument;
-    duration?: number;
-    ease?: string;
-    debug?: boolean;
-    disabled?: boolean;
-    respectReducedMotion?: boolean;
-    onAnimationStart?: (() => void) | undefined;
-    onAnimationComplete?: (() => void) | undefined;
     class?: string;
     style?: string;
     as?: string;
