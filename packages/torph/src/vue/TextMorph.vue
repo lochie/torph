@@ -13,7 +13,7 @@ import {
   DEFAULT_AS,
   DEFAULT_TEXT_MORPH_OPTIONS,
   TextMorph as Morph,
-} from "../lib/text-morph";
+} from "../index";
 import type { TextMorphProps } from "./types";
 
 const props = withDefaults(defineProps<TextMorphProps>(), {

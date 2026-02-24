@@ -83,6 +83,7 @@ export default defineConfig((options) => [
         await Promise.all([
           rewriteImportPath("dist/vue/index.cjs", "../TextMorph.vue", "./TextMorph.vue"),
           rewriteImportPath("dist/vue/index.mjs", "../TextMorph.vue", "./TextMorph.vue"),
+          rewriteImportPath('dist/vue/TextMorph.vue', 'from "../index"', 'from "../index.mjs"'),
         ]);
       },
     },
@@ -121,6 +122,7 @@ export default defineConfig((options) => [
         await Promise.all([
           rewriteImportPath("dist/svelte/index.cjs", "../TextMorph.svelte", "./TextMorph.svelte"),
           rewriteImportPath("dist/svelte/index.mjs", "../TextMorph.svelte", "./TextMorph.svelte"),
+          rewriteImportPath("dist/svelte/TextMorph.svelte", "from '../index';", "from '../index.mjs';"),
         ]);
         await emitSvelteTypes();
       },

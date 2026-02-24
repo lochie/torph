@@ -28,9 +28,14 @@
     },
     "./svelte": {
       "types": "./dist/svelte/index.d.ts",
-      "svelte": "./dist/svelte/TextMorph.svelte",
+      "svelte": "./dist/svelte/index.mjs",
       "import": "./dist/svelte/index.mjs",
       "require": "./dist/svelte/index.cjs"
+    },
+    "./svelte/TextMorph.svelte": {
+      "types": "./dist/svelte/TextMorph.svelte.d.ts",
+      "svelte": "./dist/svelte/TextMorph.svelte",
+      "default": "./dist/svelte/TextMorph.svelte"
     }
   },
   "publishConfig": {

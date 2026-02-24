@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph } from '../lib/text-morph';
+  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph } from '../index';
 
   export let text: string;
   export let locale: Intl.LocalesArgument = DEFAULT_TEXT_MORPH_OPTIONS.locale;
