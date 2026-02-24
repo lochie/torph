@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { copyFile, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { defineConfig } from "tsdown";
@@ -19,6 +19,14 @@ async function rewriteImportPath(file: string, from: string, to: string) {
   }
 }
 
+async function cloneFile(from: string, to: string) {
+  try {
+    await copyFile(from, to);
+  } catch {
+    // File may not exist for a given build phase.
+  }
+}
+
 async function emitSvelteTypes() {
   await emitDts({
     declarationDir: "dist/svelte",
@@ -32,8 +40,17 @@ async function emitSvelteTypes() {
   await rewriteImportPath('dist/svelte/index.d.ts', 'from "./types"', 'from "./TextMorph.svelte"');
   await writeFile(
     "dist/svelte/types.d.ts",
-    'export type { TextMorphProps } from "./TextMorph.svelte";\n',
+    'export type { TextMorphProps } from "./TextMorph.svelte.d.ts";\n',
   );
+
+  await Promise.all([
+    cloneFile("dist/svelte/index.d.ts", "dist/svelte/index.d.mts"),
+    cloneFile("dist/svelte/index.d.ts", "dist/svelte/index.d.cts"),
+  ]);
+  await Promise.all([
+    rewriteImportPath('dist/svelte/index.d.mts', './TextMorph.svelte"', './TextMorph.svelte.d.ts"'),
+    rewriteImportPath('dist/svelte/index.d.cts', './TextMorph.svelte"', './TextMorph.svelte.d.ts"'),
+  ]);
 }
 
 export default defineConfig((options) => [
@@ -51,13 +68,13 @@ export default defineConfig((options) => [
     external: ["react", "react/jsx-runtime"],
     minify: !options.watch,
     publint: !options.watch,
-    attw: !options.watch,
+    attw: options.watch ? false : { profile: "node16" },
     banner: { js: '"use client";' },
     hooks: {
       "build:before": async () => {
         if (primedSvelteTypes) return;
-        primedSvelteTypes = true;
         await emitSvelteTypes();
+        primedSvelteTypes = true;
       },
     },
   },
@@ -93,7 +110,7 @@ export default defineConfig((options) => [
     entry: {
       "vue/index": "src/vue/types.ts",
     },
-    format: ["esm"],
+    format: ["cjs", "esm"],
     dts: {
       only: true,
     },
@@ -124,6 +141,10 @@ export default defineConfig((options) => [
           rewriteImportPath("dist/svelte/index.mjs", "../TextMorph.svelte", "./TextMorph.svelte"),
           rewriteImportPath("dist/svelte/TextMorph.svelte", "from '../index';", "from '../index.mjs';"),
         ]);
+        if (primedSvelteTypes) {
+          primedSvelteTypes = false;
+          return;
+        }
         await emitSvelteTypes();
       },
     },
