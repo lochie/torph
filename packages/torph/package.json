@@ -62,7 +62,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && rm -f src/index.d.ts src/lib/text-morph/index.d.ts src/lib/text-morph/types.d.ts",
     "dev": "tsdown --watch",
     "lint": "eslint -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
     "lint:fix": "eslint --fix -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
