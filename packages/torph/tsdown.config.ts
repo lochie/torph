@@ -27,6 +27,19 @@ async function cloneFile(from: string, to: string) {
   }
 }
 
+async function fixBrokenVueEsmEntry() {
+  try {
+    const file = "dist/vue/index.mjs";
+    const source = await readFile(file, "utf8");
+    const normalized = source.replace(/\s+/g, " ").trim();
+    if (normalized === "export { };" || normalized === "export {};") {
+      await writeFile(file, 'export { default as TextMorph } from "./TextMorph.vue";\n');
+    }
+  } catch {
+    // File may not exist for a given build phase.
+  }
+}
+
 async function emitSvelteTypes() {
   await emitDts({
     declarationDir: "dist/svelte",
@@ -62,6 +75,7 @@ export default defineConfig((options) => [
     },
     format: ["cjs", "esm"],
     dts: true,
+    tsconfig: "tsconfig.react-build.json",
     clean: true,
     sourcemap: true,
     target: "es2022",
@@ -94,6 +108,10 @@ export default defineConfig((options) => [
         from: "src/vue/TextMorph.vue",
         to: "dist/vue",
       },
+      {
+        from: "src/vue/types.ts",
+        to: "dist/vue",
+      },
     ],
     hooks: {
       "build:done": async () => {
@@ -102,6 +120,7 @@ export default defineConfig((options) => [
           rewriteImportPath("dist/vue/index.mjs", "../TextMorph.vue", "./TextMorph.vue"),
           rewriteImportPath('dist/vue/TextMorph.vue', 'from "../index"', 'from "../index.mjs"'),
         ]);
+        await fixBrokenVueEsmEntry();
       },
     },
   },
