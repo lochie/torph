@@ -7,6 +7,7 @@
   export let duration: number = DEFAULT_TEXT_MORPH_OPTIONS.duration;
   export let ease: string = DEFAULT_TEXT_MORPH_OPTIONS.ease;
   export let debug: boolean = DEFAULT_TEXT_MORPH_OPTIONS.debug;
+  export let scale: boolean = DEFAULT_TEXT_MORPH_OPTIONS.scale;
   export let disabled: boolean = DEFAULT_TEXT_MORPH_OPTIONS.disabled;
   export let respectReducedMotion: boolean = DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion;
   export let onAnimationStart: (() => void) | undefined = undefined;
@@ -28,6 +29,7 @@
         duration,
         ease,
         debug,
+        scale,
         disabled,
         respectReducedMotion,
         onAnimationStart,
