@@ -9,35 +9,36 @@
     "url": "git+https://github.com/lochie/torph.git",
     "directory": "packages/torph"
   },
-  "types": "dist/index.d.ts",
+  "types": "dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
     },
     "./react": {
-      "types": "./dist/react/index.d.ts",
+      "types": "./dist/react/index.d.mts",
       "import": "./dist/react/index.mjs",
-      "require": "./dist/react/index.js"
+      "require": "./dist/react/index.cjs"
     },
     "./vue": {
-      "types": "./dist/vue/index.d.ts",
+      "types": "./dist/vue/index.d.mts",
       "import": "./dist/vue/index.mjs",
-      "require": "./dist/vue/index.js"
+      "require": "./dist/vue/index.cjs"
     },
     "./svelte": {
       "types": "./dist/svelte/index.d.ts",
+      "svelte": "./dist/svelte/TextMorph.svelte",
       "import": "./dist/svelte/index.mjs",
-      "require": "./dist/svelte/index.js"
+      "require": "./dist/svelte/index.cjs"
     }
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "tsdown",
+    "dev": "tsdown --watch",
     "lint": "eslint -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
     "lint:fix": "eslint --fix -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
     "pre-commit": "lint-staged"
@@ -59,8 +60,8 @@
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18",
-    "vue": ">=3",
-    "svelte": ">=4"
+    "svelte": ">=4",
+    "vue": ">=3"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -77,6 +78,7 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/core": "^0.18.2",
     "@types/react": "^18.2.15",
     "@typescript-eslint/eslint-plugin": "^6.8.0",
     "@typescript-eslint/parser": "^6.8.0",
@@ -90,10 +92,12 @@
     "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "prettier": "^3.0.3",
+    "publint": "^0.3.17",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "svelte": "^4.0.0",
-    "tsup": "^8.5.0",
+    "svelte2tsx": "^0.7.51",
+    "tsdown": "^0.20.3",
     "typescript": "^5.9.3",
     "vue": "^3.3.0"
   }
