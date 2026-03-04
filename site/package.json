@@ -13,7 +13,8 @@
     "motion": "^12.23.16",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "torph": "workspace:*"
+    "torph": "workspace:*",
+    "web-haptics": "^0.0.6"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useWebHaptics } from "web-haptics/react";
 
 import styles from "./styles.module.scss";
 import { TextMorph } from "torph/react";
@@ -13,13 +14,14 @@ const pkgCmds = {
 
 export const InstallCommands = () => {
   const [cmdIndex, setCmdIndex] = useState(0);
+  const { trigger } = useWebHaptics();
   return (
     <div className={styles.install}>
       <div className={styles.commands}>
         {Object.keys(pkgCmds).map((cmd, i) => (
           <button
             key={cmd}
-            onClick={() => setCmdIndex(i)}
+            onClick={() => { trigger("selection"); setCmdIndex(i); }}
             data-active={i === cmdIndex}
           >
             {cmd}
