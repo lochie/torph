@@ -4,7 +4,7 @@
   "scripts": {
     "install:all": "pnpm -r install",
     "watch": "pnpm --filter=torph dev",
-    "dev": "pnpm run watch --onSuccess \"pnpm -w run site:dev\"",
+    "dev": "pnpm run watch & pnpm run site:dev",
     "build": "pnpm --filter=torph build",
     "site:dev": "pnpm --filter=site dev",
     "site:build": "pnpm run build && pnpm --filter=site build",
