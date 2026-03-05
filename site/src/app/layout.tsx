@@ -12,9 +12,6 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Torph – Dependency-Free Text Morphing",
   description: "Dependency-free animated text component.",
-  icons: {
-    icon: "https://lochie.me/favicon.svg",
-  },
   openGraph: {
     type: "website",
     url: "https://torph.lochie.me",
