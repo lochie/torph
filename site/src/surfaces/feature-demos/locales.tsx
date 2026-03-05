@@ -5,6 +5,7 @@ import styles from "./styles.module.scss";
 import { TextMorph } from "torph/react";
 import { Button } from "@/components/button";
 import { useEffect, useState } from "react";
+import { useWebHaptics } from "web-haptics/react";
 
 const locales = {
   en: [
@@ -43,6 +44,7 @@ const locales = {
 export const LocaleDemo = () => {
   const [textIndex, setTextIndex] = useState(0);
   const [locale, setLocale] = useState<keyof typeof locales>("en");
+  const { trigger } = useWebHaptics();
 
   const texts = locales[locale];
 
@@ -58,7 +60,7 @@ export const LocaleDemo = () => {
       <TextMorph>{texts[textIndex % texts.length]}</TextMorph>
 
       <div>
-        <Button onClick={() => setTextIndex((i) => i + 1)}>
+        <Button onClick={() => { trigger("medium"); setTextIndex((i) => i + 1); }}>
           <svg
             width="15"
             height="12"
@@ -79,7 +81,7 @@ export const LocaleDemo = () => {
             return (
               <button
                 key={loc}
-                onClick={() => setLocale(loc as keyof typeof locales)}
+                onClick={() => { trigger("selection"); setLocale(loc as keyof typeof locales); }}
                 data-active={loc === locale}
               >
                 {loc}

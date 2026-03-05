@@ -14,7 +14,7 @@ textmorph.update('{EXAMPLE_TEXT}');
 <script setup>
   import { TextMorph } from "torph/vue";
 </script>`,
-  svelte: `<TextMorph>{EXAMPLE_TEXT}</TextMorph>`,
+  svelte: `<TextMorph text="{EXAMPLE_TEXT}"/>`,
 };
 
 export const populateExample = (example: string, exampleText: string) => {

@@ -1,6 +1,6 @@
 import styles from "./styles.module.scss";
 
-import { version } from "torph";
+import { version } from "./../../../../packages/torph/package.json";
 
 export const Footer = () => {
   return (

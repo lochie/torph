@@ -2,6 +2,17 @@ import type { TextMorphOptions } from "./types";
 
 export type { TextMorphOptions } from "./types";
 
+export const DEFAULT_AS = "div";
+export const DEFAULT_TEXT_MORPH_OPTIONS = {
+  debug: false,
+  locale: "en",
+  duration: 400,
+  scale: true,
+  ease: "cubic-bezier(0.19, 1, 0.22, 1)",
+  disabled: false,
+  respectReducedMotion: true,
+} as const satisfies Omit<TextMorphOptions, "element">;
+
 type Block = {
   id: string;
   string: string;
@@ -26,11 +37,7 @@ export class TextMorph {
 
   constructor(options: TextMorphOptions) {
     this.options = {
-      locale: "en",
-      duration: 400,
-      scale: true,
-      ease: "cubic-bezier(0.19, 1, 0.22, 1)",
-      respectReducedMotion: true,
+      ...DEFAULT_TEXT_MORPH_OPTIONS,
       ...options,
     };
 
@@ -40,12 +47,7 @@ export class TextMorph {
     if (typeof window !== "undefined" && this.options.respectReducedMotion) {
       this.mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
       this.prefersReducedMotion = this.mediaQuery.matches;
-
-      const listener = (event: MediaQueryListEvent) => {
-        this.prefersReducedMotion = event.matches;
-      };
-
-      this.mediaQuery.addEventListener("change", listener);
+      this.mediaQuery.addEventListener("change", this.handleMediaQueryChange);
     }
 
     if (!this.isDisabled()) {
@@ -57,7 +59,6 @@ export class TextMorph {
     }
 
     this.data = this.element.innerHTML;
-
     if (!this.isDisabled()) {
       this.addStyles();
     }
@@ -182,6 +183,14 @@ export class TextMorph {
     oldChildren.forEach((child) => {
       const id = child.getAttribute("torph-id") as string;
       if (newIds.has(id)) child.remove();
+    });
+
+    // Disabled-mode updates set plain text via textContent; remove that text node
+    // before appending torph items so old content is not duplicated.
+    Array.from(element.childNodes).forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        node.remove();
+      }
     });
 
     blocks.forEach((block) => {

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useWebHaptics } from "web-haptics/react";
 
 import styles from "./styles.module.scss";
 import { AnimatePresence, motion } from "motion/react";
@@ -17,6 +18,7 @@ export const Dropdown = ({
   }[];
 }) => {
   const [open, setOpen] = React.useState(false);
+  const { trigger } = useWebHaptics();
 
   const { ref } = useClickOutside<HTMLDivElement>(() => setOpen(false));
 
@@ -24,7 +26,10 @@ export const Dropdown = ({
     <div ref={ref} className={styles.container}>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          trigger("light");
+          setOpen(!open);
+        }}
         className={styles.trigger}
       >
         {children}
@@ -64,6 +69,7 @@ export const Dropdown = ({
                   key={index}
                   type="button"
                   onClick={() => {
+                    trigger("light");
                     option.onClick();
                     setOpen(false);
                   }}

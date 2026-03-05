@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useWebHaptics } from "web-haptics/react";
 
 import styles from "./styles.module.scss";
 import { TextMorph } from "torph/react";
@@ -12,6 +13,7 @@ export const CodeBlock = ({
   children?: React.ReactNode;
 }) => {
   const [isCopied, setIsCopied] = useState(false);
+  const { trigger } = useWebHaptics();
 
   return (
     <div className={styles.container}>
@@ -21,6 +23,7 @@ export const CodeBlock = ({
           if (code) {
             setIsCopied(true);
             navigator.clipboard.writeText(code.toString());
+            trigger("success");
             setTimeout(() => {
               setIsCopied(false);
             }, 2000);

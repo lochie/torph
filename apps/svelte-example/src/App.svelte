@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { TextMorph } from 'torph/svelte';
 
   const texts = [
@@ -9,20 +9,17 @@
     "Fluidly Animate Text",
   ];
 
-  let index = 0;
-  let interval: ReturnType<typeof setInterval>;
+  let index = $state(0);
 
   onMount(() => {
-    interval = setInterval(() => {
+    const interval = setInterval(() => {
       index = (index + 1) % texts.length;
     }, 2000);
+
+    return () => clearInterval(interval);
   });
 
-  onDestroy(() => {
-    clearInterval(interval);
-  });
-
-  $: text = texts[index];
+  const text = $derived(texts[index]);
 </script>
 
 <div class="container">

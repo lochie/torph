@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { TextMorph as Morph } from "../lib/text-morph";
+import { DEFAULT_AS, TextMorph as Morph } from "../lib/text-morph";
 import type { TextMorphOptions } from "../lib/text-morph/types";
 
 export type TextMorphProps = Omit<TextMorphOptions, "element"> & {
@@ -15,7 +15,7 @@ export const TextMorph = ({
   children,
   className,
   style,
-  as = "div",
+  as = DEFAULT_AS,
   ...props
 }: TextMorphProps) => {
   const { ref, update } = useTextMorph(props);
