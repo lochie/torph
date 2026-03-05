@@ -71,7 +71,10 @@ export const Homepage = () => {
                 <Button
                   key={f.name}
                   disabled={frameworkIndex === i}
-                  onClick={() => { trigger("selection"); setFrameworkIndex(i); }}
+                  onClick={() => {
+                    trigger("selection");
+                    setFrameworkIndex(i);
+                  }}
                   aria-label={`View example for ${f.name}`}
                 >
                   <span className={styles.logo}>{f.logo}</span>
