@@ -174,6 +174,9 @@ importers:
       torph:
         specifier: workspace:*
         version: link:../packages/torph
+      web-haptics:
+        specifier: ^0.0.6
+        version: 0.0.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@4.2.20)(vue@3.5.24(typescript@5.2.2))
     devDependencies:
       '@types/react':
         specifier: ^18.2.15
@@ -3973,6 +3976,23 @@ packages:
   wcwidth@1.0.1:
     resolution: {integrity: sha512-XHPEwS0q6TaxcvG85+8EYkbiCux2XtWG2mkc47Ng2A77BQu9+DqIOJldST4HgPkuea7dvKSj5VgX3P1d4rW8Tg==}
 
+  web-haptics@0.0.6:
+    resolution: {integrity: sha512-eCzcf1LDi20+Fr0x9V3OkX92k0gxEQXaHajmhXHitsnk6SxPeshv8TBtBRqxyst8HI1uf2FyFVE7QS3jo1gkrw==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+      svelte: '>=4'
+      vue: '>=3'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+
   webidl-conversions@4.0.2:
     resolution: {integrity: sha512-YQ+BmxuTgd6UXZW3+ICGfyqRyHXVlD5GtQr5+qjiNW7bF0cqrzX500HVXPBOvgXb5YnzDd+h0zqyv61KUD7+Sg==}
 
@@ -5319,6 +5339,13 @@ snapshots:
       '@vue/runtime-core': 3.5.24
       '@vue/shared': 3.5.24
       csstype: 3.1.3
+
+  '@vue/server-renderer@3.5.24(vue@3.5.24(typescript@5.2.2))':
+    dependencies:
+      '@vue/compiler-ssr': 3.5.24
+      '@vue/shared': 3.5.24
+      vue: 3.5.24(typescript@5.2.2)
+    optional: true
 
   '@vue/server-renderer@3.5.24(vue@3.5.24(typescript@5.9.3))':
     dependencies:
@@ -8246,6 +8273,17 @@ snapshots:
     optionalDependencies:
       vite: 6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)
 
+  vue@3.5.24(typescript@5.2.2):
+    dependencies:
+      '@vue/compiler-dom': 3.5.24
+      '@vue/compiler-sfc': 3.5.24
+      '@vue/runtime-dom': 3.5.24
+      '@vue/server-renderer': 3.5.24(vue@3.5.24(typescript@5.2.2))
+      '@vue/shared': 3.5.24
+    optionalDependencies:
+      typescript: 5.2.2
+    optional: true
+
   vue@3.5.24(typescript@5.9.3):
     dependencies:
       '@vue/compiler-dom': 3.5.24
@@ -8259,6 +8297,13 @@ snapshots:
   wcwidth@1.0.1:
     dependencies:
       defaults: 1.0.4
+
+  web-haptics@0.0.6(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(svelte@4.2.20)(vue@3.5.24(typescript@5.2.2)):
+    optionalDependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      svelte: 4.2.20
+      vue: 3.5.24(typescript@5.2.2)
 
   webidl-conversions@4.0.2: {}
 
