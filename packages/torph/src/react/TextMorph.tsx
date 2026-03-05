@@ -25,7 +25,7 @@ export const TextMorph = ({
   }, [children, update]);
 
   const Component = as as any;
-  return <Component ref={ref} className={className} style={style} />;
+  return <Component ref={ref} className={className} style={style}>{children}</Component>;
 };
 
 export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
