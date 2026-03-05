@@ -21,7 +21,10 @@ export const InstallCommands = () => {
         {Object.keys(pkgCmds).map((cmd, i) => (
           <button
             key={cmd}
-            onClick={() => { trigger("selection"); setCmdIndex(i); }}
+            onClick={() => {
+              trigger("selection");
+              setCmdIndex(i);
+            }}
             data-active={i === cmdIndex}
           >
             {cmd}
