@@ -3,6 +3,7 @@
 import styles from "./styles.module.scss";
 
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import { TextMorph } from "torph/react";
 import { Button } from "@/components/button";
 import { Box } from "@/components/box";
@@ -10,21 +11,75 @@ import { Dropdown } from "@/components/dropdown";
 import { generate } from "random-words";
 import { AnimatePresence, motion } from "motion/react";
 
+const DEFAULT_WORDS = [
+  "Torph playground",
+  "Torph animates text",
+  "Isn't Torph fun?",
+  "Enjoy and have fun!",
+];
+
 const TEXT_ALIGNMENTS: React.CSSProperties["textAlign"][] = [
   "left",
   "center",
   "right",
 ];
 
+function usePlaygroundParams() {
+  const searchParams = useSearchParams();
+
+  const wordsParam = searchParams.get("words");
+  const alignParam = searchParams.get("align");
+
+  const initialWords = wordsParam
+    ? wordsParam.split("|").filter(Boolean)
+    : DEFAULT_WORDS;
+  const initialAlign =
+    alignParam && TEXT_ALIGNMENTS.includes(alignParam as any)
+      ? (alignParam as React.CSSProperties["textAlign"])
+      : TEXT_ALIGNMENTS[1];
+
+  return { initialWords, initialAlign };
+}
+
+const EXAMPLES = [
+  {
+    label: "Status indicator",
+    words: [
+      "Processing Action",
+      "Action Safe",
+      "Processing Action",
+      "Processing Warning",
+    ],
+    align: "center" as const,
+  },
+  {
+    label: "Numbers",
+    words: ["$1,234", "$5,678", "$12,345,678", "$99"],
+    align: "right" as const,
+  },
+  {
+    label: "Emoji",
+    words: ["Hello 👋", "Goodbye 👋"],
+    align: "left" as const,
+  },
+];
+
+function updateURL(words: string[], align: string) {
+  const params = new URLSearchParams();
+  params.set("words", words.join("|"));
+  params.set("align", align);
+  window.history.replaceState(null, "", `?${params.toString()}`);
+}
+
 export const Playground = () => {
+  const { initialWords, initialAlign } = usePlaygroundParams();
   const [wordIndex, setWordIndex] = React.useState(0);
-  const [words, setWords] = React.useState([
-    "Torph playground",
-    "Torph animates text",
-    "Isn't Torph fun?",
-    "Enjoy and have fun!",
-  ]);
-  const [textAlignment, setTextAlignment] = React.useState(TEXT_ALIGNMENTS[1]);
+  const [words, setWords] = React.useState(initialWords);
+  const [textAlignment, setTextAlignment] = React.useState(initialAlign);
+
+  React.useEffect(() => {
+    updateURL(words, textAlignment!.toString());
+  }, [words, textAlignment]);
 
   return (
     <div className={styles.testbench}>
@@ -35,6 +90,18 @@ export const Playground = () => {
         }}
       >
         <TextMorph>{words[wordIndex]}</TextMorph>
+
+        <div className={styles.controls}>
+          <Button
+            type="button"
+            wide
+            onClick={() => {
+              setWordIndex((i) => (i + 1) % words.length);
+            }}
+          >
+            Morph
+          </Button>
+        </div>
       </div>
 
       <Box
@@ -123,16 +190,34 @@ export const Playground = () => {
         </Box>
       </Box>
 
-      <Box as="div">
-        <Button
-          type="button"
-          wide
-          onClick={() => {
-            setWordIndex((i) => (i + 1) % words.length);
-          }}
+      <Box as="div" flexDirection="column" alignItems="stretch">
+        <Box
+          as="div"
+          justifyContent="space-between"
+          style={{ marginBottom: "0.5rem" }}
         >
-          Morph
-        </Button>
+          Examples
+        </Box>
+        <div>
+          {EXAMPLES.map((example) => (
+            <Button
+              key={example.label}
+              type="button"
+              style={{
+                display: "inline-block",
+                marginRight: "0.5rem",
+                marginBottom: "0.5rem",
+              }}
+              onClick={() => {
+                setWords(example.words);
+                setTextAlignment(example.align);
+                setWordIndex(0);
+              }}
+            >
+              {example.label}
+            </Button>
+          ))}
+        </div>
       </Box>
     </div>
   );

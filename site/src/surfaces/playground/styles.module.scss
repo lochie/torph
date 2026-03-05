@@ -2,6 +2,7 @@
 }
 
 .demo {
+  position: relative;
   padding: 6rem 2rem;
   font-family: var(--font-secondary);
   font-size: 2.5rem;
@@ -9,4 +10,11 @@
   color: #ffffff;
   border-radius: 1rem;
   background: var(--body-light);
+}
+
+.controls {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 1rem;
 }
