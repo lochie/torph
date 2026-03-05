@@ -21,7 +21,6 @@ export const metadata: Metadata = {
     siteName: "Torph",
     title: "Torph – Dependency-Free Text Morphing",
     description: "Dependency-free animated text component.",
-    images: "https://torph.lochie.me/og.png",
   },
   twitter: {
     card: "summary_large_image",
@@ -29,7 +28,6 @@ export const metadata: Metadata = {
     creator: "@lochieaxon",
     title: "Torph",
     description: "Dependency-free animated text component.",
-    images: "https://torph.lochie.me/og.png",
   },
   other: {
     "msapplication-navbutton-color": "#000000",
