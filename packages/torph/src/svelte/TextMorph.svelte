@@ -1,25 +1,31 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph } from '../lib/text-morph';
-
-  export let text: string;
-  export let locale: Intl.LocalesArgument = DEFAULT_TEXT_MORPH_OPTIONS.locale;
-  export let duration: number = DEFAULT_TEXT_MORPH_OPTIONS.duration;
-  export let ease: string = DEFAULT_TEXT_MORPH_OPTIONS.ease;
-  export let debug: boolean = DEFAULT_TEXT_MORPH_OPTIONS.debug;
-  export let scale: boolean = DEFAULT_TEXT_MORPH_OPTIONS.scale;
-  export let disabled: boolean = DEFAULT_TEXT_MORPH_OPTIONS.disabled;
-  export let respectReducedMotion: boolean = DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion;
-  export let onAnimationStart: (() => void) | undefined = undefined;
-  export let onAnimationComplete: (() => void) | undefined = undefined;
+  import { onMount } from 'svelte';
+  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph, type TextMorphOptions } from '../lib/text-morph';
   
-  let className: string = '';
-  export { className as class };
-  export let style: string = '';
-  export let as: string = DEFAULT_AS;
+  type Props = Omit<TextMorphOptions, "element"> & {
+    text: string;
+    class?: string;
+    style?: string;
+    as?: string;
+  }
 
-  let containerRef: HTMLElement;
-  let morphInstance: Morph | null = null;
+  let {
+    text,
+    locale = DEFAULT_TEXT_MORPH_OPTIONS.locale,
+    duration = DEFAULT_TEXT_MORPH_OPTIONS.duration,
+    ease = DEFAULT_TEXT_MORPH_OPTIONS.ease,
+    scale = DEFAULT_TEXT_MORPH_OPTIONS.scale,
+    debug = DEFAULT_TEXT_MORPH_OPTIONS.debug,
+    disabled = DEFAULT_TEXT_MORPH_OPTIONS.disabled,
+    respectReducedMotion = DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion,
+    onAnimationStart = undefined,
+    onAnimationComplete = undefined,
+    as = DEFAULT_AS,
+    ...props
+  }: Props = $props();
+
+  let containerRef = $state<HTMLElement>();
+  let morphInstance = $state<Morph | null>(null);
 
   onMount(() => {
     if (containerRef) {
@@ -37,16 +43,18 @@
       });
       morphInstance.update(text);
     }
+
+    return () => {
+		  morphInstance?.destroy();
+		};
   });
 
-  onDestroy(() => {
-    morphInstance?.destroy();
+  $effect(() => {
+    if (morphInstance) {
+      morphInstance.update(text);
+    }
   });
-
-  $: if (morphInstance) {
-    morphInstance.update(text);
-  }
 </script>
 
-<svelte:element this={as} bind:this={containerRef} class={className} {style}>
+<svelte:element this={as} bind:this={containerRef} {...props}>
 </svelte:element>

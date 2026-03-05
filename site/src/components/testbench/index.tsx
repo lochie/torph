@@ -1,6 +1,7 @@
 import styles from "./styles.module.css";
 
 import React from "react";
+import { useWebHaptics } from "web-haptics/react";
 import { TextMorph } from "torph/react";
 import { Button } from "../button";
 import { Box } from "../box";
@@ -13,6 +14,7 @@ type Options = {
 };
 
 export const Testbench = () => {
+  const { trigger } = useWebHaptics();
   const [options, setOptions] = React.useState<Options>({
     text: "Hello world",
     fontSize: 64,
@@ -104,7 +106,7 @@ export const Testbench = () => {
             type="button"
             wide
             disabled={isChanged}
-            onClick={() => setLatest(prev)}
+            onClick={() => { trigger("light"); setLatest(prev); }}
           >
             <TextMorph>{!isChanged ? "Revert" : "Reverted"}</TextMorph>
           </Button>
@@ -113,6 +115,7 @@ export const Testbench = () => {
             wide
             disabled={!isChanged}
             onClick={() => {
+              trigger("medium");
               setPrev(latest);
               setLatest(options);
             }}

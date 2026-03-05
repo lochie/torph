@@ -1,6 +1,7 @@
 import styles from "./styles.module.scss";
 
 import { useState } from "react";
+import { useWebHaptics } from "web-haptics/react";
 
 import { TextMorph } from "torph/react";
 
@@ -42,6 +43,7 @@ const frameworks = [
 export default function Home() {
   const text = "Hello world";
   const [frameworkIndex, setFrameworkIndex] = useState(0);
+  const { trigger } = useWebHaptics();
 
   return (
     <div className={styles.page}>
@@ -67,7 +69,7 @@ export default function Home() {
                 <Button
                   key={f.name}
                   disabled={frameworkIndex === i}
-                  onClick={() => setFrameworkIndex(i)}
+                  onClick={() => { trigger("selection"); setFrameworkIndex(i); }}
                   aria-label={`View example for ${f.name}`}
                 >
                   <span className={styles.logo}>{f.logo}</span>
