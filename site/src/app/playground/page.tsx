@@ -4,7 +4,7 @@ import { Playground } from "@/surfaces/playground";
 
 export default function Home() {
   return (
-    <Box as="div" flexDirection="column" alignItems="flex-start" gap={16}>
+    <Box as="div" flexDirection="column" alignItems="stretch" gap={16}>
       <h1>Playground</h1>
       <Playground />
       <hr />
