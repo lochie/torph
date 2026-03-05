@@ -2,7 +2,7 @@ import type { TextMorphOptions } from "./types";
 
 export type { TextMorphOptions } from "./types";
 
-export const DEFAULT_AS = "div";
+export const DEFAULT_AS = "span";
 export const DEFAULT_TEXT_MORPH_OPTIONS = {
   debug: false,
   locale: "en",
@@ -58,7 +58,7 @@ export class TextMorph {
       if (options.debug) this.element.setAttribute("torph-debug", "");
     }
 
-    this.data = this.element.innerHTML;
+    this.data = "";
     if (!this.isDisabled()) {
       this.addStyles();
     }

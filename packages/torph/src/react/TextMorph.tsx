@@ -8,7 +8,7 @@ export type TextMorphProps = Omit<TextMorphOptions, "element"> & {
   children: string; //React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
-  as?: keyof JSX.IntrinsicElements;
+  as?: React.ElementType;
 };
 
 export const TextMorph = ({
@@ -19,13 +19,22 @@ export const TextMorph = ({
   ...props
 }: TextMorphProps) => {
   const { ref, update } = useTextMorph(props);
+  const initialHTML = React.useRef({ __html: children });
 
   React.useEffect(() => {
     update(children);
   }, [children, update]);
 
-  const Component = as as any;
-  return <Component ref={ref} className={className} style={style} />;
+  const Component = as;
+
+  return (
+    <Component
+      ref={ref}
+      className={className}
+      style={style}
+      dangerouslySetInnerHTML={initialHTML.current}
+    />
+  );
 };
 
 export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
