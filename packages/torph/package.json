@@ -2,6 +2,7 @@
   "name": "torph",
   "version": "0.0.5",
   "description": "Dependency-free animated text component.",
+  "homepage": "https://torph.lochie.me",
   "author": "Lochie Axon",
   "license": "MIT",
   "repository": {
@@ -53,6 +54,7 @@
   "bugs": {
     "url": "https://github.com/lochie/torph/issues"
   },
+  "sideEffects": false,
   "files": [
     "dist/*"
   ],
