@@ -168,16 +168,26 @@ export class TextMorph {
       exitingAnchorId.set(child, anchor);
     }
 
-    const parentRect = element.getBoundingClientRect();
-    exiting.forEach((child) => {
-      const rect = child.getBoundingClientRect();
+    // Two-pass: read all positions before modifying any element,
+    // since setting position:absolute removes from flow and shifts siblings
+    const exitPositions = exiting.map((child) => {
+      child.getAnimations().forEach((a) => a.cancel());
+      return {
+        left: child.offsetLeft,
+        top: child.offsetTop,
+        width: child.offsetWidth,
+        height: child.offsetHeight,
+      };
+    });
+    exiting.forEach((child, i) => {
+      const pos = exitPositions[i]!;
       child.setAttribute("torph-exiting", "");
       child.style.position = "absolute";
       child.style.pointerEvents = "none";
-      child.style.left = `${rect.left - parentRect.left}px`;
-      child.style.top = `${rect.top - parentRect.top}px`;
-      child.style.width = `${rect.width}px`;
-      child.style.height = `${rect.height}px`;
+      child.style.left = `${pos.left}px`;
+      child.style.top = `${pos.top}px`;
+      child.style.width = `${pos.width}px`;
+      child.style.height = `${pos.height}px`;
     });
 
     oldChildren.forEach((child) => {
@@ -226,7 +236,6 @@ export class TextMorph {
         dy = anchorCurr.y - anchorPrev.y;
       }
 
-      child.getAnimations().forEach((a) => a.cancel());
       child.animate(
         {
           transform: this.options.scale
