@@ -1,6 +1,6 @@
 # Torph
 
-Animated text morphing component for React, Vue, and Svelte.
+Dependency-free animated text morphing component for React, Vue, Svelte, and vanilla JavaScript.
 
 ## Installation
 
@@ -124,6 +124,31 @@ const morph = new TextMorph({
 morph.update("Hello World");
 ```
 
+## Spring Animations
+
+Pass spring parameters to `ease` for physics-based easing. The duration is computed automatically from the spring physics.
+
+```tsx
+import { TextMorph } from "torph/react";
+
+function App() {
+  const [text, setText] = useState("Hello World");
+
+  return (
+    <TextMorph ease={{ stiffness: 200, damping: 20 }}>{text}</TextMorph>
+  );
+}
+```
+
+### Spring Parameters
+
+| Parameter   | Type     | Default | Description                               |
+| ----------- | -------- | ------- | ----------------------------------------- |
+| `stiffness` | `number` | `100`   | Spring stiffness coefficient              |
+| `damping`   | `number` | `10`    | Damping coefficient                       |
+| `mass`      | `number` | `1`     | Mass of the spring                        |
+| `precision` | `number` | `0.001` | Threshold for determining settled position |
+
 ## API
 
 ### Options
@@ -131,17 +156,18 @@ morph.update("Hello World");
 All components accept the following props/options:
 
 - `text` / `children: string` - The text to display (required)
-- `duration?: number` - Animation duration in milliseconds (default: 400)
-- `ease?: string` - CSS easing function (default: "cubic-bezier(0.19, 1, 0.22, 1)")
-- `locale?: Intl.LocalesArgument` - Locale for text segmentation (default: "en")
+- `duration?: number` - Animation duration in milliseconds (default: `400`)
+- `ease?: string | SpringParams` - CSS easing function or spring parameters (default: `"cubic-bezier(0.19, 1, 0.22, 1)"`)
+- `scale?: boolean` - Enable scale animation on exiting segments (default: `true`)
+- `locale?: Intl.LocalesArgument` - Locale for text segmentation (default: `"en"`)
 - `debug?: boolean` - Enable debug mode with visual indicators
-- `disabled?: boolean` - Disable all morphing animations (default: false)
-- `respectReducedMotion?: boolean` - Respect user's prefers-reduced-motion setting (default: true)
+- `disabled?: boolean` - Disable all morphing animations (default: `false`)
+- `respectReducedMotion?: boolean` - Respect user's prefers-reduced-motion setting (default: `true`)
 - `onAnimationStart?: () => void` - Callback fired when animation begins
 - `onAnimationComplete?: () => void` - Callback fired when animation completes
 - `className?: string` - CSS class name (React/Vue: `class`)
 - `style?: object | string` - Inline styles
-- `as?: string` - HTML element type (default: "div")
+- `as?: string` - HTML element type (default: `"span"`)
 
 ## Found this useful?
 

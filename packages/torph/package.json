@@ -1,6 +1,6 @@
 {
   "name": "torph",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Dependency-free animated text component.",
   "homepage": "https://torph.lochie.me",
   "author": "Lochie Axon",
@@ -10,6 +10,8 @@
     "url": "git+https://github.com/lochie/torph.git",
     "directory": "packages/torph"
   },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
@@ -23,12 +25,18 @@
       "require": "./dist/react/index.js"
     },
     "./vue": {
-      "types": "./dist/vue/index.d.ts",
+      "types": {
+        "import": "./dist/vue/index.d.mts",
+        "require": "./dist/vue/index.d.ts"
+      },
       "import": "./dist/vue/index.mjs",
       "require": "./dist/vue/index.js"
     },
     "./svelte": {
-      "types": "./dist/svelte/index.d.ts",
+      "types": {
+        "import": "./dist/svelte/index.d.mts",
+        "require": "./dist/svelte/index.d.ts"
+      },
       "import": "./dist/svelte/index.mjs",
       "require": "./dist/svelte/index.js"
     }

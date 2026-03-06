@@ -10,7 +10,6 @@ export default defineConfig((options) => {
       format: ["cjs", "esm"],
       dts: true,
       clean: true,
-      sourcemap: true,
       target: "es2022",
       treeshake: true,
       minify: !options.watch,
@@ -22,7 +21,6 @@ export default defineConfig((options) => {
       },
       format: ["cjs", "esm"],
       dts: true,
-      sourcemap: true,
       target: "es2022",
       treeshake: true,
       external: ["react", "react/jsx-runtime"],
@@ -36,7 +34,6 @@ export default defineConfig((options) => {
       },
       format: ["cjs", "esm"],
       dts: false,
-      sourcemap: true,
       target: "es2022",
       treeshake: true,
       external: ["vue", "../lib/text-morph"],
@@ -50,11 +47,11 @@ export default defineConfig((options) => {
       entry: {
         "vue/index": "src/vue/types.ts",
       },
-      format: ["esm"],
+      format: ["cjs", "esm"],
       dts: {
         only: true,
       },
-      external: ["vue", "../lib/text-morph/types"],
+      external: ["vue"],
     },
     // Svelte - JS build
     {
@@ -63,7 +60,6 @@ export default defineConfig((options) => {
       },
       format: ["cjs", "esm"],
       dts: false,
-      sourcemap: true,
       target: "es2022",
       treeshake: true,
       external: ["svelte", "../lib/text-morph"],
@@ -77,11 +73,11 @@ export default defineConfig((options) => {
       entry: {
         "svelte/index": "src/svelte/types.ts",
       },
-      format: ["esm"],
+      format: ["cjs", "esm"],
       dts: {
         only: true,
       },
-      external: ["svelte", "../lib/text-morph/types"],
+      external: ["svelte"],
     },
   ];
 

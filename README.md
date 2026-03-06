@@ -1,6 +1,6 @@
 # Torph
 
-Dependency-free animated text component.
+Dependency-free animated text morphing component for React, Vue, Svelte, and vanilla JavaScript.
 
 ## Installation
 
@@ -15,6 +15,18 @@ import { TextMorph } from "torph/react";
 
 <TextMorph>Hello world</TextMorph>;
 ```
+
+### Spring Animations
+
+Use physics-based spring easing by passing spring parameters to `ease`:
+
+```tsx
+import { TextMorph } from "torph/react";
+
+<TextMorph ease={{ stiffness: 200, damping: 20 }}>Hello world</TextMorph>;
+```
+
+See the [package README](packages/torph/README.md) for full API documentation.
 
 # Contributing
 

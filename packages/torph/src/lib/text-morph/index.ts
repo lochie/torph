@@ -1,6 +1,34 @@
 import type { TextMorphOptions } from "./types";
+import { spring as resolveSpring } from "./utils/spring";
+import { type Segment, segmentText } from "./utils/segment";
+import {
+  type Measures,
+  measure,
+  computeDelta,
+  findNearestAnchor,
+  resolveExitingAnchors,
+} from "./utils/flip";
+import {
+  animateExit,
+  animateEnterOrPersist,
+  transitionContainerSize,
+} from "./utils/animate";
+import { detachFromFlow, reconcileChildren } from "./utils/dom";
+import { addStyles, removeStyles } from "./utils/styles";
+import {
+  ATTR_ROOT,
+  ATTR_DEBUG,
+  ATTR_EXITING,
+  ATTR_ID,
+} from "./utils/constants";
+import {
+  type ReducedMotionState,
+  createReducedMotionListener,
+} from "./utils/reduced-motion";
 
 export type { TextMorphOptions } from "./types";
+export type { SpringParams } from "./utils/spring";
+export { MorphController } from "./controller";
 
 export const DEFAULT_AS = "span";
 export const DEFAULT_TEXT_MORPH_OPTIONS = {
@@ -13,78 +41,65 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
   respectReducedMotion: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
-type Block = {
-  id: string;
-  string: string;
-};
-type Measures = {
-  [key: string]: { x: number; y: number };
-};
-
 export class TextMorph {
   private element: HTMLElement;
-  private options: Omit<TextMorphOptions, "element"> = {};
+  private options: Omit<TextMorphOptions, "element" | "ease"> & { ease?: string } = {};
 
   private data: HTMLElement | string;
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
   private isInitialRender = true;
-  private prefersReducedMotion = false;
-  private mediaQuery?: MediaQueryList;
+  private reducedMotion: ReducedMotionState | null = null;
 
-  static styleEl: HTMLStyleElement;
 
   constructor(options: TextMorphOptions) {
-    this.options = {
-      ...DEFAULT_TEXT_MORPH_OPTIONS,
-      ...options,
-    };
+    const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
+    let ease: string;
+    let duration: number;
+
+    if (typeof rawEase === "object") {
+      const resolved = resolveSpring(rawEase);
+      ease = resolved.easing;
+      duration = resolved.duration;
+    } else {
+      ease = rawEase;
+      duration = rest.duration!;
+    }
+
+    this.options = { ...rest, ease, duration };
 
     this.element = options.element;
 
-    // reduced motion detection
-    if (typeof window !== "undefined" && this.options.respectReducedMotion) {
-      this.mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-      this.prefersReducedMotion = this.mediaQuery.matches;
-      this.mediaQuery.addEventListener("change", this.handleMediaQueryChange);
+    if (this.options.respectReducedMotion) {
+      this.reducedMotion = createReducedMotionListener();
     }
 
     if (!this.isDisabled()) {
-      this.element.setAttribute("torph-root", "");
+      this.element.setAttribute(ATTR_ROOT, "");
       this.element.style.transitionDuration = `${this.options.duration}ms`;
       this.element.style.transitionTimingFunction = this.options.ease!;
 
-      if (options.debug) this.element.setAttribute("torph-debug", "");
+      if (options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     }
 
     this.data = "";
     if (!this.isDisabled()) {
-      this.addStyles();
+      addStyles();
     }
   }
 
   destroy() {
-    if (this.mediaQuery) {
-      this.mediaQuery.removeEventListener(
-        "change",
-        this.handleMediaQueryChange,
-      );
-    }
+    this.reducedMotion?.destroy();
     this.element.getAnimations().forEach((anim) => anim.cancel());
-    this.element.removeAttribute("torph-root");
-    this.element.removeAttribute("torph-debug");
-    this.removeStyles();
+    this.element.removeAttribute(ATTR_ROOT);
+    this.element.removeAttribute(ATTR_DEBUG);
+    removeStyles();
   }
-
-  private handleMediaQueryChange = (event: MediaQueryListEvent) => {
-    this.prefersReducedMotion = event.matches;
-  };
 
   private isDisabled(): boolean {
     return Boolean(
-      this.options.disabled ||
-        (this.options.respectReducedMotion && this.prefersReducedMotion),
+      this.options.disabled || this.reducedMotion?.prefersReducedMotion,
     );
   }
 
@@ -114,105 +129,34 @@ export class TextMorph {
     const oldWidth = element.offsetWidth;
     const oldHeight = element.offsetHeight;
 
-    const byWord = value.includes(" ");
-    let blocks: Block[];
+    const segments = segmentText(value, this.options.locale!);
 
-    if (typeof Intl.Segmenter !== "undefined") {
-      const segmenter = new Intl.Segmenter(this.options.locale, {
-        granularity: byWord ? "word" : "grapheme",
-      });
-      const iterator = segmenter.segment(value)[Symbol.iterator]();
-      blocks = this.blocks(iterator);
-    } else {
-      // Fallback for browsers without Intl.Segmenter
-      blocks = this.blocksFallback(value, byWord);
-    }
-
-    this.prevMeasures = this.measure();
+    this.prevMeasures = measure(this.element);
     const oldChildren = Array.from(element.children) as HTMLElement[];
-    const newIds = new Set(blocks.map((b) => b.id));
+    const newIds = new Set(segments.map((b) => b.id));
 
     const exiting = oldChildren.filter(
       (child) =>
-        !newIds.has(child.getAttribute("torph-id") as string) &&
-        !child.hasAttribute("torph-exiting"),
+        !newIds.has(child.getAttribute(ATTR_ID) as string) &&
+        !child.hasAttribute(ATTR_EXITING),
     );
 
-    // For each exiting char, find the nearest persistent neighbor in old order
-    // so we can make it follow that neighbor's FLIP movement
     const exitingSet = new Set(exiting);
-    const exitingAnchorId = new Map<HTMLElement, string | null>();
-    for (let i = 0; i < oldChildren.length; i++) {
-      const child = oldChildren[i]!;
-      if (!exitingSet.has(child)) continue;
+    const oldIds = oldChildren.map(
+      (c) => c.getAttribute(ATTR_ID) as string,
+    );
+    const exitingAnchorId = resolveExitingAnchors(
+      oldChildren,
+      exitingSet,
+      oldIds,
+      newIds,
+    );
 
-      // Look forward for nearest persistent char
-      let anchor: string | null = null;
-      for (let j = i + 1; j < oldChildren.length; j++) {
-        const siblingId = oldChildren[j]!.getAttribute("torph-id") as string;
-        if (newIds.has(siblingId) && !exitingSet.has(oldChildren[j]!)) {
-          anchor = siblingId;
-          break;
-        }
-      }
-      // If none forward, look backward
-      if (!anchor) {
-        for (let j = i - 1; j >= 0; j--) {
-          const siblingId = oldChildren[j]!.getAttribute("torph-id") as string;
-          if (newIds.has(siblingId) && !exitingSet.has(oldChildren[j]!)) {
-            anchor = siblingId;
-            break;
-          }
-        }
-      }
-      exitingAnchorId.set(child, anchor);
-    }
+    detachFromFlow(exiting);
+    reconcileChildren(element, oldChildren, newIds, segments);
 
-    // Two-pass: read all positions before modifying any element,
-    // since setting position:absolute removes from flow and shifts siblings
-    const exitPositions = exiting.map((child) => {
-      child.getAnimations().forEach((a) => a.cancel());
-      return {
-        left: child.offsetLeft,
-        top: child.offsetTop,
-        width: child.offsetWidth,
-        height: child.offsetHeight,
-      };
-    });
-    exiting.forEach((child, i) => {
-      const pos = exitPositions[i]!;
-      child.setAttribute("torph-exiting", "");
-      child.style.position = "absolute";
-      child.style.pointerEvents = "none";
-      child.style.left = `${pos.left}px`;
-      child.style.top = `${pos.top}px`;
-      child.style.width = `${pos.width}px`;
-      child.style.height = `${pos.height}px`;
-    });
-
-    oldChildren.forEach((child) => {
-      const id = child.getAttribute("torph-id") as string;
-      if (newIds.has(id)) child.remove();
-    });
-
-    // Disabled-mode updates set plain text via textContent; remove that text node
-    // before appending torph items so old content is not duplicated.
-    Array.from(element.childNodes).forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        node.remove();
-      }
-    });
-
-    blocks.forEach((block) => {
-      const span = document.createElement("span");
-      span.setAttribute("torph-item", "");
-      span.setAttribute("torph-id", block.id);
-      span.textContent = block.string;
-      element.appendChild(span);
-    });
-
-    this.currentMeasures = this.measure();
-    this.updateStyles(blocks);
+    this.currentMeasures = measure(this.element);
+    this.updateStyles(segments);
 
     exiting.forEach((child) => {
       if (this.isInitialRender) {
@@ -220,47 +164,18 @@ export class TextMorph {
         return;
       }
 
-      // Find the anchor neighbor's FLIP delta so we move in sync with it
       const anchorId = exitingAnchorId.get(child);
-      let dx = 0;
-      let dy = 0;
+      const { dx, dy } = anchorId
+        ? computeDelta(this.currentMeasures, this.prevMeasures, anchorId)
+        : { dx: 0, dy: 0 };
 
-      if (
-        anchorId &&
-        this.prevMeasures[anchorId] &&
-        this.currentMeasures[anchorId]
-      ) {
-        const anchorPrev = this.prevMeasures[anchorId]!;
-        const anchorCurr = this.currentMeasures[anchorId]!;
-        dx = anchorCurr.x - anchorPrev.x;
-        dy = anchorCurr.y - anchorPrev.y;
-      }
-
-      child.animate(
-        {
-          transform: this.options.scale
-            ? `translate(${dx}px, ${dy}px) scale(0.95)`
-            : `translate(${dx}px, ${dy}px)`,
-          offset: 1,
-        },
-        {
-          duration: this.options.duration,
-          easing: this.options.ease,
-          fill: "both",
-        },
-      );
-      const animation: Animation = child.animate(
-        {
-          opacity: 0,
-          offset: 1,
-        },
-        {
-          duration: this.options.duration! * 0.25,
-          easing: "linear",
-          fill: "both",
-        },
-      );
-      animation.onfinish = () => child.remove();
+      animateExit(child, {
+        dx,
+        dy,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+        scale: this.options.scale!,
+      });
     });
 
     if (this.isInitialRender) {
@@ -270,230 +185,50 @@ export class TextMorph {
       return;
     }
 
-    if (oldWidth === 0 || oldHeight === 0) return;
-
-    element.style.width = "auto";
-    element.style.height = "auto";
-    void element.offsetWidth; // force reflow
-
-    const newWidth = element.offsetWidth;
-    const newHeight = element.offsetHeight;
-
-    element.style.width = `${oldWidth}px`;
-    element.style.height = `${oldHeight}px`;
-    void element.offsetWidth; // force reflow
-
-    element.style.width = `${newWidth}px`;
-    element.style.height = `${newHeight}px`;
-
-    // TODO: move to `transitionend` event listener
-    setTimeout(() => {
-      element.style.width = "auto";
-      element.style.height = "auto";
-      if (this.options.onAnimationComplete) {
-        this.options.onAnimationComplete();
-      }
-    }, this.options.duration);
+    transitionContainerSize(
+      element,
+      oldWidth,
+      oldHeight,
+      this.options.duration!,
+      this.options.onAnimationComplete,
+    );
   }
 
-  private measure() {
-    const children = Array.from(this.element.children) as HTMLElement[];
-    const measures: Measures = {};
-
-    children.forEach((child, index) => {
-      if (child.hasAttribute("torph-exiting")) return;
-      const key = child.getAttribute("torph-id") || `child-${index}`;
-      measures[key] = {
-        x: child.offsetLeft,
-        y: child.offsetTop,
-      };
-    });
-
-    return measures;
-  }
-
-  private updateStyles(blocks: Block[]) {
+  private updateStyles(segments: Segment[]) {
     if (this.isInitialRender) return;
 
     const children = Array.from(this.element.children) as HTMLElement[];
+    const segmentIds = segments.map((b) => b.id);
 
     const persistentIds = new Set(
-      blocks.map((b) => b.id).filter((id) => this.prevMeasures[id]),
+      segmentIds.filter((id) => this.prevMeasures[id]),
     );
 
     children.forEach((child, index) => {
-      if (child.hasAttribute("torph-exiting")) return;
-      const key = child.getAttribute("torph-id") || `child-${index}`;
-      const prev = this.prevMeasures[key];
-      const current = this.currentMeasures[key];
+      if (child.hasAttribute(ATTR_EXITING)) return;
+      const key = child.getAttribute(ATTR_ID) || `child-${index}`;
+      const isNew = !this.prevMeasures[key];
 
-      const cx = current?.x || 0;
-      const cy = current?.y || 0;
+      const deltaKey = isNew
+        ? findNearestAnchor(
+            segments.findIndex((b) => b.id === key),
+            segmentIds,
+            persistentIds,
+          )
+        : key;
 
-      let deltaX = prev ? prev.x - cx : 0;
-      let deltaY = prev ? prev.y - cy : 0;
-      const isNew = !prev;
+      const { dx: deltaX, dy: deltaY } = deltaKey
+        ? computeDelta(this.prevMeasures, this.currentMeasures, deltaKey)
+        : { dx: 0, dy: 0 };
 
-      // For new chars, use the nearest persistent neighbor's FLIP delta
-      // so all new chars get the same consistent offset
-      if (isNew) {
-        const blockIndex = blocks.findIndex((b) => b.id === key);
-        let anchorId: string | null = null;
-
-        for (let j = blockIndex - 1; j >= 0; j--) {
-          if (persistentIds.has(blocks[j]!.id)) {
-            anchorId = blocks[j]!.id;
-            break;
-          }
-        }
-        if (!anchorId) {
-          for (let j = blockIndex + 1; j < blocks.length; j++) {
-            if (persistentIds.has(blocks[j]!.id)) {
-              anchorId = blocks[j]!.id;
-              break;
-            }
-          }
-        }
-
-        if (anchorId) {
-          const anchorPrev = this.prevMeasures[anchorId]!;
-          const anchorCurr = this.currentMeasures[anchorId]!;
-          deltaX = anchorPrev.x - anchorCurr.x;
-          deltaY = anchorPrev.y - anchorCurr.y;
-        }
-      }
-
-      child.getAnimations().forEach((a) => a.cancel());
-      child.animate(
-        {
-          transform: `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
-          offset: 0,
-        },
-        {
-          duration: this.options.duration,
-          easing: this.options.ease,
-          fill: "both",
-        },
-      );
-      const duration = isNew ? this.options.duration! * 0.25 : 0;
-      const delay = isNew ? this.options.duration! * 0.25 : 0;
-      child.animate(
-        {
-          opacity: isNew ? 0 : 1,
-          offset: 0,
-        },
-        {
-          duration: duration,
-          delay: delay,
-          easing: "linear",
-          fill: "both",
-        },
-      );
+      animateEnterOrPersist(child, {
+        deltaX,
+        deltaY,
+        isNew,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+      });
     });
   }
 
-  private addStyles() {
-    if (TextMorph.styleEl) return;
-
-    const style = document.createElement("style");
-    style.dataset.torph = "true";
-    style.innerHTML = `
-[torph-root] {
-  display: inline-flex;
-  position: relative;
-  will-change: width, height;
-  transition-property: width, height;
-  white-space: nowrap;
-}
-
-[torph-item] {
-  display: inline-block;
-  will-change: opacity, transform;
-  transform: none;
-  opacity: 1;
-}
-
-[torph-root][torph-debug] {
-  outline:2px solid magenta;
-  [torph-item] {
-    outline:2px solid cyan;
-    outline-offset: -4px;
-  }
-}
-  `;
-    document.head.appendChild(style);
-    TextMorph.styleEl = style;
-  }
-
-  private removeStyles() {
-    if (TextMorph.styleEl) {
-      TextMorph.styleEl.remove();
-      TextMorph.styleEl = undefined!;
-    }
-  }
-
-  // utils
-
-  private blocks(iterator: Intl.SegmentIterator<Intl.SegmentData>) {
-    const uniqueStrings: Block[] = Array.from(iterator).reduce(
-      (acc, string) => {
-        if (string.segment === " ") {
-          return [...acc, { id: `space-${string.index}`, string: "\u00A0" }];
-        }
-
-        const existingString = acc.find((x) => x.string === string.segment);
-        if (existingString) {
-          return [
-            ...acc,
-            { id: `${string.segment}-${string.index}`, string: string.segment },
-          ];
-        }
-
-        return [
-          ...acc,
-          {
-            id: string.segment,
-            string: string.segment,
-          },
-        ];
-      },
-      [] as Block[],
-    );
-
-    return uniqueStrings;
-  }
-
-  private blocksFallback(value: string, byWord: boolean): Block[] {
-    const segments = byWord ? value.split(" ") : value.split("");
-    const blocks: Block[] = [];
-
-    if (byWord) {
-      segments.forEach((segment, index) => {
-        if (index > 0) {
-          blocks.push({ id: `space-${index}`, string: "\u00A0" });
-        }
-        const existing = blocks.find((x) => x.string === segment);
-        if (existing) {
-          blocks.push({ id: `${segment}-${index}`, string: segment });
-        } else {
-          blocks.push({ id: segment, string: segment });
-        }
-      });
-    } else {
-      segments.forEach((segment, index) => {
-        const existing = blocks.find((x) => x.string === segment);
-        if (existing) {
-          blocks.push({ id: `${segment}-${index}`, string: segment });
-        } else {
-          blocks.push({ id: segment, string: segment });
-        }
-      });
-    }
-
-    return blocks;
-  }
-
-  private log(...args: any[]) {
-    if (this.options.debug) console.log("[TextMorph]", ...args);
-  }
 }

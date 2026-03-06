@@ -8,12 +8,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onUnmounted, watch } from "vue";
 import {
   DEFAULT_AS,
   DEFAULT_TEXT_MORPH_OPTIONS,
-  TextMorph as Morph,
 } from "../lib/text-morph";
+import { MorphController } from "../lib/text-morph/controller";
 import type { TextMorphProps } from "./types";
 
 const props = withDefaults(defineProps<TextMorphProps>(), {
@@ -27,12 +27,15 @@ const props = withDefaults(defineProps<TextMorphProps>(), {
 });
 
 const containerRef = ref<HTMLElement | null>(null);
-let morphInstance: Morph | null = null;
+const controller = new MorphController();
 
-onMounted(() => {
+const configKey = computed(() =>
+  MorphController.serializeConfig(props),
+);
+
+function createInstance() {
   if (containerRef.value) {
-    morphInstance = new Morph({
-      element: containerRef.value,
+    controller.attach(containerRef.value, {
       locale: props.locale,
       duration: props.duration,
       ease: props.ease,
@@ -43,18 +46,20 @@ onMounted(() => {
       onAnimationStart: props.onAnimationStart,
       onAnimationComplete: props.onAnimationComplete,
     });
-    morphInstance.update(props.text);
   }
-});
+}
+
+watch(containerRef, () => createInstance(), { flush: "post" });
+watch(configKey, () => createInstance());
 
 onUnmounted(() => {
-  morphInstance?.destroy();
+  controller.destroy();
 });
 
 watch(
   () => props.text,
   (newText) => {
-    morphInstance?.update(newText);
+    controller.update(newText);
   },
 );
 </script>

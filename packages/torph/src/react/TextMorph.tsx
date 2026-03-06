@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { DEFAULT_AS, TextMorph as Morph } from "../lib/text-morph";
+import { DEFAULT_AS } from "../lib/text-morph";
+import { MorphController } from "../lib/text-morph/controller";
 import type { TextMorphOptions } from "../lib/text-morph/types";
 
 export type TextMorphProps = Omit<TextMorphOptions, "element"> & {
@@ -55,20 +56,22 @@ export const TextMorph = ({
 
 export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
   const ref = React.useRef<HTMLDivElement | null>(null);
-  const morphRef = React.useRef<Morph | null>(null);
+  const controllerRef = React.useRef(new MorphController());
+
+  const configKey = MorphController.serializeConfig(props);
 
   React.useEffect(() => {
     if (ref.current) {
-      morphRef.current = new Morph({ element: ref.current, ...props });
+      controllerRef.current.attach(ref.current, props);
     }
 
     return () => {
-      morphRef.current?.destroy();
+      controllerRef.current.destroy();
     };
-  }, []);
+  }, [configKey]);
 
   const update = React.useCallback((text: string) => {
-    morphRef.current?.update(text);
+    controllerRef.current.update(text);
   }, []);
 
   return { ref, update };

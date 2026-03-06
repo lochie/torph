@@ -5,10 +5,14 @@ import { TextMorph } from "torph/react";
 
 const states = [
   {
-    label: "Buy for $19.99 / Month",
+    prefix: "Buy for ",
+    price: "$19.99",
+    suffix: " / Month",
   },
   {
-    label: "Buy for $200 / Year",
+    prefix: "Buy for ",
+    price: "$200",
+    suffix: " / Year",
   },
 ];
 
@@ -24,7 +28,11 @@ export const ExamplePricing = () => {
 
   return (
     <div className={styles.button}>
-      <TextMorph>{states[currentStateIndex].label}</TextMorph>
+      <TextMorph>
+        {states[currentStateIndex].prefix}
+        {states[currentStateIndex].price}
+        {states[currentStateIndex].suffix}
+      </TextMorph>
     </div>
   );
 };
