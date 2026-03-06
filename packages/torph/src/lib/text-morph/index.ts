@@ -11,6 +11,7 @@ import {
   animateEnterOrPersist,
   transitionContainerSize,
 } from "./utils/animate";
+import { addStyles, removeStyles } from "./utils/styles";
 
 export type { TextMorphOptions } from "./types";
 
@@ -37,7 +38,6 @@ export class TextMorph {
   private prefersReducedMotion = false;
   private mediaQuery?: MediaQueryList;
 
-  static styleEl: HTMLStyleElement;
 
   constructor(options: TextMorphOptions) {
     this.options = {
@@ -64,7 +64,7 @@ export class TextMorph {
 
     this.data = "";
     if (!this.isDisabled()) {
-      this.addStyles();
+      addStyles();
     }
   }
 
@@ -78,7 +78,7 @@ export class TextMorph {
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute("torph-root");
     this.element.removeAttribute("torph-debug");
-    this.removeStyles();
+    removeStyles();
   }
 
   private handleMediaQueryChange = (event: MediaQueryListEvent) => {
@@ -269,46 +269,5 @@ export class TextMorph {
       });
     });
   }
-
-  private addStyles() {
-    if (TextMorph.styleEl) return;
-
-    const style = document.createElement("style");
-    style.dataset.torph = "true";
-    style.innerHTML = `
-[torph-root] {
-  display: inline-flex;
-  position: relative;
-  will-change: width, height;
-  transition-property: width, height;
-  white-space: nowrap;
-}
-
-[torph-item] {
-  display: inline-block;
-  will-change: opacity, transform;
-  transform: none;
-  opacity: 1;
-}
-
-[torph-root][torph-debug] {
-  outline:2px solid magenta;
-  [torph-item] {
-    outline:2px solid cyan;
-    outline-offset: -4px;
-  }
-}
-  `;
-    document.head.appendChild(style);
-    TextMorph.styleEl = style;
-  }
-
-  private removeStyles() {
-    if (TextMorph.styleEl) {
-      TextMorph.styleEl.remove();
-      TextMorph.styleEl = undefined!;
-    }
-  }
-
 
 }
