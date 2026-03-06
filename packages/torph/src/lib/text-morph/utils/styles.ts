@@ -1,5 +1,11 @@
+import {
+  ATTR_ROOT,
+  ATTR_ITEM,
+  ATTR_DEBUG,
+} from "./constants";
+
 const TORPH_CSS = `
-[torph-root] {
+[${ATTR_ROOT}] {
   display: inline-flex;
   position: relative;
   will-change: width, height;
@@ -7,16 +13,16 @@ const TORPH_CSS = `
   white-space: nowrap;
 }
 
-[torph-item] {
+[${ATTR_ITEM}] {
   display: inline-block;
   will-change: opacity, transform;
   transform: none;
   opacity: 1;
 }
 
-[torph-root][torph-debug] {
+[${ATTR_ROOT}][${ATTR_DEBUG}] {
   outline: 2px solid magenta;
-  [torph-item] {
+  [${ATTR_ITEM}] {
     outline: 2px solid cyan;
     outline-offset: -4px;
   }

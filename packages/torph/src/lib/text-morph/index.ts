@@ -11,7 +11,14 @@ import {
   animateEnterOrPersist,
   transitionContainerSize,
 } from "./utils/animate";
+import { detachFromFlow, reconcileChildren } from "./utils/dom";
 import { addStyles, removeStyles } from "./utils/styles";
+import {
+  ATTR_ROOT,
+  ATTR_DEBUG,
+  ATTR_EXITING,
+  ATTR_ID,
+} from "./utils/constants";
 
 export type { TextMorphOptions } from "./types";
 
@@ -55,11 +62,11 @@ export class TextMorph {
     }
 
     if (!this.isDisabled()) {
-      this.element.setAttribute("torph-root", "");
+      this.element.setAttribute(ATTR_ROOT, "");
       this.element.style.transitionDuration = `${this.options.duration}ms`;
       this.element.style.transitionTimingFunction = this.options.ease!;
 
-      if (options.debug) this.element.setAttribute("torph-debug", "");
+      if (options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     }
 
     this.data = "";
@@ -76,8 +83,8 @@ export class TextMorph {
       );
     }
     this.element.getAnimations().forEach((anim) => anim.cancel());
-    this.element.removeAttribute("torph-root");
-    this.element.removeAttribute("torph-debug");
+    this.element.removeAttribute(ATTR_ROOT);
+    this.element.removeAttribute(ATTR_DEBUG);
     removeStyles();
   }
 
@@ -126,14 +133,14 @@ export class TextMorph {
 
     const exiting = oldChildren.filter(
       (child) =>
-        !newIds.has(child.getAttribute("torph-id") as string) &&
-        !child.hasAttribute("torph-exiting"),
+        !newIds.has(child.getAttribute(ATTR_ID) as string) &&
+        !child.hasAttribute(ATTR_EXITING),
     );
 
     // For each exiting char, find the nearest persistent neighbor in old order
     const exitingSet = new Set(exiting);
     const oldIds = oldChildren.map(
-      (c) => c.getAttribute("torph-id") as string,
+      (c) => c.getAttribute(ATTR_ID) as string,
     );
     const persistentOldIds = new Set(
       oldIds.filter(
@@ -151,48 +158,8 @@ export class TextMorph {
       );
     }
 
-    // Two-pass: read all positions before modifying any element,
-    // since setting position:absolute removes from flow and shifts siblings
-    const exitPositions = exiting.map((child) => {
-      child.getAnimations().forEach((a) => a.cancel());
-      return {
-        left: child.offsetLeft,
-        top: child.offsetTop,
-        width: child.offsetWidth,
-        height: child.offsetHeight,
-      };
-    });
-    exiting.forEach((child, i) => {
-      const pos = exitPositions[i]!;
-      child.setAttribute("torph-exiting", "");
-      child.style.position = "absolute";
-      child.style.pointerEvents = "none";
-      child.style.left = `${pos.left}px`;
-      child.style.top = `${pos.top}px`;
-      child.style.width = `${pos.width}px`;
-      child.style.height = `${pos.height}px`;
-    });
-
-    oldChildren.forEach((child) => {
-      const id = child.getAttribute("torph-id") as string;
-      if (newIds.has(id)) child.remove();
-    });
-
-    // Disabled-mode updates set plain text via textContent; remove that text node
-    // before appending torph items so old content is not duplicated.
-    Array.from(element.childNodes).forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        node.remove();
-      }
-    });
-
-    blocks.forEach((block) => {
-      const span = document.createElement("span");
-      span.setAttribute("torph-item", "");
-      span.setAttribute("torph-id", block.id);
-      span.textContent = block.string;
-      element.appendChild(span);
-    });
+    detachFromFlow(exiting);
+    reconcileChildren(element, oldChildren, newIds, blocks);
 
     this.currentMeasures = measure(this.element);
     this.updateStyles(blocks);
@@ -244,8 +211,8 @@ export class TextMorph {
     );
 
     children.forEach((child, index) => {
-      if (child.hasAttribute("torph-exiting")) return;
-      const key = child.getAttribute("torph-id") || `child-${index}`;
+      if (child.hasAttribute(ATTR_EXITING)) return;
+      const key = child.getAttribute(ATTR_ID) || `child-${index}`;
       const isNew = !this.prevMeasures[key];
 
       const deltaKey = isNew

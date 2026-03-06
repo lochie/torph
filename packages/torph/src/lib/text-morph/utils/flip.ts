@@ -1,3 +1,5 @@
+import { ATTR_EXITING, ATTR_ID } from "./constants";
+
 export type Measures = {
   [key: string]: { x: number; y: number };
 };
@@ -7,8 +9,8 @@ export function measure(element: HTMLElement): Measures {
   const measures: Measures = {};
 
   children.forEach((child, index) => {
-    if (child.hasAttribute("torph-exiting")) return;
-    const key = child.getAttribute("torph-id") || `child-${index}`;
+    if (child.hasAttribute(ATTR_EXITING)) return;
+    const key = child.getAttribute(ATTR_ID) || `child-${index}`;
     measures[key] = {
       x: child.offsetLeft,
       y: child.offsetTop,
