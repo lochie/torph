@@ -1,3 +1,26 @@
+export function parseTranslate(element: HTMLElement): {
+  tx: number;
+  ty: number;
+} {
+  const transform = getComputedStyle(element).transform;
+  if (!transform || transform === "none") return { tx: 0, ty: 0 };
+  const match = transform.match(/matrix\(([^)]+)\)/);
+  if (!match) return { tx: 0, ty: 0 };
+  const v = match[1]!.split(",").map(Number);
+  return { tx: v[4] || 0, ty: v[5] || 0 };
+}
+
+function cancelAnimations(element: HTMLElement): {
+  tx: number;
+  ty: number;
+  opacity: number;
+} {
+  const { tx, ty } = parseTranslate(element);
+  const opacity = Number(getComputedStyle(element).opacity) || 1;
+  element.getAnimations().forEach((a) => a.cancel());
+  return { tx, ty, opacity };
+}
+
 export function animateExit(
   child: HTMLElement,
   options: {
@@ -51,11 +74,14 @@ export function animateEnterOrPersist(
 ) {
   const { deltaX, deltaY, isNew, duration, ease } = options;
 
-  child.getAnimations().forEach((a) => a.cancel());
+  const prev = cancelAnimations(child);
+
+  const startX = deltaX + prev.tx;
+  const startY = deltaY + prev.ty;
 
   child.animate(
     {
-      transform: `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
+      transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
       offset: 0,
     },
     {
@@ -65,21 +91,17 @@ export function animateEnterOrPersist(
     },
   );
 
-  const fadeDuration = isNew ? duration * 0.25 : 0;
-  const fadeDelay = isNew ? duration * 0.25 : 0;
-
-  child.animate(
-    {
-      opacity: isNew ? 0 : 1,
-      offset: 0,
-    },
-    {
-      duration: fadeDuration,
-      delay: fadeDelay,
-      easing: "linear",
-      fill: "both",
-    },
-  );
+  if (isNew) {
+    const startOpacity = prev.opacity < 1 ? prev.opacity : 0;
+    child.animate(
+      [{ opacity: startOpacity }, { opacity: 1 }],
+      {
+        duration: duration * 0.5,
+        easing: "linear",
+        fill: "both",
+      },
+    );
+  }
 }
 
 export function transitionContainerSize(

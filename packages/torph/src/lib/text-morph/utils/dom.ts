@@ -1,12 +1,14 @@
 import type { Segment } from "./segment";
 import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
+import { parseTranslate } from "./animate";
 
 export function detachFromFlow(elements: HTMLElement[]) {
   const positions = elements.map((child) => {
+    const { tx, ty } = parseTranslate(child);
     child.getAnimations().forEach((a) => a.cancel());
     return {
-      left: child.offsetLeft,
-      top: child.offsetTop,
+      left: child.offsetLeft + tx,
+      top: child.offsetTop + ty,
       width: child.offsetWidth,
       height: child.offsetHeight,
     };
