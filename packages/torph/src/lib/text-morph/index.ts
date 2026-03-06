@@ -1,4 +1,16 @@
 import type { TextMorphOptions } from "./types";
+import { type Block, segmentText } from "./utils/segment";
+import {
+  type Measures,
+  measure,
+  computeDelta,
+  findNearestAnchor,
+} from "./utils/flip";
+import {
+  animateExit,
+  animateEnterOrPersist,
+  transitionContainerSize,
+} from "./utils/animate";
 
 export type { TextMorphOptions } from "./types";
 
@@ -12,14 +24,6 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
   disabled: false,
   respectReducedMotion: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
-
-type Block = {
-  id: string;
-  string: string;
-};
-type Measures = {
-  [key: string]: { x: number; y: number };
-};
 
 export class TextMorph {
   private element: HTMLElement;
@@ -114,21 +118,9 @@ export class TextMorph {
     const oldWidth = element.offsetWidth;
     const oldHeight = element.offsetHeight;
 
-    const byWord = value.includes(" ");
-    let blocks: Block[];
+    const blocks = segmentText(value, this.options.locale!);
 
-    if (typeof Intl.Segmenter !== "undefined") {
-      const segmenter = new Intl.Segmenter(this.options.locale, {
-        granularity: byWord ? "word" : "grapheme",
-      });
-      const iterator = segmenter.segment(value)[Symbol.iterator]();
-      blocks = this.blocks(iterator);
-    } else {
-      // Fallback for browsers without Intl.Segmenter
-      blocks = this.blocksFallback(value, byWord);
-    }
-
-    this.prevMeasures = this.measure();
+    this.prevMeasures = measure(this.element);
     const oldChildren = Array.from(element.children) as HTMLElement[];
     const newIds = new Set(blocks.map((b) => b.id));
 
@@ -139,33 +131,24 @@ export class TextMorph {
     );
 
     // For each exiting char, find the nearest persistent neighbor in old order
-    // so we can make it follow that neighbor's FLIP movement
     const exitingSet = new Set(exiting);
+    const oldIds = oldChildren.map(
+      (c) => c.getAttribute("torph-id") as string,
+    );
+    const persistentOldIds = new Set(
+      oldIds.filter(
+        (id, i) => newIds.has(id) && !exitingSet.has(oldChildren[i]!),
+      ),
+    );
+
     const exitingAnchorId = new Map<HTMLElement, string | null>();
     for (let i = 0; i < oldChildren.length; i++) {
       const child = oldChildren[i]!;
       if (!exitingSet.has(child)) continue;
-
-      // Look forward for nearest persistent char
-      let anchor: string | null = null;
-      for (let j = i + 1; j < oldChildren.length; j++) {
-        const siblingId = oldChildren[j]!.getAttribute("torph-id") as string;
-        if (newIds.has(siblingId) && !exitingSet.has(oldChildren[j]!)) {
-          anchor = siblingId;
-          break;
-        }
-      }
-      // If none forward, look backward
-      if (!anchor) {
-        for (let j = i - 1; j >= 0; j--) {
-          const siblingId = oldChildren[j]!.getAttribute("torph-id") as string;
-          if (newIds.has(siblingId) && !exitingSet.has(oldChildren[j]!)) {
-            anchor = siblingId;
-            break;
-          }
-        }
-      }
-      exitingAnchorId.set(child, anchor);
+      exitingAnchorId.set(
+        child,
+        findNearestAnchor(i, oldIds, persistentOldIds, "forward-first"),
+      );
     }
 
     // Two-pass: read all positions before modifying any element,
@@ -211,7 +194,7 @@ export class TextMorph {
       element.appendChild(span);
     });
 
-    this.currentMeasures = this.measure();
+    this.currentMeasures = measure(this.element);
     this.updateStyles(blocks);
 
     exiting.forEach((child) => {
@@ -220,47 +203,18 @@ export class TextMorph {
         return;
       }
 
-      // Find the anchor neighbor's FLIP delta so we move in sync with it
       const anchorId = exitingAnchorId.get(child);
-      let dx = 0;
-      let dy = 0;
+      const { dx, dy } = anchorId
+        ? computeDelta(this.currentMeasures, this.prevMeasures, anchorId)
+        : { dx: 0, dy: 0 };
 
-      if (
-        anchorId &&
-        this.prevMeasures[anchorId] &&
-        this.currentMeasures[anchorId]
-      ) {
-        const anchorPrev = this.prevMeasures[anchorId]!;
-        const anchorCurr = this.currentMeasures[anchorId]!;
-        dx = anchorCurr.x - anchorPrev.x;
-        dy = anchorCurr.y - anchorPrev.y;
-      }
-
-      child.animate(
-        {
-          transform: this.options.scale
-            ? `translate(${dx}px, ${dy}px) scale(0.95)`
-            : `translate(${dx}px, ${dy}px)`,
-          offset: 1,
-        },
-        {
-          duration: this.options.duration,
-          easing: this.options.ease,
-          fill: "both",
-        },
-      );
-      const animation: Animation = child.animate(
-        {
-          opacity: 0,
-          offset: 1,
-        },
-        {
-          duration: this.options.duration! * 0.25,
-          easing: "linear",
-          fill: "both",
-        },
-      );
-      animation.onfinish = () => child.remove();
+      animateExit(child, {
+        dx,
+        dy,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+        scale: this.options.scale!,
+      });
     });
 
     if (this.isInitialRender) {
@@ -270,125 +224,49 @@ export class TextMorph {
       return;
     }
 
-    if (oldWidth === 0 || oldHeight === 0) return;
-
-    element.style.width = "auto";
-    element.style.height = "auto";
-    void element.offsetWidth; // force reflow
-
-    const newWidth = element.offsetWidth;
-    const newHeight = element.offsetHeight;
-
-    element.style.width = `${oldWidth}px`;
-    element.style.height = `${oldHeight}px`;
-    void element.offsetWidth; // force reflow
-
-    element.style.width = `${newWidth}px`;
-    element.style.height = `${newHeight}px`;
-
-    // TODO: move to `transitionend` event listener
-    setTimeout(() => {
-      element.style.width = "auto";
-      element.style.height = "auto";
-      if (this.options.onAnimationComplete) {
-        this.options.onAnimationComplete();
-      }
-    }, this.options.duration);
-  }
-
-  private measure() {
-    const children = Array.from(this.element.children) as HTMLElement[];
-    const measures: Measures = {};
-
-    children.forEach((child, index) => {
-      if (child.hasAttribute("torph-exiting")) return;
-      const key = child.getAttribute("torph-id") || `child-${index}`;
-      measures[key] = {
-        x: child.offsetLeft,
-        y: child.offsetTop,
-      };
-    });
-
-    return measures;
+    transitionContainerSize(
+      element,
+      oldWidth,
+      oldHeight,
+      this.options.duration!,
+      this.options.onAnimationComplete,
+    );
   }
 
   private updateStyles(blocks: Block[]) {
     if (this.isInitialRender) return;
 
     const children = Array.from(this.element.children) as HTMLElement[];
+    const blockIds = blocks.map((b) => b.id);
 
     const persistentIds = new Set(
-      blocks.map((b) => b.id).filter((id) => this.prevMeasures[id]),
+      blockIds.filter((id) => this.prevMeasures[id]),
     );
 
     children.forEach((child, index) => {
       if (child.hasAttribute("torph-exiting")) return;
       const key = child.getAttribute("torph-id") || `child-${index}`;
-      const prev = this.prevMeasures[key];
-      const current = this.currentMeasures[key];
+      const isNew = !this.prevMeasures[key];
 
-      const cx = current?.x || 0;
-      const cy = current?.y || 0;
+      const deltaKey = isNew
+        ? findNearestAnchor(
+            blocks.findIndex((b) => b.id === key),
+            blockIds,
+            persistentIds,
+          )
+        : key;
 
-      let deltaX = prev ? prev.x - cx : 0;
-      let deltaY = prev ? prev.y - cy : 0;
-      const isNew = !prev;
+      const { dx: deltaX, dy: deltaY } = deltaKey
+        ? computeDelta(this.prevMeasures, this.currentMeasures, deltaKey)
+        : { dx: 0, dy: 0 };
 
-      // For new chars, use the nearest persistent neighbor's FLIP delta
-      // so all new chars get the same consistent offset
-      if (isNew) {
-        const blockIndex = blocks.findIndex((b) => b.id === key);
-        let anchorId: string | null = null;
-
-        for (let j = blockIndex - 1; j >= 0; j--) {
-          if (persistentIds.has(blocks[j]!.id)) {
-            anchorId = blocks[j]!.id;
-            break;
-          }
-        }
-        if (!anchorId) {
-          for (let j = blockIndex + 1; j < blocks.length; j++) {
-            if (persistentIds.has(blocks[j]!.id)) {
-              anchorId = blocks[j]!.id;
-              break;
-            }
-          }
-        }
-
-        if (anchorId) {
-          const anchorPrev = this.prevMeasures[anchorId]!;
-          const anchorCurr = this.currentMeasures[anchorId]!;
-          deltaX = anchorPrev.x - anchorCurr.x;
-          deltaY = anchorPrev.y - anchorCurr.y;
-        }
-      }
-
-      child.getAnimations().forEach((a) => a.cancel());
-      child.animate(
-        {
-          transform: `translate(${deltaX}px, ${deltaY}px) scale(${isNew ? 0.95 : 1})`,
-          offset: 0,
-        },
-        {
-          duration: this.options.duration,
-          easing: this.options.ease,
-          fill: "both",
-        },
-      );
-      const duration = isNew ? this.options.duration! * 0.25 : 0;
-      const delay = isNew ? this.options.duration! * 0.25 : 0;
-      child.animate(
-        {
-          opacity: isNew ? 0 : 1,
-          offset: 0,
-        },
-        {
-          duration: duration,
-          delay: delay,
-          easing: "linear",
-          fill: "both",
-        },
-      );
+      animateEnterOrPersist(child, {
+        deltaX,
+        deltaY,
+        isNew,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+      });
     });
   }
 
@@ -432,68 +310,5 @@ export class TextMorph {
     }
   }
 
-  // utils
 
-  private blocks(iterator: Intl.SegmentIterator<Intl.SegmentData>) {
-    const uniqueStrings: Block[] = Array.from(iterator).reduce(
-      (acc, string) => {
-        if (string.segment === " ") {
-          return [...acc, { id: `space-${string.index}`, string: "\u00A0" }];
-        }
-
-        const existingString = acc.find((x) => x.string === string.segment);
-        if (existingString) {
-          return [
-            ...acc,
-            { id: `${string.segment}-${string.index}`, string: string.segment },
-          ];
-        }
-
-        return [
-          ...acc,
-          {
-            id: string.segment,
-            string: string.segment,
-          },
-        ];
-      },
-      [] as Block[],
-    );
-
-    return uniqueStrings;
-  }
-
-  private blocksFallback(value: string, byWord: boolean): Block[] {
-    const segments = byWord ? value.split(" ") : value.split("");
-    const blocks: Block[] = [];
-
-    if (byWord) {
-      segments.forEach((segment, index) => {
-        if (index > 0) {
-          blocks.push({ id: `space-${index}`, string: "\u00A0" });
-        }
-        const existing = blocks.find((x) => x.string === segment);
-        if (existing) {
-          blocks.push({ id: `${segment}-${index}`, string: segment });
-        } else {
-          blocks.push({ id: segment, string: segment });
-        }
-      });
-    } else {
-      segments.forEach((segment, index) => {
-        const existing = blocks.find((x) => x.string === segment);
-        if (existing) {
-          blocks.push({ id: `${segment}-${index}`, string: segment });
-        } else {
-          blocks.push({ id: segment, string: segment });
-        }
-      });
-    }
-
-    return blocks;
-  }
-
-  private log(...args: any[]) {
-    if (this.options.debug) console.log("[TextMorph]", ...args);
-  }
 }
