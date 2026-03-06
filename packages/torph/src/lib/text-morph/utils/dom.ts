@@ -3,18 +3,15 @@ import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
 import { parseTranslate } from "./animate";
 
 export function detachFromFlow(elements: HTMLElement[]) {
-  const parent = elements[0]?.parentElement;
-  const parentRect = parent?.getBoundingClientRect();
   const snapshots = elements.map((child) => {
     const { tx, ty } = parseTranslate(child);
     const opacity = Number(getComputedStyle(child).opacity) || 1;
     child.getAnimations().forEach((a) => a.cancel());
-    const rect = child.getBoundingClientRect();
     return {
-      left: (parentRect ? rect.left - parentRect.left : rect.left) + tx,
-      top: (parentRect ? rect.top - parentRect.top : rect.top) + ty,
-      width: rect.width,
-      height: rect.height,
+      left: child.offsetLeft + tx,
+      top: child.offsetTop + ty,
+      width: child.offsetWidth,
+      height: child.offsetHeight,
       opacity,
     };
   });

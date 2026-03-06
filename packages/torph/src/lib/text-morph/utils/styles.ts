@@ -6,7 +6,7 @@ import {
 
 const TORPH_CSS = `
 [${ATTR_ROOT}] {
-  display: inline-block;
+  display: inline-flex;
   position: relative;
   will-change: width, height;
   transition-property: width, height;
