@@ -5,6 +5,7 @@ import {
   measure,
   computeDelta,
   findNearestAnchor,
+  resolveExitingAnchors,
 } from "./utils/flip";
 import {
   animateExit,
@@ -19,6 +20,10 @@ import {
   ATTR_EXITING,
   ATTR_ID,
 } from "./utils/constants";
+import {
+  type ReducedMotionState,
+  createReducedMotionListener,
+} from "./utils/reduced-motion";
 
 export type { TextMorphOptions } from "./types";
 
@@ -42,8 +47,7 @@ export class TextMorph {
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
   private isInitialRender = true;
-  private prefersReducedMotion = false;
-  private mediaQuery?: MediaQueryList;
+  private reducedMotion: ReducedMotionState | null = null;
 
 
   constructor(options: TextMorphOptions) {
@@ -54,11 +58,8 @@ export class TextMorph {
 
     this.element = options.element;
 
-    // reduced motion detection
-    if (typeof window !== "undefined" && this.options.respectReducedMotion) {
-      this.mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-      this.prefersReducedMotion = this.mediaQuery.matches;
-      this.mediaQuery.addEventListener("change", this.handleMediaQueryChange);
+    if (this.options.respectReducedMotion) {
+      this.reducedMotion = createReducedMotionListener();
     }
 
     if (!this.isDisabled()) {
@@ -76,26 +77,16 @@ export class TextMorph {
   }
 
   destroy() {
-    if (this.mediaQuery) {
-      this.mediaQuery.removeEventListener(
-        "change",
-        this.handleMediaQueryChange,
-      );
-    }
+    this.reducedMotion?.destroy();
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
     this.element.removeAttribute(ATTR_DEBUG);
     removeStyles();
   }
 
-  private handleMediaQueryChange = (event: MediaQueryListEvent) => {
-    this.prefersReducedMotion = event.matches;
-  };
-
   private isDisabled(): boolean {
     return Boolean(
-      this.options.disabled ||
-        (this.options.respectReducedMotion && this.prefersReducedMotion),
+      this.options.disabled || this.reducedMotion?.prefersReducedMotion,
     );
   }
 
@@ -137,26 +128,16 @@ export class TextMorph {
         !child.hasAttribute(ATTR_EXITING),
     );
 
-    // For each exiting char, find the nearest persistent neighbor in old order
     const exitingSet = new Set(exiting);
     const oldIds = oldChildren.map(
       (c) => c.getAttribute(ATTR_ID) as string,
     );
-    const persistentOldIds = new Set(
-      oldIds.filter(
-        (id, i) => newIds.has(id) && !exitingSet.has(oldChildren[i]!),
-      ),
+    const exitingAnchorId = resolveExitingAnchors(
+      oldChildren,
+      exitingSet,
+      oldIds,
+      newIds,
     );
-
-    const exitingAnchorId = new Map<HTMLElement, string | null>();
-    for (let i = 0; i < oldChildren.length; i++) {
-      const child = oldChildren[i]!;
-      if (!exitingSet.has(child)) continue;
-      exitingAnchorId.set(
-        child,
-        findNearestAnchor(i, oldIds, persistentOldIds, "forward-first"),
-      );
-    }
 
     detachFromFlow(exiting);
     reconcileChildren(element, oldChildren, newIds, segments);

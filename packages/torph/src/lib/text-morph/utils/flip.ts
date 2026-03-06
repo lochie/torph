@@ -61,3 +61,28 @@ export function findNearestAnchor(
 
   return search(firstDir) ?? search(secondDir);
 }
+
+export function resolveExitingAnchors(
+  oldChildren: HTMLElement[],
+  exiting: Set<HTMLElement>,
+  oldIds: string[],
+  newIds: Set<string>,
+): Map<HTMLElement, string | null> {
+  const persistentOldIds = new Set(
+    oldIds.filter(
+      (id, i) => newIds.has(id) && !exiting.has(oldChildren[i]!),
+    ),
+  );
+
+  const anchors = new Map<HTMLElement, string | null>();
+  for (let i = 0; i < oldChildren.length; i++) {
+    const child = oldChildren[i]!;
+    if (!exiting.has(child)) continue;
+    anchors.set(
+      child,
+      findNearestAnchor(i, oldIds, persistentOldIds, "forward-first"),
+    );
+  }
+
+  return anchors;
+}
