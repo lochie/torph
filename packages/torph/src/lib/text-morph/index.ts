@@ -1,4 +1,5 @@
 import type { TextMorphOptions } from "./types";
+import { spring as resolveSpring } from "./utils/spring";
 import { type Segment, segmentText } from "./utils/segment";
 import {
   type Measures,
@@ -26,6 +27,7 @@ import {
 } from "./utils/reduced-motion";
 
 export type { TextMorphOptions } from "./types";
+export { spring, type SpringParams, type SpringResult } from "./utils/spring";
 
 export const DEFAULT_AS = "span";
 export const DEFAULT_TEXT_MORPH_OPTIONS = {
@@ -40,7 +42,7 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
 
 export class TextMorph {
   private element: HTMLElement;
-  private options: Omit<TextMorphOptions, "element"> = {};
+  private options: Omit<TextMorphOptions, "element" | "ease"> & { ease?: string } = {};
 
   private data: HTMLElement | string;
 
@@ -51,10 +53,20 @@ export class TextMorph {
 
 
   constructor(options: TextMorphOptions) {
-    this.options = {
-      ...DEFAULT_TEXT_MORPH_OPTIONS,
-      ...options,
-    };
+    const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
+    let ease: string;
+    let duration: number;
+
+    if (typeof rawEase === "object") {
+      const resolved = resolveSpring(rawEase);
+      ease = resolved.easing;
+      duration = resolved.duration;
+    } else {
+      ease = rawEase;
+      duration = rest.duration!;
+    }
+
+    this.options = { ...rest, ease, duration };
 
     this.element = options.element;
 

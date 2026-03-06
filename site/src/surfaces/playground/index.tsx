@@ -89,7 +89,15 @@ export const Playground = () => {
           textAlign: textAlignment,
         }}
       >
-        <TextMorph debug>{words[wordIndex]}</TextMorph>
+        <TextMorph
+          ease={{
+            stiffness: 150,
+            damping: 19,
+            mass: 1.2,
+          }}
+        >
+          {words[wordIndex]}
+        </TextMorph>
 
         <div className={styles.controls}>
           <Button
