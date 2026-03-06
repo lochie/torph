@@ -57,17 +57,32 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
   const ref = React.useRef<HTMLDivElement | null>(null);
   const morphRef = React.useRef<Morph | null>(null);
 
+  const configKey = JSON.stringify({
+    ease: props.ease,
+    duration: props.duration,
+    locale: props.locale,
+    scale: props.scale,
+    disabled: props.disabled,
+    respectReducedMotion: props.respectReducedMotion,
+  });
+
+  const lastText = React.useRef("");
+
   React.useEffect(() => {
     if (ref.current) {
       morphRef.current = new Morph({ element: ref.current, ...props });
+      if (lastText.current) {
+        morphRef.current.update(lastText.current);
+      }
     }
 
     return () => {
       morphRef.current?.destroy();
     };
-  }, []);
+  }, [configKey]);
 
   const update = React.useCallback((text: string) => {
+    lastText.current = text;
     morphRef.current?.update(text);
   }, []);
 

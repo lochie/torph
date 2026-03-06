@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onUnmounted, watch } from "vue";
 import {
   DEFAULT_AS,
   DEFAULT_TEXT_MORPH_OPTIONS,
@@ -29,7 +29,19 @@ const props = withDefaults(defineProps<TextMorphProps>(), {
 const containerRef = ref<HTMLElement | null>(null);
 let morphInstance: Morph | null = null;
 
-onMounted(() => {
+const configKey = computed(() =>
+  JSON.stringify({
+    ease: props.ease,
+    duration: props.duration,
+    locale: props.locale,
+    scale: props.scale,
+    disabled: props.disabled,
+    respectReducedMotion: props.respectReducedMotion,
+  }),
+);
+
+function createInstance() {
+  morphInstance?.destroy();
   if (containerRef.value) {
     morphInstance = new Morph({
       element: containerRef.value,
@@ -45,7 +57,10 @@ onMounted(() => {
     });
     morphInstance.update(props.text);
   }
-});
+}
+
+watch(containerRef, () => createInstance(), { flush: "post" });
+watch(configKey, () => createInstance());
 
 onUnmounted(() => {
   morphInstance?.destroy();

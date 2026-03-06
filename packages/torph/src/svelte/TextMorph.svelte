@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph, type TextMorphOptions } from '../lib/text-morph';
-  
+
   type Props = Omit<TextMorphOptions, "element"> & {
     text: string;
     class?: string;
@@ -27,9 +27,16 @@
   let containerRef = $state<HTMLElement>();
   let morphInstance = $state<Morph | null>(null);
 
-  onMount(() => {
+  const configKey = $derived(
+    JSON.stringify({ ease, duration, locale, scale, disabled, respectReducedMotion })
+  );
+
+  $effect(() => {
+    // Track configKey to recreate on config changes
+    configKey;
+
     if (containerRef) {
-      morphInstance = new Morph({
+      const instance = new Morph({
         element: containerRef,
         locale,
         duration,
@@ -41,12 +48,13 @@
         onAnimationStart,
         onAnimationComplete,
       });
-      morphInstance.update(text);
-    }
+      instance.update(text);
+      morphInstance = instance;
 
-    return () => {
-		  morphInstance?.destroy();
-		};
+      return () => {
+        instance.destroy();
+      };
+    }
   });
 
   $effect(() => {

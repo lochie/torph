@@ -1,3 +1,9 @@
+const MAX_FADE_DURATION = 150;
+
+function fadeDuration(duration: number, fraction: number): number {
+  return Math.min(duration * fraction, MAX_FADE_DURATION);
+}
+
 export function parseTranslate(element: HTMLElement): {
   tx: number;
   ty: number;
@@ -53,7 +59,7 @@ export function animateExit(
       offset: 1,
     },
     {
-      duration: duration * 0.25,
+      duration: fadeDuration(duration, 0.25),
       easing: "linear",
       fill: "both",
     },
@@ -78,25 +84,30 @@ export function animateEnterOrPersist(
 
   const startX = deltaX + prev.tx;
   const startY = deltaY + prev.ty;
-  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
 
   child.animate(
-    [
-      {
-        transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
-        opacity: startOpacity,
-      },
-      {
-        transform: "none",
-        opacity: 1,
-      },
-    ],
+    {
+      transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
+      offset: 0,
+    },
     {
       duration,
       easing: ease,
       fill: "both",
     },
   );
+
+  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
+  if (startOpacity < 1) {
+    child.animate(
+      [{ opacity: startOpacity }, { opacity: 1 }],
+      {
+        duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
+        easing: "linear",
+        fill: "both",
+      },
+    );
+  }
 }
 
 let pendingCleanup: (() => void) | null = null;

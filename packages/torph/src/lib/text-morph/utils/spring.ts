@@ -16,7 +16,6 @@ function springPosition(
   zeta: number,
 ): number {
   if (zeta < 1) {
-    // Underdamped
     const omegaD = omega0 * Math.sqrt(1 - zeta * zeta);
     return (
       1 -
@@ -26,12 +25,7 @@ function springPosition(
     );
   }
 
-  if (zeta === 1) {
-    // Critically damped
-    return 1 - Math.exp(-omega0 * t) * (1 + omega0 * t);
-  }
-
-  // Overdamped
+  // Overdamped (includes near-critically-damped)
   const s = Math.sqrt(zeta * zeta - 1);
   const r1 = -omega0 * (zeta + s);
   const r2 = -omega0 * (zeta - s);
@@ -45,18 +39,25 @@ function computeDuration(
   zeta: number,
   precision: number,
 ): number {
-  const step = 0.001; // 1ms steps
-  const maxDuration = 10; // 10s cap
-  let lastOutOfRange = 0;
+  const step = 0.001;
+  const maxDuration = 10;
+  let settledSince = 0;
 
   for (let t = 0; t < maxDuration; t += step) {
     if (Math.abs(springPosition(t, omega0, zeta) - 1) > precision) {
-      lastOutOfRange = t;
+      settledSince = 0;
+    } else {
+      settledSince += step;
+      if (settledSince > 0.1) {
+        return Math.ceil((t - settledSince + step) * 1000);
+      }
     }
   }
 
-  return Math.ceil((lastOutOfRange + step) * 1000);
+  return Math.ceil(maxDuration * 1000);
 }
+
+const cache = new Map<string, SpringResult>();
 
 export function spring(params?: SpringParams): SpringResult {
   const {
@@ -65,6 +66,10 @@ export function spring(params?: SpringParams): SpringResult {
     mass = 1,
     precision = 0.001,
   } = params ?? {};
+
+  const key = `${stiffness}:${damping}:${mass}:${precision}`;
+  const cached = cache.get(key);
+  if (cached) return cached;
 
   const omega0 = Math.sqrt(stiffness / mass);
   const zeta = damping / (2 * Math.sqrt(stiffness * mass));
@@ -79,8 +84,16 @@ export function spring(params?: SpringParams): SpringResult {
     points.push(Math.round(value * 10000) / 10000 + "");
   }
 
-  return {
+  // Trim trailing "1" values (keep at least 2)
+  while (points.length > 2 && points[points.length - 2] === "1") {
+    points.splice(points.length - 2, 1);
+  }
+
+  const result: SpringResult = {
     easing: `linear(${points.join(", ")})`,
     duration,
   };
+
+  cache.set(key, result);
+  return result;
 }

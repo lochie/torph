@@ -91,9 +91,9 @@ export const Playground = () => {
       >
         <TextMorph
           ease={{
-            stiffness: 150,
-            damping: 19,
-            mass: 1.2,
+            stiffness: 290,
+            damping: 15,
+            mass: 2,
           }}
         >
           {words[wordIndex]}
