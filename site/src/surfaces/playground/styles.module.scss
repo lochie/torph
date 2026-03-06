@@ -3,9 +3,9 @@
 
 .demo {
   position: relative;
-  padding: 6rem 2rem;
+  padding: 6rem 2rem 8rem;
   font-family: var(--font-secondary);
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   font-weight: 500;
   color: #ffffff;
   border-radius: 1rem;
@@ -16,5 +16,32 @@
   position: absolute;
   bottom: 0;
   right: 0;
+  left: 0;
   padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.words {
+  position: relative;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: var(--body-light);
+  button {
+    display: block;
+    color: #fff;
+    padding: 1rem;
+    border-radius: 1rem;
+    background: var(--body-light);
+  }
+}
+
+.form {
+  input {
+    font-size: 1rem;
+    color: #fff;
+    padding: 0.5rem;
+  }
 }

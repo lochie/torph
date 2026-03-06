@@ -34,6 +34,7 @@ export const Dropdown = ({
       >
         {children}
         <motion.svg
+          className={styles.caret}
           width="16"
           height="16"
           viewBox="0 0 16 16"

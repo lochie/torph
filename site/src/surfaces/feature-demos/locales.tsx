@@ -60,7 +60,12 @@ export const LocaleDemo = () => {
       <TextMorph>{texts[textIndex % texts.length]}</TextMorph>
 
       <div>
-        <Button onClick={() => { trigger("medium"); setTextIndex((i) => i + 1); }}>
+        <Button
+          onClick={() => {
+            trigger("medium");
+            setTextIndex((i) => i + 1);
+          }}
+        >
           <svg
             width="15"
             height="12"
@@ -81,7 +86,10 @@ export const LocaleDemo = () => {
             return (
               <button
                 key={loc}
-                onClick={() => { trigger("selection"); setLocale(loc as keyof typeof locales); }}
+                onClick={() => {
+                  trigger("selection");
+                  setLocale(loc as keyof typeof locales);
+                }}
                 data-active={loc === locale}
               >
                 {loc}

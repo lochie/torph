@@ -15,6 +15,20 @@
   &:hover {
     background-color: rgba(255, 255, 255, 0.1);
   }
+
+  .caret {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    min-width: 1rem;
+    border-radius: 2rem;
+    color: var(--fg-max);
+    svg {
+      display: block;
+    }
+  }
 }
 
 .dropdown {
@@ -119,6 +133,7 @@
   justify-content: center;
   width: 1.125rem;
   height: 1.125rem;
+  min-width: 1rem;
   border-radius: 2rem;
   color: var(--fg-max);
   svg {
