@@ -1,4 +1,4 @@
-import type { Block } from "./segment";
+import type { Segment } from "./segment";
 import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
 
 export function detachFromFlow(elements: HTMLElement[]) {
@@ -28,7 +28,7 @@ export function reconcileChildren(
   element: HTMLElement,
   oldChildren: HTMLElement[],
   newIds: Set<string>,
-  blocks: Block[],
+  segments: Segment[],
 ) {
   oldChildren.forEach((child) => {
     const id = child.getAttribute(ATTR_ID) as string;
@@ -42,11 +42,11 @@ export function reconcileChildren(
     }
   });
 
-  blocks.forEach((block) => {
+  segments.forEach((segment) => {
     const span = document.createElement("span");
     span.setAttribute(ATTR_ITEM, "");
-    span.setAttribute(ATTR_ID, block.id);
-    span.textContent = block.string;
+    span.setAttribute(ATTR_ID, segment.id);
+    span.textContent = segment.string;
     element.appendChild(span);
   });
 }

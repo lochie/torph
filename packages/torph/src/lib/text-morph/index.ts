@@ -1,5 +1,5 @@
 import type { TextMorphOptions } from "./types";
-import { type Block, segmentText } from "./utils/segment";
+import { type Segment, segmentText } from "./utils/segment";
 import {
   type Measures,
   measure,
@@ -125,11 +125,11 @@ export class TextMorph {
     const oldWidth = element.offsetWidth;
     const oldHeight = element.offsetHeight;
 
-    const blocks = segmentText(value, this.options.locale!);
+    const segments = segmentText(value, this.options.locale!);
 
     this.prevMeasures = measure(this.element);
     const oldChildren = Array.from(element.children) as HTMLElement[];
-    const newIds = new Set(blocks.map((b) => b.id));
+    const newIds = new Set(segments.map((b) => b.id));
 
     const exiting = oldChildren.filter(
       (child) =>
@@ -159,10 +159,10 @@ export class TextMorph {
     }
 
     detachFromFlow(exiting);
-    reconcileChildren(element, oldChildren, newIds, blocks);
+    reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(this.element);
-    this.updateStyles(blocks);
+    this.updateStyles(segments);
 
     exiting.forEach((child) => {
       if (this.isInitialRender) {
@@ -200,14 +200,14 @@ export class TextMorph {
     );
   }
 
-  private updateStyles(blocks: Block[]) {
+  private updateStyles(segments: Segment[]) {
     if (this.isInitialRender) return;
 
     const children = Array.from(this.element.children) as HTMLElement[];
-    const blockIds = blocks.map((b) => b.id);
+    const segmentIds = segments.map((b) => b.id);
 
     const persistentIds = new Set(
-      blockIds.filter((id) => this.prevMeasures[id]),
+      segmentIds.filter((id) => this.prevMeasures[id]),
     );
 
     children.forEach((child, index) => {
@@ -217,8 +217,8 @@ export class TextMorph {
 
       const deltaKey = isNew
         ? findNearestAnchor(
-            blocks.findIndex((b) => b.id === key),
-            blockIds,
+            segments.findIndex((b) => b.id === key),
+            segmentIds,
             persistentIds,
           )
         : key;

@@ -1,4 +1,4 @@
-export type Block = {
+export type Segment = {
   id: string;
   string: string;
 };
@@ -6,7 +6,7 @@ export type Block = {
 export function segmentText(
   value: string,
   locale: Intl.LocalesArgument,
-): Block[] {
+): Segment[] {
   const byWord = value.includes(" ");
 
   if (typeof Intl.Segmenter !== "undefined") {
@@ -14,57 +14,57 @@ export function segmentText(
       granularity: byWord ? "word" : "grapheme",
     });
     const iterator = segmenter.segment(value)[Symbol.iterator]();
-    return blocksFromSegmenter(iterator);
+    return segmentsFromIntl(iterator);
   }
 
-  return blocksFallback(value, byWord);
+  return segmentsFallback(value, byWord);
 }
 
-function blocksFromSegmenter(
+function segmentsFromIntl(
   iterator: Intl.SegmentIterator<Intl.SegmentData>,
-): Block[] {
-  return Array.from(iterator).reduce((acc, string) => {
-    if (string.segment === " ") {
-      return [...acc, { id: `space-${string.index}`, string: "\u00A0" }];
+): Segment[] {
+  return Array.from(iterator).reduce((acc, data) => {
+    if (data.segment === " ") {
+      return [...acc, { id: `space-${data.index}`, string: "\u00A0" }];
     }
 
-    const existingString = acc.find((x) => x.string === string.segment);
-    if (existingString) {
+    const existing = acc.find((x) => x.string === data.segment);
+    if (existing) {
       return [
         ...acc,
-        { id: `${string.segment}-${string.index}`, string: string.segment },
+        { id: `${data.segment}-${data.index}`, string: data.segment },
       ];
     }
 
     return [
       ...acc,
       {
-        id: string.segment,
-        string: string.segment,
+        id: data.segment,
+        string: data.segment,
       },
     ];
-  }, [] as Block[]);
+  }, [] as Segment[]);
 }
 
-function pushBlock(blocks: Block[], segment: string, index: number) {
-  const existing = blocks.find((x) => x.string === segment);
-  blocks.push(
+function pushSegment(segments: Segment[], part: string, index: number) {
+  const existing = segments.find((x) => x.string === part);
+  segments.push(
     existing
-      ? { id: `${segment}-${index}`, string: segment }
-      : { id: segment, string: segment },
+      ? { id: `${part}-${index}`, string: part }
+      : { id: part, string: part },
   );
 }
 
-function blocksFallback(value: string, byWord: boolean): Block[] {
-  const segments = byWord ? value.split(" ") : value.split("");
-  const blocks: Block[] = [];
+function segmentsFallback(value: string, byWord: boolean): Segment[] {
+  const parts = byWord ? value.split(" ") : value.split("");
+  const segments: Segment[] = [];
 
-  segments.forEach((segment, index) => {
+  parts.forEach((part, index) => {
     if (byWord && index > 0) {
-      blocks.push({ id: `space-${index}`, string: "\u00A0" });
+      segments.push({ id: `space-${index}`, string: "\u00A0" });
     }
-    pushBlock(blocks, segment, index);
+    pushSegment(segments, part, index);
   });
 
-  return blocks;
+  return segments;
 }
