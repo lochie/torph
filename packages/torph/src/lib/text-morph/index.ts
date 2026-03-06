@@ -28,6 +28,7 @@ import {
 
 export type { TextMorphOptions } from "./types";
 export { spring, type SpringParams, type SpringResult } from "./utils/spring";
+export { MorphController } from "./controller";
 
 export const DEFAULT_AS = "span";
 export const DEFAULT_TEXT_MORPH_OPTIONS = {

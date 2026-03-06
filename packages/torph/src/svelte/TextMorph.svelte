@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, TextMorph as Morph, type TextMorphOptions } from '../lib/text-morph';
+  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, type TextMorphOptions } from '../lib/text-morph';
+  import { MorphController } from '../lib/text-morph/controller';
 
   type Props = Omit<TextMorphOptions, "element"> & {
     text: string;
@@ -25,42 +25,32 @@
   }: Props = $props();
 
   let containerRef = $state<HTMLElement>();
-  let morphInstance = $state<Morph | null>(null);
+  const controller = new MorphController();
+
+  const options = $derived({
+    locale, duration, ease, debug, scale,
+    disabled, respectReducedMotion,
+    onAnimationStart, onAnimationComplete,
+  });
 
   const configKey = $derived(
-    JSON.stringify({ ease, duration, locale, scale, disabled, respectReducedMotion })
+    MorphController.serializeConfig(options)
   );
 
   $effect(() => {
-    // Track configKey to recreate on config changes
     configKey;
 
     if (containerRef) {
-      const instance = new Morph({
-        element: containerRef,
-        locale,
-        duration,
-        ease,
-        debug,
-        scale,
-        disabled,
-        respectReducedMotion,
-        onAnimationStart,
-        onAnimationComplete,
-      });
-      instance.update(text);
-      morphInstance = instance;
+      controller.attach(containerRef, options);
 
       return () => {
-        instance.destroy();
+        controller.destroy();
       };
     }
   });
 
   $effect(() => {
-    if (morphInstance) {
-      morphInstance.update(text);
-    }
+    controller.update(text);
   });
 </script>
 
