@@ -91,18 +91,20 @@ export function animateEnterOrPersist(
     },
   );
 
-  if (isNew) {
-    const startOpacity = prev.opacity < 1 ? prev.opacity : 0;
+  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
+  if (startOpacity < 1) {
     child.animate(
       [{ opacity: startOpacity }, { opacity: 1 }],
       {
-        duration: duration * 0.5,
+        duration: isNew ? duration * 0.5 : duration * 0.25,
         easing: "linear",
         fill: "both",
       },
     );
   }
 }
+
+let pendingCleanup: (() => void) | null = null;
 
 export function transitionContainerSize(
   element: HTMLElement,
@@ -111,26 +113,48 @@ export function transitionContainerSize(
   duration: number,
   onComplete?: () => void,
 ) {
+  // Cancel any pending cleanup from a previous transition
+  if (pendingCleanup) {
+    pendingCleanup();
+    pendingCleanup = null;
+  }
+
   if (oldWidth === 0 || oldHeight === 0) return;
 
   element.style.width = "auto";
   element.style.height = "auto";
-  void element.offsetWidth; // force reflow
+  void element.offsetWidth;
 
   const newWidth = element.offsetWidth;
   const newHeight = element.offsetHeight;
 
   element.style.width = `${oldWidth}px`;
   element.style.height = `${oldHeight}px`;
-  void element.offsetWidth; // force reflow
+  void element.offsetWidth;
 
   element.style.width = `${newWidth}px`;
   element.style.height = `${newHeight}px`;
 
-  // TODO: move to `transitionend` event listener
-  setTimeout(() => {
+  function cleanup() {
+    element.removeEventListener("transitionend", onEnd);
+    clearTimeout(fallbackTimer);
+    pendingCleanup = null;
     element.style.width = "auto";
     element.style.height = "auto";
     onComplete?.();
-  }, duration);
+  }
+
+  function onEnd(e: TransitionEvent) {
+    if (e.target !== element) return;
+    if (e.propertyName !== "width" && e.propertyName !== "height") return;
+    cleanup();
+  }
+
+  element.addEventListener("transitionend", onEnd);
+  const fallbackTimer = setTimeout(cleanup, duration + 50);
+  pendingCleanup = () => {
+    element.removeEventListener("transitionend", onEnd);
+    clearTimeout(fallbackTimer);
+    pendingCleanup = null;
+  };
 }
