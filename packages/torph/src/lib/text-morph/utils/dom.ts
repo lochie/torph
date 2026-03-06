@@ -3,26 +3,29 @@ import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
 import { parseTranslate } from "./animate";
 
 export function detachFromFlow(elements: HTMLElement[]) {
-  const positions = elements.map((child) => {
+  const snapshots = elements.map((child) => {
     const { tx, ty } = parseTranslate(child);
+    const opacity = Number(getComputedStyle(child).opacity) || 1;
     child.getAnimations().forEach((a) => a.cancel());
     return {
       left: child.offsetLeft + tx,
       top: child.offsetTop + ty,
       width: child.offsetWidth,
       height: child.offsetHeight,
+      opacity,
     };
   });
 
   elements.forEach((child, i) => {
-    const pos = positions[i]!;
+    const snap = snapshots[i]!;
     child.setAttribute(ATTR_EXITING, "");
     child.style.position = "absolute";
     child.style.pointerEvents = "none";
-    child.style.left = `${pos.left}px`;
-    child.style.top = `${pos.top}px`;
-    child.style.width = `${pos.width}px`;
-    child.style.height = `${pos.height}px`;
+    child.style.left = `${snap.left}px`;
+    child.style.top = `${snap.top}px`;
+    child.style.width = `${snap.width}px`;
+    child.style.height = `${snap.height}px`;
+    child.style.opacity = String(snap.opacity);
   });
 }
 
@@ -32,9 +35,14 @@ export function reconcileChildren(
   newIds: Set<string>,
   segments: Segment[],
 ) {
+  // Build a map of reusable existing elements (non-exiting, persistent)
+  const reusable = new Map<string, HTMLElement>();
   oldChildren.forEach((child) => {
     const id = child.getAttribute(ATTR_ID) as string;
-    if (newIds.has(id)) child.remove();
+    if (newIds.has(id) && !child.hasAttribute(ATTR_EXITING)) {
+      reusable.set(id, child);
+      child.remove();
+    }
   });
 
   // Remove stale text nodes left over from disabled-mode textContent updates
@@ -45,10 +53,16 @@ export function reconcileChildren(
   });
 
   segments.forEach((segment) => {
-    const span = document.createElement("span");
-    span.setAttribute(ATTR_ITEM, "");
-    span.setAttribute(ATTR_ID, segment.id);
-    span.textContent = segment.string;
-    element.appendChild(span);
+    const existing = reusable.get(segment.id);
+    if (existing) {
+      existing.textContent = segment.string;
+      element.appendChild(existing);
+    } else {
+      const span = document.createElement("span");
+      span.setAttribute(ATTR_ITEM, "");
+      span.setAttribute(ATTR_ID, segment.id);
+      span.textContent = segment.string;
+      element.appendChild(span);
+    }
   });
 }

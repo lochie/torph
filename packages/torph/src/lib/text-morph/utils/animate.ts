@@ -78,30 +78,25 @@ export function animateEnterOrPersist(
 
   const startX = deltaX + prev.tx;
   const startY = deltaY + prev.ty;
+  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
 
   child.animate(
-    {
-      transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
-      offset: 0,
-    },
+    [
+      {
+        transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
+        opacity: startOpacity,
+      },
+      {
+        transform: "none",
+        opacity: 1,
+      },
+    ],
     {
       duration,
       easing: ease,
       fill: "both",
     },
   );
-
-  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
-  if (startOpacity < 1) {
-    child.animate(
-      [{ opacity: startOpacity }, { opacity: 1 }],
-      {
-        duration: isNew ? duration * 0.5 : duration * 0.25,
-        easing: "linear",
-        fill: "both",
-      },
-    );
-  }
 }
 
 let pendingCleanup: (() => void) | null = null;
