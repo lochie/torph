@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, MorphController, type TextMorphOptions } from 'torph';
+  import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, type TextMorphOptions } from '../lib/text-morph';
+  import { MorphController } from '../lib/text-morph/controller';
 
   type Props = Omit<TextMorphOptions, "element"> & {
     text: string;

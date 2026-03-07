@@ -5,15 +5,11 @@ import path from "path";
 export default defineConfig({
   plugins: [svelte()],
   resolve: {
-    alias: [
-      {
-        find: "torph/svelte",
-        replacement: path.resolve(__dirname, "../../packages/torph/src/svelte"),
-      },
-      {
-        find: /^torph$/,
-        replacement: path.resolve(__dirname, "../../packages/torph/src/index.ts"),
-      },
-    ],
+    alias: {
+      "torph/svelte": path.resolve(
+        __dirname,
+        "../../packages/torph/src/svelte",
+      ),
+    },
   },
 });
