@@ -11,6 +11,7 @@
     "site:build": "pnpm run build && pnpm --filter=site build",
     "example:react": "pnpm --filter=react-example dev",
     "example:svelte": "pnpm --filter=svelte-example dev",
+    "example:svelte-ssr": "pnpm --filter=svelte-ssr-example dev",
     "example:typescript": "pnpm --filter=typescript-example dev",
     "example:vue": "pnpm --filter=vue-example dev",
     "lint": "pnpm --filter=torph lint",
