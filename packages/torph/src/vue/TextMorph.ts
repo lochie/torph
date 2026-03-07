@@ -47,6 +47,7 @@ export default defineComponent({
           onAnimationStart: props.onAnimationStart as (() => void) | undefined,
           onAnimationComplete: props.onAnimationComplete as (() => void) | undefined,
         });
+        controller.update(props.text);
       }
     }
 
