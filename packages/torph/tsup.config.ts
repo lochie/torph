@@ -1,5 +1,15 @@
 import { defineConfig, type Options } from "tsup";
 
+const aliasCorePlugin = {
+  name: "alias-core",
+  setup(build: any) {
+    build.onResolve({ filter: /\.\.\/lib\/text-morph/ }, () => ({
+      path: "torph",
+      external: true,
+    }));
+  },
+};
+
 export default defineConfig((options) => {
   const configs: Options[] = [
     // Core
@@ -24,6 +34,7 @@ export default defineConfig((options) => {
       target: "es2022",
       treeshake: true,
       external: ["react", "react/jsx-runtime"],
+      esbuildPlugins: [aliasCorePlugin],
       minify: !options.watch,
       banner: { js: '"use client";' },
     },
@@ -37,6 +48,7 @@ export default defineConfig((options) => {
       target: "es2022",
       treeshake: true,
       external: ["vue"],
+      esbuildPlugins: [aliasCorePlugin],
       minify: !options.watch,
     },
     // Svelte - DTS build (from types.ts only)
