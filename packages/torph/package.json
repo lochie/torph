@@ -37,6 +37,7 @@
         "import": "./dist/svelte/index.d.mts",
         "require": "./dist/svelte/index.d.ts"
       },
+      "svelte": "./dist/svelte/index.mjs",
       "import": "./dist/svelte/index.mjs",
       "require": "./dist/svelte/index.js"
     }
@@ -45,7 +46,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/build-svelte.mjs",
     "dev": "tsup --watch",
     "lint": "eslint -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
     "lint:fix": "eslint --fix -c .eslintrc.cjs ./src/**/*.{ts,tsx}",

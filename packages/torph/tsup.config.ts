@@ -39,21 +39,6 @@ export default defineConfig((options) => {
       external: ["vue"],
       minify: !options.watch,
     },
-    // Svelte - JS build
-    {
-      entry: {
-        "svelte/index": "src/svelte/index.ts",
-      },
-      format: ["cjs", "esm"],
-      dts: false,
-      target: "es2022",
-      treeshake: true,
-      external: ["svelte"],
-      minify: !options.watch,
-      loader: {
-        ".svelte": "copy",
-      },
-    },
     // Svelte - DTS build (from types.ts only)
     {
       entry: {

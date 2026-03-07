@@ -1,8 +1,4 @@
-import {
-  ATTR_ROOT,
-  ATTR_ITEM,
-  ATTR_DEBUG,
-} from "./constants";
+import { ATTR_ROOT, ATTR_ITEM, ATTR_DEBUG } from "./constants";
 
 const TORPH_CSS = `
 [${ATTR_ROOT}] {
