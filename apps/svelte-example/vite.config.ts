@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [svelte()],
   resolve: {
     alias: {
+      torph: path.resolve(__dirname, "../../packages/torph/src/index.ts"),
       "torph/svelte": path.resolve(
         __dirname,
         "../../packages/torph/src/svelte",
