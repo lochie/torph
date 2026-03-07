@@ -6,11 +6,12 @@ import {
 
 const TORPH_CSS = `
 [${ATTR_ROOT}] {
-  display: inline-flex;
+  display: inline-block;
   position: relative;
   will-change: width, height;
   transition-property: width, height;
   white-space: nowrap;
+  text-align: left;
 }
 
 [${ATTR_ITEM}] {
