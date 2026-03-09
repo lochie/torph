@@ -70,6 +70,6 @@ export default defineComponent({
         ref: containerRef,
         class: props.class,
         style: props.style,
-      });
+      }, import.meta?.server ? props.text : undefined);
   },
 });
