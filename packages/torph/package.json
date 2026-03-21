@@ -32,6 +32,11 @@
       "import": "./dist/vue/index.mjs",
       "require": "./dist/vue/index.js"
     },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.mjs",
+      "require": "./dist/utils/index.js"
+    },
     "./svelte": {
       "types": {
         "import": "./dist/svelte/index.d.mts",

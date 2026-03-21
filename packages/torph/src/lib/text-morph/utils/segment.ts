@@ -7,7 +7,31 @@ export function segmentText(
   value: string,
   locale: Intl.LocalesArgument,
 ): Segment[] {
-  const byWord = value.includes(" ");
+  const hasNewlines = value.includes("\n");
+  const byWord = value.includes(" ") || hasNewlines;
+
+  if (hasNewlines) {
+    // Split by newlines, segment each line at word level, join with newline segments
+    const lines = value.split("\n");
+    const allSegments: Segment[] = [];
+    lines.forEach((line, lineIndex) => {
+      if (lineIndex > 0) {
+        allSegments.push({ id: `newline-${lineIndex}`, string: "\n" });
+      }
+      if (line.length === 0) return;
+      let lineSegments: Segment[];
+      if (typeof Intl.Segmenter !== "undefined") {
+        const segmenter = new Intl.Segmenter(locale, {
+          granularity: "word",
+        });
+        lineSegments = segmentsFromIntl(segmenter.segment(line)[Symbol.iterator]());
+      } else {
+        lineSegments = segmentsFallback(line, true);
+      }
+      allSegments.push(...lineSegments);
+    });
+    return allSegments;
+  }
 
   if (typeof Intl.Segmenter !== "undefined") {
     const segmenter = new Intl.Segmenter(locale, {

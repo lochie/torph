@@ -6,21 +6,32 @@ export function detachFromFlow(
   elements: HTMLElement[],
 ) {
   const containerRect = container.getBoundingClientRect();
-  const snapshots = elements.map((child) => {
+  const snapshots = new Map<HTMLElement, { left: number; top: number; width: number; height: number; opacity: number }>();
+  for (const child of elements) {
+    if (child.tagName === "BR") continue;
     const rect = child.getBoundingClientRect();
     const opacity = Number(getComputedStyle(child).opacity) || 1;
     child.getAnimations().forEach((a) => a.cancel());
-    return {
+    snapshots.set(child, {
       left: rect.left - containerRect.left,
       top: rect.top - containerRect.top,
       width: rect.width,
       height: rect.height,
       opacity,
-    };
-  });
+    });
+  }
 
-  elements.forEach((child, i) => {
-    const snap = snapshots[i]!;
+  // Remove BR elements — they can't be animated and must leave the flow
+  // before reconciliation to prevent layout jumps.
+  for (let i = elements.length - 1; i >= 0; i--) {
+    if (elements[i]!.tagName === "BR") {
+      elements[i]!.remove();
+      elements.splice(i, 1);
+    }
+  }
+
+  elements.forEach((child) => {
+    const snap = snapshots.get(child)!;
     child.setAttribute(ATTR_EXITING, "");
     child.style.position = "absolute";
     child.style.pointerEvents = "none";
@@ -30,6 +41,31 @@ export function detachFromFlow(
     child.style.height = `${snap.height}px`;
     child.style.opacity = String(snap.opacity);
   });
+}
+
+export function splitWordSpans(
+  element: HTMLElement,
+  splits: Map<string, Segment[]>,
+) {
+  if (splits.size === 0) return;
+
+  const children = Array.from(element.children) as HTMLElement[];
+  for (const child of children) {
+    if (child.hasAttribute(ATTR_EXITING)) continue;
+    const id = child.getAttribute(ATTR_ID);
+    if (!id) continue;
+    const charSegs = splits.get(id);
+    if (!charSegs) continue;
+
+    for (const seg of charSegs) {
+      const span = document.createElement("span");
+      span.setAttribute(ATTR_ITEM, "");
+      span.setAttribute(ATTR_ID, seg.id);
+      span.textContent = seg.string;
+      child.before(span);
+    }
+    child.remove();
+  }
 }
 
 export function reconcileChildren(
@@ -56,6 +92,20 @@ export function reconcileChildren(
   });
 
   segments.forEach((segment) => {
+    if (segment.string === "\n") {
+      // Newline segments render as <br> elements
+      const existing = reusable.get(segment.id);
+      if (existing && existing.tagName === "BR") {
+        element.appendChild(existing);
+      } else {
+        const br = document.createElement("br");
+        br.setAttribute(ATTR_ITEM, "");
+        br.setAttribute(ATTR_ID, segment.id);
+        element.appendChild(br);
+      }
+      return;
+    }
+
     const existing = reusable.get(segment.id);
     if (existing) {
       existing.textContent = segment.string;

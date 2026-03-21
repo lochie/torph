@@ -13,7 +13,8 @@ import {
   animateEnterOrPersist,
   transitionContainerSize,
 } from "./utils/animate";
-import { detachFromFlow, reconcileChildren } from "./utils/dom";
+import { detachFromFlow, splitWordSpans, reconcileChildren } from "./utils/dom";
+import { diffSegments } from "./utils/diff";
 import { addStyles, removeStyles } from "./utils/styles";
 import {
   ATTR_ROOT,
@@ -49,9 +50,10 @@ export class TextMorph {
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
+  private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
-
+  private emptyTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: TextMorphOptions) {
     const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
@@ -77,9 +79,6 @@ export class TextMorph {
 
     if (!this.isDisabled()) {
       this.element.setAttribute(ATTR_ROOT, "");
-      this.element.style.transitionDuration = `${this.options.duration}ms`;
-      this.element.style.transitionTimingFunction = this.options.ease!;
-
       if (options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     }
 
@@ -90,6 +89,10 @@ export class TextMorph {
   }
 
   destroy() {
+    if (this.emptyTransitionTimer !== null) {
+      clearTimeout(this.emptyTransitionTimer);
+      this.emptyTransitionTimer = null;
+    }
     this.reducedMotion?.destroy();
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
@@ -126,11 +129,40 @@ export class TextMorph {
   }
 
   private createTextGroup(value: string, element: HTMLElement) {
+    // Cancel any pending empty-transition timeout from a previous morph
+    // and restore the styles it would have cleaned up
+    if (this.emptyTransitionTimer !== null) {
+      clearTimeout(this.emptyTransitionTimer);
+      this.emptyTransitionTimer = null;
+      element.style.width = "auto";
+      element.style.height = "auto";
+      element.style.transitionProperty = "";
+    }
+
     const oldRect = element.getBoundingClientRect();
     const oldWidth = oldRect.width;
     const oldHeight = oldRect.height;
 
-    const segments = segmentText(value, this.options.locale!);
+    let segments: Segment[];
+    let splits: Map<string, Segment[]>;
+
+    if (this.previousSegments.length > 0) {
+      const result = diffSegments(this.previousSegments, value, this.options.locale!);
+      segments = result.segments;
+      splits = result.splits;
+    } else {
+      segments = segmentText(value, this.options.locale!);
+      splits = new Map();
+    }
+
+    // Keep a zero-width space segment so the container always has in-flow
+    // content, preserving the line box height during exit animations.
+    const isEmptyTransition = segments.length === 0;
+    if (isEmptyTransition) {
+      segments = [{ id: "empty", string: "\u200B" }];
+    }
+
+    splitWordSpans(element, splits);
 
     this.prevMeasures = measure(this.element);
     const oldChildren = Array.from(element.children) as HTMLElement[];
@@ -157,10 +189,19 @@ export class TextMorph {
     reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(this.element);
-    this.updateStyles(segments);
+
+    // Measure at oldWidth to get actual first-frame positions.
+    // This correctly handles text-align when content overflows the container
+    // (text-align has no effect on overflowing content).
+    element.style.width = `${oldWidth}px`;
+    void element.offsetWidth;
+    const firstFrameMeasures = measure(this.element);
+    element.style.width = "auto";
+
+    this.updateStyles(segments, firstFrameMeasures);
 
     exiting.forEach((child) => {
-      if (this.isInitialRender) {
+      if (this.isInitialRender || child.getAttribute(ATTR_ID) === "empty") {
         child.remove();
         return;
       }
@@ -179,6 +220,8 @@ export class TextMorph {
       });
     });
 
+    this.previousSegments = segments;
+
     if (this.isInitialRender) {
       this.isInitialRender = false;
       element.style.width = "auto";
@@ -186,16 +229,32 @@ export class TextMorph {
       return;
     }
 
-    transitionContainerSize(
-      element,
-      oldWidth,
-      oldHeight,
-      this.options.duration!,
-      this.options.onAnimationComplete,
-    );
+    if (isEmptyTransition) {
+      // Lock container at old size while exits play so the container
+      // doesn't reposition (e.g. under text-align: center).
+      element.style.transitionProperty = "none";
+      element.style.width = `${oldWidth}px`;
+      element.style.height = `${oldHeight}px`;
+      this.emptyTransitionTimer = setTimeout(() => {
+        this.emptyTransitionTimer = null;
+        element.style.width = "auto";
+        element.style.height = "auto";
+        element.style.transitionProperty = "";
+        this.options.onAnimationComplete?.();
+      }, this.options.duration!);
+    } else {
+      transitionContainerSize(
+        element,
+        oldWidth,
+        oldHeight,
+        this.options.duration!,
+        this.options.ease!,
+        this.options.onAnimationComplete,
+      );
+    }
   }
 
-  private updateStyles(segments: Segment[]) {
+  private updateStyles(segments: Segment[], firstFrameMeasures: Measures) {
     if (this.isInitialRender) return;
 
     const children = Array.from(this.element.children) as HTMLElement[];
@@ -207,7 +266,9 @@ export class TextMorph {
 
     children.forEach((child, index) => {
       if (child.hasAttribute(ATTR_EXITING)) return;
+      if (child.tagName === "BR") return;
       const key = child.getAttribute(ATTR_ID) || `child-${index}`;
+      if (key === "empty") return;
       const isNew = !this.prevMeasures[key];
 
       const deltaKey = isNew
@@ -219,7 +280,7 @@ export class TextMorph {
         : key;
 
       const { dx: deltaX, dy: deltaY } = deltaKey
-        ? computeDelta(this.prevMeasures, this.currentMeasures, deltaKey)
+        ? computeDelta(this.prevMeasures, firstFrameMeasures, deltaKey)
         : { dx: 0, dy: 0 };
 
       animateEnterOrPersist(child, {

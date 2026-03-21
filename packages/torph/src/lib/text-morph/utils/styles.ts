@@ -4,14 +4,15 @@ const TORPH_CSS = `
 [${ATTR_ROOT}] {
   display: inline-block;
   position: relative;
+  vertical-align: top;
   will-change: width, height;
-  transition-property: width, height;
   white-space: nowrap;
-  text-align: left;
+  text-align: inherit;
 }
 
-[${ATTR_ITEM}] {
+[${ATTR_ITEM}]:not(br) {
   display: inline-block;
+  position: relative;
   will-change: opacity, transform;
   transform: none;
   opacity: 1;

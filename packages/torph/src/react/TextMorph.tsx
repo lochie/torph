@@ -36,7 +36,7 @@ export const TextMorph = ({
 }: TextMorphProps) => {
   const { ref, update } = useTextMorph(props);
   const text = childrenToString(children);
-  const initialHTML = React.useRef({ __html: text });
+  const initialHTML = React.useRef({ __html: text.replace(/\n/g, "<br>") });
 
   React.useEffect(() => {
     update(text);
