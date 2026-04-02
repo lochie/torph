@@ -128,7 +128,11 @@ export function transitionContainerSize(
     pendingCleanup = null;
   }
 
-  if (oldWidth === 0 || oldHeight === 0) return;
+  if (oldWidth === 0 || oldHeight === 0) {
+    element.style.width = "auto";
+    element.style.height = "auto";
+    return;
+  }
 
   element.style.width = "auto";
   element.style.height = "auto";
