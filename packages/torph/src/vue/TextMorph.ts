@@ -31,13 +31,14 @@ export default defineComponent({
   },
   setup(props) {
     const containerRef = ref<HTMLElement | null>(null);
-    const controller = new MorphController();
+    const controller = (import.meta as any).client ? new MorphController() : null;
 
     const configKey = computed(() =>
       MorphController.serializeConfig(props as any),
     );
 
     function createInstance() {
+      if (!controller) return;
       if (containerRef.value) {
         controller.attach(containerRef.value, {
           locale: props.locale,
@@ -60,13 +61,13 @@ export default defineComponent({
     watch(configKey, () => createInstance());
 
     onUnmounted(() => {
-      controller.destroy();
+      controller?.destroy();
     });
 
     watch(
       () => props.text,
       (newText) => {
-        controller.update(newText);
+        controller?.update(newText);
       },
     );
 
