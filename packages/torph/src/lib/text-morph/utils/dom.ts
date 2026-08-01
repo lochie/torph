@@ -6,7 +6,16 @@ export function detachFromFlow(
   elements: HTMLElement[],
 ) {
   const containerRect = container.getBoundingClientRect();
-  const snapshots = new Map<HTMLElement, { left: number; top: number; width: number; height: number; opacity: number }>();
+  const snapshots = new Map<
+    HTMLElement,
+    {
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+      opacity: number;
+    }
+  >();
   for (const child of elements) {
     if (child.tagName === "BR") continue;
     const rect = child.getBoundingClientRect();
@@ -50,12 +59,15 @@ export function splitWordSpans(
   if (splits.size === 0) return;
 
   const children = Array.from(element.children) as HTMLElement[];
+  const split = new Set<string>();
+
   for (const child of children) {
     if (child.hasAttribute(ATTR_EXITING)) continue;
     const id = child.getAttribute(ATTR_ID);
-    if (!id) continue;
+    if (!id || split.has(id)) continue;
     const charSegs = splits.get(id);
     if (!charSegs) continue;
+    split.add(id);
 
     for (const seg of charSegs) {
       const span = document.createElement("span");
@@ -92,9 +104,14 @@ export function reconcileChildren(
   });
 
   segments.forEach((segment) => {
+    // Each element can only be claimed once. Without this, two segments
+    // sharing an ID would both `appendChild` the same node, moving it to the
+    // later position and leaving the earlier one with nothing rendered.
+    const existing = reusable.get(segment.id);
+    if (existing) reusable.delete(segment.id);
+
     if (segment.string === "\n") {
       // Newline segments render as <br> elements
-      const existing = reusable.get(segment.id);
       if (existing && existing.tagName === "BR") {
         element.appendChild(existing);
       } else {
@@ -106,8 +123,7 @@ export function reconcileChildren(
       return;
     }
 
-    const existing = reusable.get(segment.id);
-    if (existing) {
+    if (existing && existing.tagName !== "BR") {
       existing.textContent = segment.string;
       element.appendChild(existing);
     } else {

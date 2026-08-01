@@ -1,5 +1,5 @@
 import type { Segment } from "./segment";
-import { segmentText } from "./segment";
+import { createIdAllocator, segmentText } from "./segment";
 
 export type DiffResult = {
   segments: Segment[];
@@ -169,17 +169,27 @@ export function diffSegments(
     }
   }
 
-  const usedIds = new Set<string>();
-  function uniqueId(base: string): string {
-    if (!usedIds.has(base)) {
-      usedIds.add(base);
-      return base;
+  const alloc = createIdAllocator();
+
+  // Reserve every ID inherited from the old segments before allocating any new
+  // ones. The allocator can only avoid collisions with IDs it already knows
+  // about, so an inherited ID that appears later in the build loop would
+  // otherwise be handed to an earlier new segment — leaving two segments
+  // sharing one ID, one DOM element, and one of them rendering nothing.
+  for (let ni = 0; ni < newWordStrings.length; ni++) {
+    const oi = newToOldWord.get(ni) ?? morphPairs.get(ni);
+    if (oi === undefined) continue;
+    const oldGroup = oldWords[oi]!;
+
+    if (!newToOldWord.has(ni) && oldGroup.segments.length === 1) {
+      // Word-level span that is about to be split into per-character spans.
+      const wordSeg = oldGroup.segments[0]!;
+      for (let i = 0; i < oldGroup.word.length; i++) {
+        alloc.reserve(`${wordSeg.id}:${i}`);
+      }
+    } else {
+      for (const seg of oldGroup.segments) alloc.reserve(seg.id);
     }
-    let i = 1;
-    while (usedIds.has(`${base}~${i}`)) i++;
-    const id = `${base}~${i}`;
-    usedIds.add(id);
-    return id;
   }
 
   const segments: Segment[] = [];
@@ -192,12 +202,12 @@ export function diffSegments(
       for (const sep of seps) {
         if (sep === "\n") {
           segments.push({
-            id: `newline-${charOffset}`,
+            id: alloc.take(`newline-${charOffset}`),
             string: "\n",
           });
         } else {
           segments.push({
-            id: `space-${charOffset}`,
+            id: alloc.take(`space-${charOffset}`),
             string: "\u00A0",
           });
         }
@@ -209,10 +219,7 @@ export function diffSegments(
       // Exact word match — reuse old segments
       const oi = newToOldWord.get(ni)!;
       const oldGroup = oldWords[oi]!;
-      for (const seg of oldGroup.segments) {
-        usedIds.add(seg.id);
-        segments.push(seg);
-      }
+      for (const seg of oldGroup.segments) segments.push(seg);
     } else if (morphPairs.has(ni)) {
       // Character morph between similar words
       const oi = morphPairs.get(ni)!;
@@ -249,11 +256,10 @@ export function diffSegments(
       for (let ci = 0; ci < newChars.length; ci++) {
         if (newCharToOldSeg.has(ci)) {
           const oldSeg = newCharToOldSeg.get(ci)!;
-          usedIds.add(oldSeg.id);
           segments.push({ id: oldSeg.id, string: newChars[ci]! });
         } else {
           segments.push({
-            id: uniqueId(`${newWord}~${ci}`),
+            id: alloc.take(`${newWord}~${ci}`),
             string: newChars[ci]!,
           });
         }
@@ -261,7 +267,7 @@ export function diffSegments(
     } else {
       // No match — new word enters
       segments.push({
-        id: uniqueId(newWordStrings[ni]!),
+        id: alloc.take(newWordStrings[ni]!),
         string: newWordStrings[ni]!,
       });
     }

@@ -3,91 +3,147 @@ export type Segment = {
   string: string;
 };
 
+/**
+ * Allocates segment IDs that are unique across the whole value.
+ *
+ * IDs are the identity used for FLIP tracking and DOM reconciliation, so a
+ * collision makes two segments fight over one element and one of them silently
+ * loses its text. Multi-line values are segmented line by line, which means
+ * neither the "have I seen this string" check nor the character index can be
+ * scoped to a single line.
+ */
+export function createIdAllocator() {
+  const used = new Set<string>();
+
+  return {
+    reserve(id: string) {
+      used.add(id);
+    },
+    has(id: string) {
+      return used.has(id);
+    },
+    take(base: string): string {
+      if (!used.has(base)) {
+        used.add(base);
+        return base;
+      }
+      let i = 1;
+      while (used.has(`${base}~${i}`)) i++;
+      const id = `${base}~${i}`;
+      used.add(id);
+      return id;
+    },
+  };
+}
+
+export type IdAllocator = ReturnType<typeof createIdAllocator>;
+
 export function segmentText(
   value: string,
   locale: Intl.LocalesArgument,
 ): Segment[] {
   const hasNewlines = value.includes("\n");
   const byWord = value.includes(" ") || hasNewlines;
+  const alloc = createIdAllocator();
 
   if (hasNewlines) {
-    // Split by newlines, segment each line at word level, join with newline segments
+    // Split by newlines, segment each line at word level, join with newline
+    // segments. `offset` tracks the character index into the full value so IDs
+    // stay unique across lines.
     const lines = value.split("\n");
     const allSegments: Segment[] = [];
+    let offset = 0;
+
     lines.forEach((line, lineIndex) => {
       if (lineIndex > 0) {
-        allSegments.push({ id: `newline-${lineIndex}`, string: "\n" });
-      }
-      if (line.length === 0) return;
-      let lineSegments: Segment[];
-      if (typeof Intl.Segmenter !== "undefined") {
-        const segmenter = new Intl.Segmenter(locale, {
-          granularity: "word",
+        allSegments.push({
+          id: alloc.take(`newline-${offset}`),
+          string: "\n",
         });
-        lineSegments = segmentsFromIntl(segmenter.segment(line)[Symbol.iterator]());
-      } else {
-        lineSegments = segmentsFallback(line, true);
+        offset += 1;
       }
-      allSegments.push(...lineSegments);
+      if (line.length > 0) {
+        allSegments.push(...segmentLine(line, locale, true, offset, alloc));
+      }
+      offset += line.length;
     });
+
     return allSegments;
   }
 
+  return segmentLine(value, locale, byWord, 0, alloc);
+}
+
+function segmentLine(
+  line: string,
+  locale: Intl.LocalesArgument,
+  byWord: boolean,
+  offset: number,
+  alloc: IdAllocator,
+): Segment[] {
   if (typeof Intl.Segmenter !== "undefined") {
     const segmenter = new Intl.Segmenter(locale, {
       granularity: byWord ? "word" : "grapheme",
     });
-    const iterator = segmenter.segment(value)[Symbol.iterator]();
-    return segmentsFromIntl(iterator);
+    return segmentsFromIntl(
+      segmenter.segment(line)[Symbol.iterator](),
+      offset,
+      alloc,
+    );
   }
 
-  return segmentsFallback(value, byWord);
+  return segmentsFallback(line, byWord, offset, alloc);
 }
 
 function segmentsFromIntl(
   iterator: Intl.SegmentIterator<Intl.SegmentData>,
+  offset: number,
+  alloc: IdAllocator,
 ): Segment[] {
-  return Array.from(iterator).reduce((acc, data) => {
-    if (data.segment === " ") {
-      return [...acc, { id: `space-${data.index}`, string: "\u00A0" }];
-    }
-
-    const existing = acc.find((x) => x.string === data.segment);
-    if (existing) {
-      return [
-        ...acc,
-        { id: `${data.segment}-${data.index}`, string: data.segment },
-      ];
-    }
-
-    return [
-      ...acc,
-      {
-        id: data.segment,
-        string: data.segment,
-      },
-    ];
-  }, [] as Segment[]);
-}
-
-function pushSegment(segments: Segment[], part: string, index: number) {
-  const existing = segments.find((x) => x.string === part);
-  segments.push(
-    existing
-      ? { id: `${part}-${index}`, string: part }
-      : { id: part, string: part },
-  );
-}
-
-function segmentsFallback(value: string, byWord: boolean): Segment[] {
-  const parts = byWord ? value.split(" ") : value.split("");
   const segments: Segment[] = [];
 
-  parts.forEach((part, index) => {
-    if (byWord && index > 0) {
-      segments.push({ id: `space-${index}`, string: "\u00A0" });
+  for (const data of Array.from(iterator)) {
+    const index = offset + data.index;
+    if (data.segment === " ") {
+      segments.push({ id: alloc.take(`space-${index}`), string: "\u00A0" });
+    } else {
+      segments.push({
+        id: allocSegmentId(data.segment, index, alloc),
+        string: data.segment,
+      });
     }
-    pushSegment(segments, part, index);
+  }
+
+  return segments;
+}
+
+function allocSegmentId(
+  part: string,
+  index: number,
+  alloc: IdAllocator,
+): string {
+  // First occurrence keeps the bare string as its ID; repeats are qualified by
+  // their position in the full value.
+  return alloc.has(part) ? alloc.take(`${part}-${index}`) : alloc.take(part);
+}
+
+function segmentsFallback(
+  value: string,
+  byWord: boolean,
+  offset: number,
+  alloc: IdAllocator,
+): Segment[] {
+  const parts = byWord ? value.split(" ") : value.split("");
+  const segments: Segment[] = [];
+  let index = offset;
+
+  parts.forEach((part, i) => {
+    if (byWord && i > 0) {
+      segments.push({ id: alloc.take(`space-${index}`), string: "\u00A0" });
+      index += 1;
+    }
+    segments.push({ id: allocSegmentId(part, index, alloc), string: part });
+    index += part.length;
   });
 
   return segments;
