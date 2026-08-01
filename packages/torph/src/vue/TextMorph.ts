@@ -33,6 +33,12 @@ export default defineComponent({
     const containerRef = ref<HTMLElement | null>(null);
     const controller = new MorphController();
 
+    // Rendered as the element's child so the text is present in SSR markup and
+    // matches during hydration. Frozen at the initial value: once mounted the
+    // controller owns the element's children, and re-rendering the current text
+    // here would wipe the segments it created.
+    const initialText = props.text;
+
     const configKey = computed(() =>
       MorphController.serializeConfig(props as any),
     );
@@ -78,10 +84,7 @@ export default defineComponent({
           class: props.class,
           style: props.style,
         },
-
-        (import.meta as unknown as Record<string, unknown>)?.server
-          ? props.text
-          : undefined,
+        initialText,
       );
   },
 });
