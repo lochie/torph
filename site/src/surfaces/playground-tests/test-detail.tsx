@@ -1,0 +1,250 @@
+import React from "react";
+import { TextMorph } from "torph/react";
+import styles from "./styles.module.scss";
+import { torph } from "./tests";
+import type { BenchCase } from "./tests";
+import { buildIssueReport, copyText } from "./issue";
+import { SPEEDS, EASINGS } from "./config";
+import type { Speed, EasingKey, Align } from "./config";
+import type { Result } from "@torph/test-cases";
+
+function SegmentInspector({ from, to }: { from: string; to: string }) {
+  const old = torph.segmentText(from, "en");
+  const { segments, splits } = torph.diffSegments(old, to, "en");
+  const oldIds = new Set(old.map((s) => s.id));
+
+  const show = (v: string) =>
+    v === " " ? "·" : v === "\n" ? "↵" : v === "​" ? "∅" : v;
+
+  return (
+    <div className={styles.inspector}>
+      <div className={styles.inspectorRow}>
+        <span className={styles.inspectorLabel}>before</span>
+        <div className={styles.chips}>
+          {old.map((s, i) => (
+            <span key={i} className={styles.chip} title={s.id}>
+              {show(s.string)}
+              <em>{s.id}</em>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className={styles.inspectorRow}>
+        <span className={styles.inspectorLabel}>after</span>
+        <div className={styles.chips}>
+          {segments.map((s, i) => (
+            <span
+              key={i}
+              className={`${styles.chip} ${
+                oldIds.has(s.id) ? styles.chipPersisted : styles.chipNew
+              }`}
+              title={`${s.id} — ${oldIds.has(s.id) ? "persisted" : "entered"}`}
+            >
+              {show(s.string)}
+              <em>{s.id}</em>
+            </span>
+          ))}
+        </div>
+      </div>
+      {splits.size > 0 && (
+        <div className={styles.inspectorRow}>
+          <span className={styles.inspectorLabel}>splits</span>
+          <div className={styles.chips}>
+            {[...splits.entries()].map(([word, chars]) => (
+              <span key={word} className={styles.chip}>
+                {word}
+                <em>{chars.length} chars</em>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function TestDetail({
+  test,
+  result,
+  source,
+  speed,
+  easing,
+  align: globalAlign,
+  debug,
+  onTagClick,
+}: {
+  test: BenchCase;
+  result: Result | null;
+  /** The case's source from `packages/test-cases/src/cases.ts`. */
+  source?: string;
+  speed: Speed;
+  easing: EasingKey;
+  align: Align;
+  debug: boolean;
+  onTagClick?: (tag: string) => void;
+}) {
+  const [index, setIndex] = React.useState(0);
+  const [showSource, setShowSource] = React.useState(false);
+  const [showInspector, setShowInspector] = React.useState(false);
+  const [auto, setAuto] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const [notes, setNotes] = React.useState("");
+  const align = test.align ?? globalAlign;
+
+  const advance = React.useCallback(() => {
+    setIndex((i) => (i + 1) % test.values.length);
+  }, [test.values.length]);
+
+  // Reset when the selected case changes.
+  React.useEffect(() => {
+    setIndex(0);
+    setAuto(false);
+    setNotes("");
+    setCopied(false);
+  }, [test.label]);
+
+  React.useEffect(() => {
+    if (!auto) return;
+    const id = setInterval(advance, 150);
+    return () => clearInterval(id);
+  }, [auto, advance]);
+
+  React.useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
+        return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        advance();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [advance]);
+
+  const handleCopy = async () => {
+    const ok = await copyText(
+      buildIssueReport({
+        test,
+        index,
+        speed,
+        easing,
+        align: globalAlign,
+        debug,
+        result,
+        notes: notes.trim() || undefined,
+      }),
+    );
+    setCopied(ok);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const prev = (index - 1 + test.values.length) % test.values.length;
+
+  return (
+    <div className={styles.detail}>
+      <header className={styles.detailHeader}>
+        <h2 className={styles.detailTitle}>{test.label}</h2>
+        <div className={styles.tags}>
+          {test.tags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              className={styles.tag}
+              onClick={() => onTagClick?.(tag)}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <p className={styles.detailDescription}>{test.description}</p>
+
+      <div
+        className={styles.stage}
+        style={{ textAlign: align }}
+        onClick={advance}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && advance()}
+      >
+        <TextMorph
+          duration={SPEEDS[speed]}
+          ease={EASINGS[easing]}
+          debug={debug}
+        >
+          {test.values[index]}
+        </TextMorph>
+      </div>
+
+      <div className={styles.stageBar}>
+        <span className={styles.step}>
+          {index + 1} / {test.values.length}
+        </span>
+        <button type="button" className={styles.primaryBtn} onClick={advance}>
+          Morph
+        </button>
+        {test.tags.includes("spam") && (
+          <button
+            type="button"
+            className={`${styles.btn} ${auto ? styles.btnActive : ""}`}
+            onClick={() => setAuto((a) => !a)}
+          >
+            {auto ? "Stop" : "Auto"}
+          </button>
+        )}
+        <button
+          type="button"
+          className={`${styles.btn} ${showInspector ? styles.btnActive : ""}`}
+          onClick={() => setShowInspector((s) => !s)}
+        >
+          Segments
+        </button>
+        {source && (
+          <button
+            type="button"
+            className={`${styles.btn} ${showSource ? styles.btnActive : ""}`}
+            onClick={() => setShowSource((s) => !s)}
+          >
+            Code
+          </button>
+        )}
+        <span className={styles.spacer} />
+        <span className={result?.pass ? styles.pass : styles.fail}>
+          {result ? (result.pass ? "PASS" : "FAIL") : "…"}
+        </span>
+      </div>
+
+      {result && <p className={styles.assertion}>{result.detail}</p>}
+
+      {showSource && source && (
+        <figure className={styles.code}>
+          <figcaption>packages/test-cases/src/cases.ts</figcaption>
+          <pre>
+            <code>{source}</code>
+          </pre>
+        </figure>
+      )}
+
+      {showInspector && (
+        <SegmentInspector from={test.values[prev]!} to={test.values[index]!} />
+      )}
+
+      <div className={styles.issueBox}>
+        <input
+          className={styles.notesInput}
+          placeholder="What looks wrong? (optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+        <button type="button" className={styles.btn} onClick={handleCopy}>
+          {copied ? "Copied" : "Copy issue"}
+        </button>
+      </div>
+    </div>
+  );
+}

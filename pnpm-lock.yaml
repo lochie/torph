@@ -125,8 +125,13 @@ importers:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@20.5.1)(sass@1.93.0)
 
+  packages/test-cases: {}
+
   packages/torph:
     devDependencies:
+      '@torph/test-cases':
+        specifier: workspace:*
+        version: link:../test-cases
       '@types/react':
         specifier: ^18.2.15
         version: 18.3.24
@@ -190,6 +195,9 @@ importers:
 
   site:
     dependencies:
+      '@torph/test-cases':
+        specifier: workspace:*
+        version: link:../packages/test-cases
       motion:
         specifier: ^12.23.16
         version: 12.34.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
