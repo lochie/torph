@@ -357,4 +357,86 @@ describe("diffSegments", () => {
       expect(idAt(segments, "TextMorph")).toBe(oldImportTextMorph.id);
     });
   });
+
+  describe("separators at the edges of the value", () => {
+    /**
+     * The initial render segments the whole value with `segmentText`, every
+     * later render diffs against the previous segments. If the two disagree
+     * about leading or trailing whitespace the text visibly shifts on the
+     * first morph — a dropped trailing newline collapses a blank line and the
+     * container jumps a line height.
+     */
+    function rendered(segments: Segment[]): string {
+      return strings(segments).join("").replace(/ /g, " ");
+    }
+
+    const cases = [
+      ["leading newline", "\nHello world"],
+      ["leading space", " Hello world"],
+      ["trailing newline", "Hello world\n"],
+      ["trailing space", "Hello world "],
+      ["leading blank line", "\n\nHello world"],
+      ["trailing blank line", "Hello world\n\n"],
+      ["both edges", "\n  Hello world  \n"],
+      ["whitespace only", "   "],
+    ] as const;
+
+    for (const [label, value] of cases) {
+      it(`preserves ${label} — matches the initial render`, () => {
+        const old = segmentText("Hello world", "en");
+        const { segments } = diffSegments(old, value, "en");
+
+        expect(rendered(segments)).toBe(rendered(segmentText(value, "en")));
+      });
+
+      it(`allocates unique IDs for ${label}`, () => {
+        const old = segmentText("Hello world", "en");
+        const { segments } = diffSegments(old, value, "en");
+
+        expect(new Set(ids(segments)).size).toBe(segments.length);
+      });
+    }
+
+    it("keeps a trailing newline stable across repeated morphs", () => {
+      let current = segmentText("a\nb\n", "en");
+      for (const next of ["a\nc\n", "a\nd\n", "a\nb\n"]) {
+        current = diffSegments(current, next, "en").segments;
+        expect(rendered(current)).toBe(next);
+      }
+    });
+  });
+
+  describe("large values", () => {
+    const words = (n: number, salt: string) =>
+      Array.from({ length: n }, (_, i) => `${salt}${i}word`).join(" ");
+
+    it("still produces the right text once morph pairing is skipped", () => {
+      const old = segmentText(words(200, "a"), "en");
+      const next = words(200, "b");
+      const { segments } = diffSegments(old, next, "en");
+
+      expect(strings(segments).join("").replace(/ /g, " ")).toBe(next);
+      expect(new Set(ids(segments)).size).toBe(segments.length);
+    });
+
+    it("still produces the right text once the diff bails entirely", () => {
+      const old = segmentText(words(600, "a"), "en");
+      const next = words(600, "b");
+      const { segments } = diffSegments(old, next, "en");
+
+      expect(strings(segments).join("").replace(/ /g, " ")).toBe(next);
+      expect(new Set(ids(segments)).size).toBe(segments.length);
+    });
+
+    it("keeps word matching for large values that mostly persist", () => {
+      const base = words(200, "a");
+      const old = segmentText(base, "en");
+      const { segments } = diffSegments(old, `${base} extra`, "en");
+
+      // Under the pairing budget nothing is unmatched, so every original word
+      // keeps its element and only "extra" enters.
+      const oldFirst = old.find((s) => s.string === "a0word")!;
+      expect(idAt(segments, "a0word")).toBe(oldFirst.id);
+    });
+  });
 });

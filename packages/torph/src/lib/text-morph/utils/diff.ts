@@ -96,6 +96,26 @@ function charSimilarity(a: string, b: string): number {
 
 const MIN_SIMILARITY = 0.4;
 
+/**
+ * Pairing unmatched words runs a character-level LCS for every (old, new)
+ * combination, so the work grows with the product of the two counts. Past this
+ * budget the pairing is skipped and unmatched words enter and exit whole
+ * instead of morphing character by character — the animation still runs, it
+ * just loses the per-character detail on a rewrite large enough that nobody
+ * can follow it anyway.
+ */
+const MAX_MORPH_PAIRINGS = 2_500;
+
+/**
+ * The word-level LCS allocates one table entry per (old word, new word) pair,
+ * so this is a memory ceiling as much as a time one. Roughly 1000 words on each
+ * side costs ~30ms; past that the diff is abandoned and the value is segmented
+ * from scratch. All of this runs synchronously inside `update()`, before the
+ * first frame, so the ceiling is what keeps a pathological value from stalling
+ * the page.
+ */
+const MAX_LCS_CELLS = 1_000_000;
+
 export function diffSegments(
   oldSegments: Segment[],
   newText: string,
@@ -111,7 +131,7 @@ export function diffSegments(
 
   // Split new text into words and track separators (space vs newline)
   const newWordStrings: string[] = [];
-  const newSeparators: string[][] = []; // separators BEFORE each word (index 0 is empty)
+  const newSeparators: string[][] = []; // separators BEFORE each word
   const parts = newText.split(/( |\n)/);
   let pendingSeps: string[] = [];
   for (const part of parts) {
@@ -123,8 +143,14 @@ export function diffSegments(
       pendingSeps = [];
     }
   }
+  // Whatever is left never had a word to attach to, so it trails the value.
+  const trailingSeparators = pendingSeps;
 
   const oldWordStrings = oldWords.map((g) => g.word);
+
+  if (oldWordStrings.length * newWordStrings.length > MAX_LCS_CELLS) {
+    return { segments: segmentText(newText, locale), splits: new Map() };
+  }
 
   // Word-level LCS
   const [oldLcsIdx, newLcsIdx] = lcsIndices(oldWordStrings, newWordStrings);
@@ -164,22 +190,24 @@ export function diffSegments(
   const morphPairs = new Map<number, number>();
   const usedOld = new Set<number>();
 
-  for (const ni of newUnmatched) {
-    let bestOi = -1;
-    let bestSim = MIN_SIMILARITY;
+  if (oldUnmatched.length * newUnmatched.length <= MAX_MORPH_PAIRINGS) {
+    for (const ni of newUnmatched) {
+      let bestOi = -1;
+      let bestSim = MIN_SIMILARITY;
 
-    for (const oi of oldUnmatched) {
-      if (usedOld.has(oi)) continue;
-      const sim = charSimilarity(oldWordStrings[oi]!, newWordStrings[ni]!);
-      if (sim > bestSim) {
-        bestSim = sim;
-        bestOi = oi;
+      for (const oi of oldUnmatched) {
+        if (usedOld.has(oi)) continue;
+        const sim = charSimilarity(oldWordStrings[oi]!, newWordStrings[ni]!);
+        if (sim > bestSim) {
+          bestSim = sim;
+          bestOi = oi;
+        }
       }
-    }
 
-    if (bestOi >= 0) {
-      morphPairs.set(ni, bestOi);
-      usedOld.add(bestOi);
+      if (bestOi >= 0) {
+        morphPairs.set(ni, bestOi);
+        usedOld.add(bestOi);
+      }
     }
   }
 
@@ -210,24 +238,29 @@ export function diffSegments(
   const splits = new Map<string, Segment[]>();
   let charOffset = 0;
 
-  for (let ni = 0; ni < newWordStrings.length; ni++) {
-    if (ni > 0) {
-      const seps = newSeparators[ni] || [" "];
-      for (const sep of seps) {
-        if (sep === "\n") {
-          segments.push({
-            id: alloc.take(`newline-${charOffset}`),
-            string: "\n",
-          });
-        } else {
-          segments.push({
-            id: alloc.take(`space-${charOffset}`),
-            string: "\u00A0",
-          });
-        }
-        charOffset++;
+  // Separators are emitted for every position, including before the first word
+  // and after the last one. Skipping the edges would drop leading indentation
+  // and trailing blank lines that `segmentText` keeps on the initial render,
+  // so the same value would render differently before and after a morph.
+  function pushSeparators(seps: string[]) {
+    for (const sep of seps) {
+      if (sep === "\n") {
+        segments.push({
+          id: alloc.take(`newline-${charOffset}`),
+          string: "\n",
+        });
+      } else {
+        segments.push({
+          id: alloc.take(`space-${charOffset}`),
+          string: "\u00A0",
+        });
       }
+      charOffset++;
     }
+  }
+
+  for (let ni = 0; ni < newWordStrings.length; ni++) {
+    pushSeparators(newSeparators[ni] ?? (ni > 0 ? [" "] : []));
 
     if (newToOldWord.has(ni)) {
       // Exact word match — reuse old segments
@@ -288,6 +321,8 @@ export function diffSegments(
 
     charOffset += newWordStrings[ni]!.length;
   }
+
+  pushSeparators(trailingSeparators);
 
   return { segments, splits };
 }

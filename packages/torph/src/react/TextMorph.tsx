@@ -27,6 +27,21 @@ function childrenToString(node: React.ReactNode): string {
   );
 }
 
+/**
+ * The initial markup goes through `dangerouslySetInnerHTML` so newlines can
+ * render as `<br>` on the server, which means the text has to be escaped here —
+ * it comes from `children`, and callers rightly expect React to treat that as
+ * text rather than markup.
+ */
+function escapeHTML(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export const TextMorph = ({
   children,
   className,
@@ -36,7 +51,9 @@ export const TextMorph = ({
 }: TextMorphProps) => {
   const { ref, update } = useTextMorph(props);
   const text = childrenToString(children);
-  const initialHTML = React.useRef({ __html: text.replace(/\n/g, "<br>") });
+  const initialHTML = React.useRef({
+    __html: escapeHTML(text).replace(/\n/g, "<br>"),
+  });
 
   React.useEffect(() => {
     update(text);
