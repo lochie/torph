@@ -38,36 +38,50 @@ function groupIntoWords(segments: Segment[]): WordGroup[] {
   return groups;
 }
 
+/**
+ * Longest common subsequence, reported as paired indices into `a` and `b`.
+ *
+ * Many subsequences share the maximum length, and the one chosen decides which
+ * old element each new element inherits its identity from. The table is built
+ * over suffixes and walked *forwards* so that ties resolve to the earliest
+ * possible match: when a word repeats, the first occurrence keeps the existing
+ * element and later occurrences are treated as new. A backwards walk resolves
+ * ties the other way, which makes text appear to fly in from the last
+ * occurrence of a repeated word rather than from the matching position.
+ */
 function lcsIndices(a: string[], b: string[]): [number[], number[]] {
   const m = a.length;
   const n = b.length;
+  // dp[i][j] = length of the LCS of a[i..] and b[j..]
   const dp: number[][] = Array.from({ length: m + 1 }, () =>
     Array(n + 1).fill(0),
   );
 
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
       dp[i]![j] =
-        a[i - 1] === b[j - 1]
-          ? dp[i - 1]![j - 1]! + 1
-          : Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
+        a[i] === b[j]
+          ? dp[i + 1]![j + 1]! + 1
+          : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
     }
   }
 
   const ai: number[] = [];
   const bi: number[] = [];
-  let i = m;
-  let j = n;
-  while (i > 0 && j > 0) {
-    if (a[i - 1] === b[j - 1]) {
-      ai.unshift(i - 1);
-      bi.unshift(j - 1);
-      i--;
-      j--;
-    } else if (dp[i - 1]![j]! >= dp[i]![j - 1]!) {
-      i--;
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    // Matching on equality is always optimal here — dp confirms it costs
+    // nothing — so the first viable pairing wins.
+    if (a[i] === b[j]) {
+      ai.push(i);
+      bi.push(j);
+      i++;
+      j++;
+    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
+      i++;
     } else {
-      j--;
+      j++;
     }
   }
 

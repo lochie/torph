@@ -15,6 +15,29 @@ function wordIds(segments: Segment[]): string[] {
   return segments.filter((s) => s.string !== "\u00A0").map((s) => s.id);
 }
 
+/**
+ * ID of the segment covering the first occurrence of `needle` in the rendered
+ * text. Segments may be whole words or single characters depending on how the
+ * diff paired things up, so position is the only stable way to ask "what owns
+ * this bit of text".
+ */
+function idAt(segments: Segment[], needle: string): string | undefined {
+  const text = segments
+    .map((s) => s.string)
+    .join("")
+    .replace(/\u00A0/g, " ");
+  const target = text.indexOf(needle);
+  if (target < 0) return undefined;
+
+  let offset = 0;
+  for (const seg of segments) {
+    const end = offset + seg.string.length;
+    if (offset <= target && target < end) return seg.id;
+    offset = end;
+  }
+  return undefined;
+}
+
 describe("diffSegments", () => {
   describe("exact word matches", () => {
     it("persists matching words with same IDs", () => {
@@ -53,11 +76,7 @@ describe("diffSegments", () => {
 
     it("handles reverse — Processing Transaction → Transaction Safe", () => {
       const old = segmentText("Processing Transaction", "en");
-      const { segments, splits } = diffSegments(
-        old,
-        "Transaction Safe",
-        "en",
-      );
+      const { segments, splits } = diffSegments(old, "Transaction Safe", "en");
 
       expect(splits.size).toBe(0);
 
@@ -112,11 +131,7 @@ describe("diffSegments", () => {
         "Processing Transaction",
         "en",
       );
-      const cycle3 = diffSegments(
-        cycle2.segments,
-        "Transaction Safe",
-        "en",
-      );
+      const cycle3 = diffSegments(cycle2.segments, "Transaction Safe", "en");
       const cycle4 = diffSegments(
         cycle3.segments,
         "Processing Transaction",
@@ -131,11 +146,7 @@ describe("diffSegments", () => {
 
     it("space IDs do not persist between different texts", () => {
       const old = segmentText("Transaction Safe", "en");
-      const { segments } = diffSegments(
-        old,
-        "Processing Transaction",
-        "en",
-      );
+      const { segments } = diffSegments(old, "Processing Transaction", "en");
 
       const oldSpaceIds = old
         .filter((s) => s.string === "\u00A0")
@@ -156,11 +167,7 @@ describe("diffSegments", () => {
   describe("character morphing", () => {
     it("npm → pnpm — splits word into chars and morphs", () => {
       const old = segmentText("npm i torph", "en");
-      const { segments, splits } = diffSegments(
-        old,
-        "pnpm add torph",
-        "en",
-      );
+      const { segments, splits } = diffSegments(old, "pnpm add torph", "en");
 
       // "npm" should be split into character spans
       expect(splits.has("npm")).toBe(true);
@@ -205,16 +212,14 @@ describe("diffSegments", () => {
       expect(strings(morphedChars)).toEqual(["n", "p", "m"]);
 
       // "i" should persist as a whole word
-      expect(segments.find((s) => s.string === "i" && s.id === "i")).toBeDefined();
+      expect(
+        segments.find((s) => s.string === "i" && s.id === "i"),
+      ).toBeDefined();
     });
 
     it("does NOT morph dissimilar words", () => {
       const old = segmentText("cat and dog", "en");
-      const { segments, splits } = diffSegments(
-        old,
-        "fish and bird",
-        "en",
-      );
+      const { segments, splits } = diffSegments(old, "fish and bird", "en");
 
       // No splits — words are too different
       expect(splits.size).toBe(0);
@@ -311,6 +316,45 @@ describe("diffSegments", () => {
 
       expect(newHello?.id).toBe(oldHello.id);
       expect(newWorld?.id).toBe(oldWorld.id);
+    });
+  });
+
+  describe("repeated words match the nearest occurrence", () => {
+    it("keeps a repeated word's identity on the first occurrence", () => {
+      const old = segmentText("hello world", "en");
+      const { segments } = diffSegments(old, "hello there hello", "en");
+
+      const oldHello = old.find((s) => s.string === "hello")!;
+      const hellos = segments.filter((s) => s.string === "hello");
+
+      expect(hellos).toHaveLength(2);
+      // The leading "hello" is the one that was already on screen; the trailing
+      // one is new. Matching the trailing one instead makes the text visibly
+      // fly across the block.
+      expect(hellos[0]?.id).toBe(oldHello.id);
+      expect(hellos[1]?.id).not.toBe(oldHello.id);
+    });
+
+    it("matches the import line to the import line, not to a later usage", () => {
+      const old = segmentText(
+        "import { TextMorph } from 'torph'\n\nconst m = new TextMorph({});",
+        "en",
+      );
+      const { segments } = diffSegments(
+        old,
+        "import { TextMorph } from 'torph/vue'\n\n<script setup>\n  import { TextMorph } from 'torph/vue';\n</script>",
+        "en",
+      );
+
+      // The old import line owns the bare "TextMorph" ID — "new TextMorph({});"
+      // is one word, so its "TextMorph" is qualified by position.
+      const oldImportTextMorph = old.find((s) => s.string === "TextMorph")!;
+      expect(oldImportTextMorph.id).toBe("TextMorph");
+
+      // Assert by document position, not by segment: when the diff picks the
+      // wrong occurrence the leading "TextMorph" is char-morphed, so there is
+      // no whole "TextMorph" segment there to look for.
+      expect(idAt(segments, "TextMorph")).toBe(oldImportTextMorph.id);
     });
   });
 });
