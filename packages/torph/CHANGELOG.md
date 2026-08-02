@@ -1,5 +1,56 @@
 # torph
 
+## 0.0.10
+
+### Patch Changes
+
+- 4462d5e: Fix the container staying collapsed at `0px` after text is cleared and retyped
+
+  When text was cleared and a new character typed before the fade completed,
+  `element.offsetWidth` measured 0 and hit the early-return guard in
+  `transitionContainerSize`, leaving inline `width`/`height` pinned at `0px`
+  permanently. The guard now resets both to `auto` before returning, so the
+  container reverts to natural content sizing.
+
+  Fixes #43
+
+- 4462d5e: Improve enter animation timings
+
+  Entering segments animated their transform from a single keyframe with no
+  explicit end state, and faded in from the moment the morph started — so new
+  characters appeared before the segments around them had moved into place. The
+  transform now runs as an explicit two-keyframe animation ending at `none`, and
+  the fade for new segments is delayed by a quarter of the duration so movement
+  resolves first.
+
+- 4462d5e: Use subpixel measurements for morph layout
+
+  Layout previously read `offsetWidth`/`offsetHeight`/`offsetLeft`/`offsetTop`,
+  which round to whole pixels. At small sizes and on fractional-DPI displays the
+  rounding accumulated across segments, so characters drifted from their measured
+  positions and the container size transition landed slightly off. Measurement now
+  goes through `getBoundingClientRect()`, with exiting segments positioned
+  relative to the container's rect.
+
+- 4462d5e: Fix the `TextMorph` type not passing through from the Svelte build
+
+  `torph/svelte` exported the component without a type declaration, so
+  TypeScript consumers got an implicit `any` (or an error under
+  `noImplicitAny`) when importing `TextMorph`. It is now declared as
+  `Component<TextMorphProps>`.
+
+- b063c2e: Fix Vue `TextMorph` rendering an empty element until the `text` prop changes
+
+  A static `:text` value never reached the morph controller, so the root element
+  stayed empty until reactivity pushed a new value through. This was most visible
+  in Nuxt, where the SSR markup was empty too.
+  - Attaching the controller now seeds it with the current `text`.
+  - The initial text is rendered as the element's child on both the server and the
+    client, so SSR markup contains the text and hydration matches it. This
+    replaces the `import.meta.server` check, which was never substituted inside
+    the published bundle — Nitro externalizes `torph`, leaving `import.meta.server`
+    undefined at runtime, and the CJS build compiled the branch away entirely.
+
 ## 0.0.9
 
 ### Patch Changes

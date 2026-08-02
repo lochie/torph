@@ -10,6 +10,7 @@
   "ignore": [
     "react-example",
     "svelte-example",
+    "svelte-ssr-example",
     "typescript-example",
     "vue-example",
     "site"
