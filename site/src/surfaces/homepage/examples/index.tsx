@@ -4,6 +4,9 @@ import { ExampleAction } from "./action";
 import { ExamplePricing } from "./pricing";
 import { ExampleCopy } from "./copy";
 import { ExampleNumber } from "./number";
+import { ExampleResponsive } from "./responsive";
+import { ExampleRewrite } from "./rewrite";
+import { ExampleResize } from "./resize";
 
 export const Examples = () => {
   return (
@@ -19,6 +22,15 @@ export const Examples = () => {
       </div>
       <div className={styles.example}>
         <ExampleNumber />
+      </div>
+      <div className={styles.example}>
+        <ExampleResponsive />
+      </div>
+      <div className={styles.example}>
+        <ExampleRewrite />
+      </div>
+      <div className={styles.example}>
+        <ExampleResize />
       </div>
     </div>
   );

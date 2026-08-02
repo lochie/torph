@@ -92,11 +92,10 @@ ${populateExample(
 )}`}
             >
               <TextMorph>
-                {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';`}
-              </TextMorph>
-              {`
-            
+                {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}'
+               
 ${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}`}
+              </TextMorph>
             </CodeBlock>
           </div>
         </section>
