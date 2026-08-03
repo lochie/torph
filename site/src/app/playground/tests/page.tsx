@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { PlaygroundTests } from "@/surfaces/playground-tests";
-import { extractCaseSources } from "@/surfaces/playground-tests/case-source";
+import { Playground } from "@/surfaces/playground";
+import { extractCaseSources } from "@/surfaces/playground/case-source";
 
 function readCaseSources(): Record<string, string> {
   const candidates = [
@@ -20,5 +20,5 @@ function readCaseSources(): Record<string, string> {
 }
 
 export default function Page() {
-  return <PlaygroundTests sources={readCaseSources()} />;
+  return <Playground sources={readCaseSources()} />;
 }

@@ -9,7 +9,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-  const wide = pathname?.startsWith("/playground/tests");
+  const wide = pathname?.startsWith("/playground");
 
   return (
     <div className={`${styles.container} ${wide ? styles.wide : ""}`}>

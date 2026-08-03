@@ -13,7 +13,7 @@ import {
 const L = "en";
 
 // Run by both the vitest suite in `packages/torph` and the playground at
-// `/playground/tests`. Adding a case here adds it to both.
+// `/playground`. Adding a case here adds it to both.
 export const CASES: TestCase[] = [
   // ── Basics: word persistence, enter, exit, reorder ──
   {
@@ -99,8 +99,18 @@ export const CASES: TestCase[] = [
     ],
     verify: (t) =>
       combineResults(
-        verifyWordPersistence(t, "the quick brown fox", "the slow brown dog", "brown"),
-        verifyWordPersistence(t, "the quick brown fox", "the slow brown dog", "the"),
+        verifyWordPersistence(
+          t,
+          "the quick brown fox",
+          "the slow brown dog",
+          "brown",
+        ),
+        verifyWordPersistence(
+          t,
+          "the quick brown fox",
+          "the slow brown dog",
+          "the",
+        ),
       ),
   },
   {
@@ -120,7 +130,8 @@ export const CASES: TestCase[] = [
         newThes.length === 2 &&
         oldThes[0]!.id === newThes[0]!.id &&
         oldThes[1]!.id === newThes[1]!.id;
-      const distinct = newThes.length === 2 && newThes[0]!.id !== newThes[1]!.id;
+      const distinct =
+        newThes.length === 2 && newThes[0]!.id !== newThes[1]!.id;
       const andPersists =
         old.find((s: Segment) => s.string === "and")?.id ===
         segments.find((s: Segment) => s.string === "and")?.id;
@@ -496,8 +507,7 @@ export const CASES: TestCase[] = [
       "Complex emoji (family, flag sequences) are treated as single grapheme segments.",
     tags: ["grapheme"],
     values: ["Hello 👨‍👩‍👧‍👦", "Goodbye 👨‍👩‍👧‍👦"],
-    verify: (t) =>
-      verifyWordPersistence(t, "Hello 👨‍👩‍👧‍👦", "Goodbye 👨‍👩‍👧‍👦", "👨‍👩‍👧‍👦"),
+    verify: (t) => verifyWordPersistence(t, "Hello 👨‍👩‍👧‍👦", "Goodbye 👨‍👩‍👧‍👦", "👨‍👩‍👧‍👦"),
   },
   {
     label: "Unicode accents",
@@ -521,8 +531,7 @@ export const CASES: TestCase[] = [
     description: "Hebrew text segmentation and persistence of shared words.",
     tags: ["i18n"],
     values: ["שלום עולם", "שלום חברים"],
-    verify: (t) =>
-      verifyWordPersistence(t, "שלום עולם", "שלום חברים", "שלום"),
+    verify: (t) => verifyWordPersistence(t, "שלום עולם", "שלום חברים", "שלום"),
   },
 
   // ── Stress & stability ──
