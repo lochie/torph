@@ -6,8 +6,6 @@ import { wrap } from "./wrap";
 
 const MAX_CHARS = 24;
 
-// Edits land mid-sentence, so every word after them reflows to a new position —
-// often onto a different line entirely.
 const states = [
   {
     tone: "Direct",

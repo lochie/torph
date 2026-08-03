@@ -3,7 +3,6 @@
 import React from "react";
 import styles from "./styles.module.scss";
 import pkg from "../../../../packages/torph/package.json";
-import bundleSizes from "./bundle-sizes.json";
 import { TESTS } from "./tests";
 import type { Speed, EasingKey, Align } from "./config";
 import { SPEEDS, EASINGS, ALIGNS } from "./config";
@@ -13,10 +12,18 @@ import type { Result } from "@torph/test-cases";
 
 const SANDBOX = -1;
 
+type BundleSize = {
+  name: string;
+  gzip: number;
+  publishedGzip: number | null;
+};
+
 export const Playground = ({
   sources = {},
+  bundleSizes = [],
 }: {
   sources?: Record<string, string>;
+  bundleSizes?: BundleSize[];
 }) => {
   const [selected, setSelected] = React.useState(0);
   const [filter, setFilter] = React.useState("");
@@ -109,27 +116,34 @@ export const Playground = ({
           )}
         </nav>
 
-        <div className={styles.bundles}>
-          {bundleSizes.map((b) => {
-            const diff = b.gzip - b.publishedGzip;
-            return (
-              <span
-                key={b.name}
-                title={`${b.name}: ${(b.gzip / 1024).toFixed(2)}kB gz local vs ${(
-                  b.publishedGzip / 1024
-                ).toFixed(2)}kB gz published`}
-              >
-                {b.name} <strong>{(b.gzip / 1024).toFixed(1)}kB</strong>
-                {diff !== 0 && (
-                  <em className={diff > 0 ? styles.up : styles.down}>
-                    {diff > 0 ? "+" : ""}
-                    {diff}B
-                  </em>
-                )}
-              </span>
-            );
-          })}
-        </div>
+        {bundleSizes.length > 0 && (
+          <div className={styles.bundles}>
+            {bundleSizes.map((b) => {
+              const diff =
+                b.publishedGzip === null ? null : b.gzip - b.publishedGzip;
+              const published =
+                b.publishedGzip === null
+                  ? "published size unavailable"
+                  : `${(b.publishedGzip / 1024).toFixed(2)}kB gz published`;
+              return (
+                <span
+                  key={b.name}
+                  title={`${b.name}: ${(b.gzip / 1024).toFixed(
+                    2,
+                  )}kB gz local vs ${published}`}
+                >
+                  {b.name} <strong>{(b.gzip / 1024).toFixed(1)}kB</strong>
+                  {diff !== null && diff !== 0 && (
+                    <em className={diff > 0 ? styles.up : styles.down}>
+                      {diff > 0 ? "+" : ""}
+                      {diff}B
+                    </em>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
       </aside>
 
       <main className={styles.main}>
