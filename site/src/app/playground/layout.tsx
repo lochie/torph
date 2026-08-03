@@ -1,8 +1,11 @@
-"use client";
-
+import type { Metadata } from "next";
 import styles from "./layout.module.scss";
 
-export default function RootLayout({
+export const metadata: Metadata = {
+  robots: { index: false },
+};
+
+export default function PlaygroundLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

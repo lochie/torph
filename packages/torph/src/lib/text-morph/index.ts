@@ -10,16 +10,20 @@ import {
   resolveExitingAnchors,
 } from "../utils/flip";
 import {
+  clearContainerTransition,
+  holdContainerSize,
   transitionContainerSize,
 } from "../utils/animate";
 import { animateExit, animateEnterOrPersist } from "./utils/animate";
-import { detachFromFlow, reconcileChildren } from "../utils/dom";
+import { detachFromFlow, splitWordSpans, reconcileChildren } from "../utils/dom";
+import { diffSegments } from "./utils/diff";
 import { addStyles, removeStyles } from "../utils/styles";
 import {
   ATTR_ROOT,
   ATTR_DEBUG,
   ATTR_EXITING,
   ATTR_ID,
+  EMPTY_ID,
 } from "../utils/constants";
 import {
   type ReducedMotionState,
@@ -39,18 +43,23 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
 
 export class TextMorph {
   private element: HTMLElement;
-  private options: Omit<TextMorphOptions, "element" | "ease"> & { ease?: string } = {};
+  private options: Omit<TextMorphOptions, "element" | "ease"> & {
+    ease?: string;
+  } = {};
 
   private data: HTMLElement | string;
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
+  private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
 
-
   constructor(options: TextMorphOptions) {
-    const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
+    const { ease: rawEase, ...rest } = {
+      ...DEFAULT_TEXT_MORPH_OPTIONS,
+      ...options,
+    };
     const { ease, duration } = resolveEase(rawEase, rest.duration!);
 
     this.options = { ...rest, ease, duration };
@@ -63,9 +72,6 @@ export class TextMorph {
 
     if (!this.isDisabled()) {
       this.element.setAttribute(ATTR_ROOT, "");
-      this.element.style.transitionDuration = `${this.options.duration}ms`;
-      this.element.style.transitionTimingFunction = this.options.ease!;
-
       if (options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     }
 
@@ -77,6 +83,7 @@ export class TextMorph {
 
   destroy() {
     this.reducedMotion?.destroy();
+    clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
     this.element.removeAttribute(ATTR_DEBUG);
@@ -112,10 +119,36 @@ export class TextMorph {
   }
 
   private createTextGroup(value: string, element: HTMLElement) {
-    const oldWidth = element.offsetWidth;
-    const oldHeight = element.offsetHeight;
+    // Measured before a running transition is aborted below, so an interrupted
+    // morph carries on from the size on screen rather than snapping.
+    const oldRect = element.getBoundingClientRect();
+    const oldWidth = oldRect.width;
+    const oldHeight = oldRect.height;
 
-    const segments = segmentText(value, this.options.locale!);
+    let segments: Segment[];
+    let splits: Map<string, Segment[]>;
+
+    if (this.previousSegments.length > 0) {
+      const result = diffSegments(
+        this.previousSegments,
+        value,
+        this.options.locale!,
+      );
+      segments = result.segments;
+      splits = result.splits;
+    } else {
+      segments = segmentText(value, this.options.locale!);
+      splits = new Map();
+    }
+
+    // Keep a zero-width space segment so the container always has in-flow
+    // content, preserving the line box height during exit animations.
+    const isEmptyTransition = segments.length === 0;
+    if (isEmptyTransition) {
+      segments = [{ id: EMPTY_ID, string: "\u200B" }];
+    }
+
+    splitWordSpans(element, splits);
 
     this.prevMeasures = measure(this.element);
     const oldChildren = Array.from(element.children) as HTMLElement[];
@@ -128,9 +161,7 @@ export class TextMorph {
     );
 
     const exitingSet = new Set(exiting);
-    const oldIds = oldChildren.map(
-      (c) => c.getAttribute(ATTR_ID) as string,
-    );
+    const oldIds = oldChildren.map((c) => c.getAttribute(ATTR_ID) as string);
     const exitingAnchorId = resolveExitingAnchors(
       oldChildren,
       exitingSet,
@@ -138,14 +169,22 @@ export class TextMorph {
       newIds,
     );
 
-    detachFromFlow(exiting);
+    detachFromFlow(element, exiting);
     reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(this.element);
-    this.updateStyles(segments);
+
+    // First-frame positions have to be measured at the old width, not derived
+    // from it — text-align has no effect on content that overflows.
+    element.style.width = `${oldWidth}px`;
+    void element.offsetWidth;
+    const firstFrameMeasures = measure(this.element);
+    element.style.width = "auto";
+
+    this.updateStyles(segments, firstFrameMeasures);
 
     exiting.forEach((child) => {
-      if (this.isInitialRender) {
+      if (this.isInitialRender || child.getAttribute(ATTR_ID) === EMPTY_ID) {
         child.remove();
         return;
       }
@@ -164,6 +203,8 @@ export class TextMorph {
       });
     });
 
+    this.previousSegments = segments;
+
     if (this.isInitialRender) {
       this.isInitialRender = false;
       element.style.width = "auto";
@@ -171,16 +212,29 @@ export class TextMorph {
       return;
     }
 
-    transitionContainerSize(
-      element,
-      oldWidth,
-      oldHeight,
-      this.options.duration!,
-      this.options.onAnimationComplete,
-    );
+    if (isEmptyTransition) {
+      holdContainerSize(
+        element,
+        oldWidth,
+        oldHeight,
+        this.options.duration!,
+        this.options.onAnimationComplete,
+        this.options.onAnimationCancel,
+      );
+    } else {
+      transitionContainerSize(
+        element,
+        oldWidth,
+        oldHeight,
+        this.options.duration!,
+        this.options.ease!,
+        this.options.onAnimationComplete,
+        this.options.onAnimationCancel,
+      );
+    }
   }
 
-  private updateStyles(segments: Segment[]) {
+  private updateStyles(segments: Segment[], firstFrameMeasures: Measures) {
     if (this.isInitialRender) return;
 
     const children = Array.from(this.element.children) as HTMLElement[];
@@ -192,7 +246,9 @@ export class TextMorph {
 
     children.forEach((child, index) => {
       if (child.hasAttribute(ATTR_EXITING)) return;
+      if (child.tagName === "BR") return;
       const key = child.getAttribute(ATTR_ID) || `child-${index}`;
+      if (key === EMPTY_ID) return;
       const isNew = !this.prevMeasures[key];
 
       const deltaKey = isNew
@@ -204,7 +260,7 @@ export class TextMorph {
         : key;
 
       const { dx: deltaX, dy: deltaY } = deltaKey
-        ? computeDelta(this.prevMeasures, this.currentMeasures, deltaKey)
+        ? computeDelta(this.prevMeasures, firstFrameMeasures, deltaKey)
         : { dx: 0, dy: 0 };
 
       animateEnterOrPersist(child, {
@@ -216,5 +272,4 @@ export class TextMorph {
       });
     });
   }
-
 }

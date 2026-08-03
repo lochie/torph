@@ -27,146 +27,105 @@ export function cancelAnimations(element: HTMLElement): {
   return { tx, ty, opacity };
 }
 
-export function animateExit(
-  child: HTMLElement,
-  options: {
-    dx: number;
-    dy: number;
-    duration: number;
-    ease: string;
-    scale: boolean;
-  },
-) {
-  const { dx, dy, duration, ease, scale } = options;
+type PendingTransition = {
+  stop: () => void;
+  onCancel?: () => void;
+};
 
-  child.animate(
-    {
-      transform: scale
-        ? `translate(${dx}px, ${dy}px) scale(0.95)`
-        : `translate(${dx}px, ${dy}px)`,
-      offset: 1,
-    },
-    {
-      duration,
-      easing: ease,
-      fill: "both",
-    },
-  );
+const pending = new WeakMap<HTMLElement, PendingTransition>();
 
-  const fadeAnimation = child.animate(
-    {
-      opacity: 0,
-      offset: 1,
-    },
-    {
-      duration: fadeDuration(duration, 0.25),
-      easing: "linear",
-      fill: "both",
-    },
-  );
-
-  fadeAnimation.onfinish = () => child.remove();
+function restoreSize(element: HTMLElement) {
+  element.style.width = "auto";
+  element.style.height = "auto";
+  element.style.transitionProperty = "";
 }
 
-export function animateEnterOrPersist(
-  child: HTMLElement,
-  options: {
-    deltaX: number;
-    deltaY: number;
-    isNew: boolean;
-    duration: number;
-    ease: string;
-  },
-) {
-  const { deltaX, deltaY, isNew, duration, ease } = options;
+// A running transition uses `fill: "both"`, which outranks inline styles, so
+// anything setting width/height directly has to stop it first.
+export function abortContainerTransition(element: HTMLElement) {
+  const entry = pending.get(element);
+  if (!entry) return;
+  pending.delete(element);
+  entry.stop();
+  entry.onCancel?.();
+}
 
-  const prev = cancelAnimations(child);
-
-  const startX = deltaX + prev.tx;
-  const startY = deltaY + prev.ty;
-
-  child.animate(
-    {
-      transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
-      offset: 0,
-    },
-    {
-      duration,
-      easing: ease,
-      fill: "both",
-    },
-  );
-
-  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
-  if (startOpacity < 1) {
-    child.animate(
-      [{ opacity: startOpacity }, { opacity: 1 }],
-      {
-        duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
-        easing: "linear",
-        fill: "both",
-      },
-    );
+// Fires neither callback — teardown is not an animation event.
+export function clearContainerTransition(element: HTMLElement) {
+  const entry = pending.get(element);
+  if (entry) {
+    pending.delete(element);
+    entry.stop();
   }
+  restoreSize(element);
 }
-
-let pendingCleanup: (() => void) | null = null;
 
 export function transitionContainerSize(
   element: HTMLElement,
   oldWidth: number,
   oldHeight: number,
   duration: number,
+  ease: string,
   onComplete?: () => void,
+  onCancel?: () => void,
 ) {
-  // Cancel any pending cleanup from a previous transition
-  if (pendingCleanup) {
-    pendingCleanup();
-    pendingCleanup = null;
-  }
+  abortContainerTransition(element);
 
   if (oldWidth === 0 || oldHeight === 0) {
-    element.style.width = "auto";
-    element.style.height = "auto";
+    restoreSize(element);
+    onCancel?.();
     return;
   }
 
+  // WAAPI drives the size instead, so it shares a start time with the items
+  element.style.transitionProperty = "none";
   element.style.width = "auto";
   element.style.height = "auto";
   void element.offsetWidth;
 
-  const newWidth = element.offsetWidth;
-  const newHeight = element.offsetHeight;
+  const newRect = element.getBoundingClientRect();
+  const newWidth = newRect.width;
+  const newHeight = newRect.height;
 
-  element.style.width = `${oldWidth}px`;
-  element.style.height = `${oldHeight}px`;
-  void element.offsetWidth;
+  const anim = element.animate(
+    [
+      { width: `${oldWidth}px`, height: `${oldHeight}px` },
+      { width: `${newWidth}px`, height: `${newHeight}px` },
+    ],
+    { duration, easing: ease, fill: "both" },
+  );
 
-  element.style.width = `${newWidth}px`;
-  element.style.height = `${newHeight}px`;
-
-  function cleanup() {
-    element.removeEventListener("transitionend", onEnd);
-    clearTimeout(fallbackTimer);
-    pendingCleanup = null;
-    element.style.width = "auto";
-    element.style.height = "auto";
+  anim.onfinish = () => {
+    pending.delete(element);
+    anim.cancel();
+    restoreSize(element);
     onComplete?.();
-  }
-
-  function onEnd(e: TransitionEvent) {
-    if (e.target !== element) return;
-    if (e.propertyName !== "width" && e.propertyName !== "height") return;
-    cleanup();
-  }
-
-  element.addEventListener("transitionend", onEnd);
-  const fallbackTimer = setTimeout(cleanup, duration + 50);
-  pendingCleanup = () => {
-    element.removeEventListener("transitionend", onEnd);
-    clearTimeout(fallbackTimer);
-    element.style.width = "auto";
-    element.style.height = "auto";
-    pendingCleanup = null;
   };
+
+  pending.set(element, { stop: () => anim.cancel(), onCancel });
+}
+
+// For an emptied value: nothing is left to size the container to, so without
+// this it collapses and drags the exiting text with it when centred.
+export function holdContainerSize(
+  element: HTMLElement,
+  width: number,
+  height: number,
+  duration: number,
+  onComplete?: () => void,
+  onCancel?: () => void,
+) {
+  abortContainerTransition(element);
+
+  element.style.transitionProperty = "none";
+  element.style.width = `${width}px`;
+  element.style.height = `${height}px`;
+
+  const timer = setTimeout(() => {
+    pending.delete(element);
+    restoreSize(element);
+    onComplete?.();
+  }, duration);
+
+  pending.set(element, { stop: () => clearTimeout(timer), onCancel });
 }

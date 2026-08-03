@@ -8,17 +8,19 @@
     "dev": "pnpm run watch & pnpm run site:dev",
     "build": "pnpm --filter=torph build",
     "site:dev": "pnpm --filter=site dev",
-    "site:build": "pnpm run build && pnpm --filter=site build",
+    "site:build": "pnpm run build && node scripts/bundle-sizes.mjs && pnpm --filter=site build",
     "example:react": "pnpm --filter=react-example dev",
     "example:svelte": "pnpm --filter=svelte-example dev",
     "example:svelte-ssr": "pnpm --filter=svelte-ssr-example dev",
     "example:typescript": "pnpm --filter=typescript-example dev",
     "example:vue": "pnpm --filter=vue-example dev",
-    "lint": "pnpm --filter=torph lint",
-    "lint:fix": "pnpm --filter=torph lint:fix",
+    "lint": "pnpm --filter=torph lint && pnpm --filter=site lint",
+    "lint:fix": "pnpm --filter=torph lint:fix && pnpm --filter=site lint:fix",
     "pre-commit": "pnpm run --filter=torph pre-commit",
     "version": "changeset version && git add --all",
-    "release": "pnpm build && changeset publish && git push --follow-tags"
+    "test": "pnpm --filter=torph test",
+    "typecheck": "pnpm --filter=torph typecheck",
+    "release": "pnpm run typecheck && pnpm run test && pnpm build && changeset publish && git push --follow-tags"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.2",

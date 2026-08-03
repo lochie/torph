@@ -47,6 +47,10 @@ export const Homepage = () => {
   const [frameworkIndex, setFrameworkIndex] = useState(0);
   const { trigger } = useWebHaptics();
 
+  const codeExample = `import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}'
+               
+${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}`;
+
   return (
     <div className={styles.page}>
       <div className={styles.container}>
@@ -83,20 +87,8 @@ export const Homepage = () => {
               ))}
             </div>
 
-            <CodeBlock
-              code={`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';
-
-${populateExample(
-  frameworks[frameworkIndex % frameworks.length].example,
-  text,
-)}`}
-            >
-              <TextMorph>
-                {`import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}';`}
-              </TextMorph>
-              {`
-            
-${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}`}
+            <CodeBlock code={codeExample}>
+              <TextMorph>{codeExample}</TextMorph>
             </CodeBlock>
           </div>
         </section>

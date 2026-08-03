@@ -57,12 +57,15 @@ export function animateEnterOrPersist(
 
   const startX = deltaX + prev.tx;
   const startY = deltaY + prev.ty;
+  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
 
   child.animate(
-    {
-      transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
-      offset: 0,
-    },
+    [
+      {
+        transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
+      },
+      { transform: "none" },
+    ],
     {
       duration,
       easing: ease,
@@ -70,15 +73,12 @@ export function animateEnterOrPersist(
     },
   );
 
-  const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
   if (startOpacity < 1) {
-    child.animate(
-      [{ opacity: startOpacity }, { opacity: 1 }],
-      {
-        duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
-        easing: "linear",
-        fill: "both",
-      },
-    );
+    child.animate([{ opacity: startOpacity }, { opacity: 1 }], {
+      duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
+      delay: isNew ? fadeDuration(duration, 0.25) : 0,
+      easing: "linear",
+      fill: "both",
+    });
   }
 }

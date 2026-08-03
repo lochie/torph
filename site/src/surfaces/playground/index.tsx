@@ -1,199 +1,222 @@
 "use client";
 
-import styles from "./styles.module.scss";
-
 import React from "react";
-import { useSearchParams } from "next/navigation";
-import { TextMorph } from "torph/react";
-import { Button } from "@/components/button";
-import { Box } from "@/components/box";
-import { Dropdown } from "@/components/dropdown";
-import { AnimatePresence, motion } from "motion/react";
+import styles from "./styles.module.scss";
+import pkg from "../../../../packages/torph/package.json";
+import { TESTS } from "./tests";
+import type { Speed, EasingKey, Align } from "./config";
+import { SPEEDS, EASINGS, ALIGNS } from "./config";
+import { TestDetail } from "./test-detail";
+import { SandboxCard } from "./sandbox-card";
+import type { Result } from "@torph/test-cases";
 
-const DEFAULT_WORDS = [
-  "Torph playground",
-  "Torph animates text",
-  "Isn't Torph fun?",
-  "Enjoy and have fun!",
-];
+const SANDBOX = -1;
 
-const TEXT_ALIGNMENTS: React.CSSProperties["textAlign"][] = [
-  "left",
-  "center",
-  "right",
-];
+type BundleSize = {
+  name: string;
+  gzip: number;
+  publishedGzip: number | null;
+};
 
-function usePlaygroundParams() {
-  const searchParams = useSearchParams();
+export const Playground = ({
+  bundleSizes = [],
+}: {
+  bundleSizes?: BundleSize[];
+}) => {
+  const [selected, setSelected] = React.useState(0);
+  const [filter, setFilter] = React.useState("");
+  const [speed, setSpeed] = React.useState<Speed>("default");
+  const [easing, setEasing] = React.useState<EasingKey>("default");
+  const [align, setAlign] = React.useState<Align>("left");
+  const [debug, setDebug] = React.useState(false);
 
-  const wordsParam = searchParams.get("words");
-  const alignParam = searchParams.get("align");
-
-  const initialWords = wordsParam
-    ? wordsParam.split("|").filter(Boolean)
-    : DEFAULT_WORDS;
-  const initialAlign =
-    alignParam && TEXT_ALIGNMENTS.includes(alignParam as any)
-      ? (alignParam as React.CSSProperties["textAlign"])
-      : TEXT_ALIGNMENTS[1];
-
-  return { initialWords, initialAlign };
-}
-
-const EXAMPLES = [
-  {
-    label: "Status indicator",
-    words: ["Processing Action", "Action Safe", "Action Warning"],
-    align: "center" as const,
-  },
-  {
-    label: "Numbers",
-    words: ["$1,234", "$5,678", "$12,345,678", "$99"],
-    align: "right" as const,
-  },
-  {
-    label: "Emoji",
-    words: ["Hello 👋", "Goodbye 👋"],
-    align: "left" as const,
-  },
-];
-
-function updateURL(words: string[], align: string) {
-  const params = new URLSearchParams();
-  params.set("words", words.join("|"));
-  params.set("align", align);
-  window.history.replaceState(null, "", `?${params.toString()}`);
-}
-
-export const Playground = () => {
-  const { initialWords, initialAlign } = usePlaygroundParams();
-  const [wordIndex, setWordIndex] = React.useState(0);
-  const [words, setWords] = React.useState(initialWords);
-  const [textAlignment, setTextAlignment] = React.useState(initialAlign);
-
+  const [results, setResults] = React.useState<(Result | null)[]>(() =>
+    TESTS.map(() => null),
+  );
   React.useEffect(() => {
-    updateURL(words, textAlignment!.toString());
-  }, [words, textAlignment]);
+    setResults(TESTS.map((t) => t.verify()));
+  }, []);
+
+  const query = filter.trim().toLowerCase();
+  const visible = TESTS.map((_, i) => i).filter((i) => {
+    if (!query) return true;
+    const t = TESTS[i]!;
+    return (
+      t.label.toLowerCase().includes(query) ||
+      t.tags.some((tag) => tag.toLowerCase().includes(query))
+    );
+  });
+
+  const failing = results.filter((r) => r && !r.pass).length;
+  const ran = results.filter(Boolean).length;
+  const current = selected >= 0 ? TESTS[selected] : null;
 
   return (
-    <div className={styles.testbench}>
-      <Box as="div" gap={12} flexDirection="column" alignItems="stretch">
-        <Box as="div" gap={4} justifyContent="flex-end">
-          {EXAMPLES.map((example) => (
-            <Button
-              key={example.label}
-              type="button"
-              style={{
-                display: "inline-block",
-                marginRight: "0.5rem",
-                marginBottom: "0.5rem",
-              }}
-              onClick={() => {
-                setWords(example.words);
-                setTextAlignment(example.align);
-                setWordIndex(0);
-              }}
-            >
-              {example.label}
-            </Button>
-          ))}
-        </Box>
-
-        <div
-          className={styles.demo}
-          style={{
-            textAlign: textAlignment,
-          }}
-        >
-          <TextMorph>{words[wordIndex]}</TextMorph>
-
-          <div className={styles.controls}>
-            <Button
-              type="button"
-              wide
-              onClick={() => {
-                setWordIndex((i) => (i + 1) % words.length);
-              }}
-            >
-              Morph
-            </Button>
-          </div>
+    <div className={styles.layout}>
+      <aside className={styles.sidebar}>
+        <div className={styles.sidebarHead}>
+          <span className={styles.count}>
+            {failing > 0 ? (
+              <span className={styles.fail}>{failing} failing</span>
+            ) : (
+              `${ran} passing`
+            )}
+          </span>
+          <span className={styles.version}>v{pkg.version}</span>
         </div>
-      </Box>
 
-      <Box
-        as="div"
-        flexDirection="column"
-        alignItems="stretch"
-        justifyContent="stretch"
-        style={{ padding: "2rem 0" }}
-      >
-        <Box as="div" justifyContent="space-between">
-          <Dropdown
-            options={TEXT_ALIGNMENTS.map((alignment) => ({
-              label: alignment!.toString(),
-              onClick: () => setTextAlignment(alignment),
-            }))}
+        <input
+          className={styles.search}
+          placeholder="Filter…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <nav className={styles.list}>
+          <button
+            type="button"
+            className={`${styles.listItem} ${
+              selected === SANDBOX ? styles.listItemActive : ""
+            }`}
+            onClick={() => setSelected(SANDBOX)}
           >
-            <TextMorph>{textAlignment!.toString()}</TextMorph>
-          </Dropdown>
-          <Box as="div" gap={12}>
-            <form
-              className={styles.form}
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.currentTarget);
-                const word = formData.get("word");
-                if (typeof word === "string" && word.trim() !== "") {
-                  setWords((words) => [...words, word]);
-                  e.currentTarget.reset();
-                }
-              }}
-            >
-              <Box as="div" gap={12}>
-                <input name="word" type="text" placeholder="Add a word" />
-                <Button type="submit">Add</Button>
-              </Box>
-            </form>
-          </Box>
-        </Box>
-        <div className={styles.words}>
-          <AnimatePresence initial={false} mode="popLayout">
-            {words.map((word, i) => (
-              <motion.div
-                key={word}
-                layout="position"
-                style={{
-                  display: "inline-block",
-                  marginRight: "0.5rem",
-                  marginBottom: "0.5rem",
-                }}
-                initial={{ opacity: 0, scale: 0.95, originY: 0, originX: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: [0.19, 1, 0.22, 1] }}
+            <span className={styles.dotIdle} />
+            <span className={styles.listLabel}>Sandbox</span>
+          </button>
+
+          {visible.map((i) => {
+            const r = results[i];
+            return (
+              <button
+                key={TESTS[i]!.label}
+                type="button"
+                className={`${styles.listItem} ${
+                  selected === i ? styles.listItemActive : ""
+                }`}
+                onClick={() => setSelected(i)}
               >
-                <button
-                  type="button"
-                  disabled={words.length <= 1}
-                  onClick={() => {
-                    const newWords = [...words];
-                    newWords.splice(i, 1);
-                    setWords(newWords);
-                    if (i === wordIndex) {
-                      setWordIndex(0);
-                    } else if (i < wordIndex) {
-                      setWordIndex((prev) => prev - 1);
-                    }
-                  }}
+                <span
+                  className={
+                    !r
+                      ? styles.dotIdle
+                      : r.pass
+                        ? styles.dotPass
+                        : styles.dotFail
+                  }
+                />
+                <span className={styles.listLabel}>{TESTS[i]!.label}</span>
+              </button>
+            );
+          })}
+
+          {visible.length === 0 && (
+            <p className={styles.empty}>No cases match “{filter}”.</p>
+          )}
+        </nav>
+
+        {bundleSizes.length > 0 && (
+          <div className={styles.bundles}>
+            {bundleSizes.map((b) => {
+              const diff =
+                b.publishedGzip === null ? null : b.gzip - b.publishedGzip;
+              const published =
+                b.publishedGzip === null
+                  ? "published size unavailable"
+                  : `${(b.publishedGzip / 1024).toFixed(2)}kB gz published`;
+              return (
+                <span
+                  key={b.name}
+                  title={`${b.name}: ${(b.gzip / 1024).toFixed(
+                    2,
+                  )}kB gz local vs ${published}`}
                 >
-                  {word}
-                </button>
-              </motion.div>
+                  {b.name} <strong>{(b.gzip / 1024).toFixed(1)}kB</strong>
+                  {diff !== null && diff !== 0 && (
+                    <em className={diff > 0 ? styles.up : styles.down}>
+                      {diff > 0 ? "+" : ""}
+                      {diff}B
+                    </em>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </aside>
+
+      <main className={styles.main}>
+        <div className={styles.controls}>
+          <div className={styles.group}>
+            {(Object.keys(SPEEDS) as Speed[]).map((s) => (
+              <button
+                key={s}
+                type="button"
+                className={`${styles.btn} ${speed === s ? styles.btnActive : ""}`}
+                onClick={() => setSpeed(s)}
+              >
+                {s}
+              </button>
             ))}
-          </AnimatePresence>
+          </div>
+          <div className={styles.group}>
+            {(Object.keys(EASINGS) as EasingKey[]).map((e) => (
+              <button
+                key={e}
+                type="button"
+                className={`${styles.btn} ${easing === e ? styles.btnActive : ""}`}
+                onClick={() => setEasing(e)}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          <div className={styles.group}>
+            {ALIGNS.map((a) => (
+              <button
+                key={a}
+                type="button"
+                className={`${styles.btn} ${align === a ? styles.btnActive : ""}`}
+                onClick={() => setAlign(a)}
+                title={`Align ${a}`}
+              >
+                {a[0]!.toUpperCase()}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className={`${styles.btn} ${debug ? styles.btnActive : ""}`}
+            onClick={() => setDebug((d) => !d)}
+          >
+            debug
+          </button>
         </div>
-      </Box>
+
+        {current ? (
+          <TestDetail
+            key={current.label}
+            test={current}
+            result={results[selected] ?? null}
+            speed={speed}
+            easing={easing}
+            align={align}
+            debug={debug}
+            onTagClick={(tag) => setFilter(tag)}
+          />
+        ) : (
+          <SandboxCard
+            speed={speed}
+            easing={easing}
+            align={align}
+            debug={debug}
+          />
+        )}
+
+        <p className={styles.hint}>
+          <kbd>Space</kbd> morph · cases live in{" "}
+          <code>packages/test-cases/src/cases.ts</code>
+        </p>
+      </main>
     </div>
   );
 };

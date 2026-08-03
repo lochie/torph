@@ -1,6 +1,6 @@
 {
   "name": "torph",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Dependency-free animated text component.",
   "homepage": "https://torph.lochie.me",
   "author": "Lochie Axon",
@@ -48,8 +48,10 @@
   "scripts": {
     "build": "tsup && node scripts/build-svelte.mjs",
     "dev": "tsup --watch",
-    "lint": "eslint -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
-    "lint:fix": "eslint --fix -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "pre-commit": "lint-staged"
   },
   "keywords": [
@@ -70,8 +72,8 @@
   "peerDependencies": {
     "react": ">=18",
     "react-dom": ">=18",
-    "vue": ">=3",
-    "svelte": ">=5"
+    "svelte": ">=5",
+    "vue": ">=3"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -88,24 +90,22 @@
     }
   },
   "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@torph/test-cases": "workspace:*",
     "@types/react": "^18.2.15",
-    "@typescript-eslint/eslint-plugin": "^6.8.0",
-    "@typescript-eslint/parser": "^6.8.0",
     "eslint": "^9.36.0",
-    "eslint-config-airbnb": "^19.0.4",
-    "eslint-config-airbnb-typescript": "^17.1.0",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-import": "^2.28.1",
-    "eslint-plugin-jsx-a11y": "^6.7.1",
-    "eslint-plugin-prettier": "^5.0.1",
     "eslint-plugin-react": "^7.33.2",
-    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.9.0",
     "prettier": "^3.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "svelte": "^5.0.0",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.65.0",
+    "vitest": "^4.0.18",
     "vue": "^3.3.0"
   }
 }

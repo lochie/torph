@@ -14,7 +14,10 @@ import {
   findNearestAnchor,
   resolveExitingAnchors,
 } from "../utils/flip";
-import { transitionContainerSize } from "../utils/animate";
+import {
+  clearContainerTransition,
+  transitionContainerSize,
+} from "../utils/animate";
 import { detachFromFlow, reconcileChildren } from "../utils/dom";
 import { addStyles, removeStyles } from "../utils/styles";
 import {
@@ -71,8 +74,7 @@ export class NumberMorph {
 
     if (!this.isDisabled()) {
       this.element.setAttribute(ATTR_ROOT, "");
-      this.element.style.transitionDuration = `${this.duration}ms`;
-      this.element.style.transitionTimingFunction = this.ease;
+      // Digits slide vertically past the line box on enter/exit
       this.element.style.overflow = "hidden";
       addStyles();
     }
@@ -80,6 +82,7 @@ export class NumberMorph {
 
   destroy() {
     this.reducedMotion?.destroy();
+    clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
     removeStyles();
@@ -118,8 +121,10 @@ export class NumberMorph {
 
   private animate(segments: NumberSegment[]) {
     const element = this.element;
-    const oldWidth = element.offsetWidth;
-    const oldHeight = element.offsetHeight;
+    // Subpixel, to match what transitionContainerSize measures the new size with
+    const oldRect = element.getBoundingClientRect();
+    const oldWidth = oldRect.width;
+    const oldHeight = oldRect.height;
     const slideDistance = element.offsetHeight || 20;
 
     this.prevMeasures = measure(element);
@@ -143,7 +148,7 @@ export class NumberMorph {
       newIds,
     );
 
-    detachFromFlow(exiting);
+    detachFromFlow(element, exiting);
     reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(element);
@@ -183,6 +188,7 @@ export class NumberMorph {
       oldWidth,
       oldHeight,
       this.duration,
+      this.ease,
       this.onAnimationComplete,
     );
   }

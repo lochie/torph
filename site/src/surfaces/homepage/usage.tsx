@@ -14,7 +14,7 @@ textmorph.update('#');
 <script setup>
   import { TextMorph } from "torph/vue";
 </script>`,
-  svelte: `<TextMorph text="#"/>`,
+  svelte: `<TextMorph text="#" />`,
 };
 
 export const populateExample = (example: string, exampleText: string) => {

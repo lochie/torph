@@ -1,6 +1,7 @@
 import styles from "./styles.module.scss";
 
 import { version } from "./../../../../packages/torph/package.json";
+import Link from "next/link";
 
 export const Footer = () => {
   return (
@@ -22,7 +23,8 @@ export const Footer = () => {
         </a>
       </div>
       <div className={styles.details}>
-        <span>v{version}</span> •
+        <span>v{version}</span>
+        {" • "}
         <a
           href="https://github.com/lochie/torph"
           target="_blank"
@@ -30,6 +32,8 @@ export const Footer = () => {
         >
           GitHub
         </a>
+        {" • "}
+        <Link href="/playground">Playground</Link>
       </div>
     </footer>
   );

@@ -19,12 +19,21 @@ function childrenToString(node: React.ReactNode): string {
   if (Array.isArray(node)) return node.map(childrenToString).join("");
   if (React.isValidElement(node)) {
     throw new Error(
-      "TextMorph only accepts text content. Found a React element — use strings, numbers, or expressions instead."
+      "TextMorph only accepts text content. Found a React element — use strings, numbers, or expressions instead.",
     );
   }
   throw new Error(
-    `TextMorph received an unsupported child of type "${typeof node}".`
+    `TextMorph received an unsupported child of type "${typeof node}".`,
   );
+}
+
+function escapeHTML(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export const TextMorph = ({
@@ -36,7 +45,9 @@ export const TextMorph = ({
 }: TextMorphProps) => {
   const { ref, update } = useTextMorph(props);
   const text = childrenToString(children);
-  const initialHTML = React.useRef({ __html: text });
+  const initialHTML = React.useRef({
+    __html: escapeHTML(text).replace(/\n/g, "<br>"),
+  });
 
   React.useEffect(() => {
     update(text);
@@ -61,13 +72,17 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
   const configKey = MorphController.serializeConfig(props);
 
   React.useEffect(() => {
+    const controller = controllerRef.current;
     if (ref.current) {
-      controllerRef.current.attach(ref.current, props);
+      controller.attach(ref.current, props);
     }
 
     return () => {
-      controllerRef.current.destroy();
+      controller.destroy();
     };
+    // Keyed on the serialized config: re-attaching on every `props` identity
+    // would tear the controller down on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey]);
 
   const update = React.useCallback((text: string) => {

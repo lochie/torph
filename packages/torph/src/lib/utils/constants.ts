@@ -3,3 +3,4 @@ export const ATTR_ITEM = "torph-item";
 export const ATTR_ID = "torph-id";
 export const ATTR_EXITING = "torph-exiting";
 export const ATTR_DEBUG = "torph-debug";
+export const EMPTY_ID = "empty";
