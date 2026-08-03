@@ -1,19 +1,14 @@
-"use client";
-
-import { usePathname } from "next/navigation";
+import type { Metadata } from "next";
 import styles from "./layout.module.scss";
 
-export default function RootLayout({
+export const metadata: Metadata = {
+  robots: { index: false },
+};
+
+export default function PlaygroundLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pathname = usePathname();
-  const wide = pathname?.startsWith("/playground");
-
-  return (
-    <div className={`${styles.container} ${wide ? styles.wide : ""}`}>
-      {children}
-    </div>
-  );
+  return <div className={styles.container}>{children}</div>;
 }
