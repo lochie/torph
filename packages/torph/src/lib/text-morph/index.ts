@@ -232,9 +232,6 @@ export class TextMorph {
     }
 
     if (isEmptyTransition) {
-      // A container animation still running from the previous morph has
-      // fill: "both" and outranks the inline size set below, so it has to be
-      // stopped before the lock will hold.
       abortContainerTransition(element);
 
       // Lock container at old size while exits play so the container

@@ -96,24 +96,10 @@ function charSimilarity(a: string, b: string): number {
 
 const MIN_SIMILARITY = 0.4;
 
-/**
- * Pairing unmatched words runs a character-level LCS for every (old, new)
- * combination, so the work grows with the product of the two counts. Past this
- * budget the pairing is skipped and unmatched words enter and exit whole
- * instead of morphing character by character — the animation still runs, it
- * just loses the per-character detail on a rewrite large enough that nobody
- * can follow it anyway.
- */
+// Past these budgets the diff degrades instead of blocking the frame: pairing
+// is skipped so words enter and exit whole, then the diff is abandoned and the
+// value re-segmented. All of it runs synchronously before the first frame.
 const MAX_MORPH_PAIRINGS = 2_500;
-
-/**
- * The word-level LCS allocates one table entry per (old word, new word) pair,
- * so this is a memory ceiling as much as a time one. Roughly 1000 words on each
- * side costs ~30ms; past that the diff is abandoned and the value is segmented
- * from scratch. All of this runs synchronously inside `update()`, before the
- * first frame, so the ceiling is what keeps a pathological value from stalling
- * the page.
- */
 const MAX_LCS_CELLS = 1_000_000;
 
 export function diffSegments(
@@ -143,7 +129,6 @@ export function diffSegments(
       pendingSeps = [];
     }
   }
-  // Whatever is left never had a word to attach to, so it trails the value.
   const trailingSeparators = pendingSeps;
 
   const oldWordStrings = oldWords.map((g) => g.word);
@@ -238,10 +223,8 @@ export function diffSegments(
   const splits = new Map<string, Segment[]>();
   let charOffset = 0;
 
-  // Separators are emitted for every position, including before the first word
-  // and after the last one. Skipping the edges would drop leading indentation
-  // and trailing blank lines that `segmentText` keeps on the initial render,
-  // so the same value would render differently before and after a morph.
+  // Includes the edges — `segmentText` keeps leading and trailing whitespace on
+  // the initial render, so dropping it here would change the value on morph.
   function pushSeparators(seps: string[]) {
     for (const sep of seps) {
       if (sep === "\n") {

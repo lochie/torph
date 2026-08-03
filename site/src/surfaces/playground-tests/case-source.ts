@@ -1,14 +1,5 @@
-/**
- * Pulls each case's source text out of `packages/test-cases/src/cases.ts`.
- *
- * The bench shows this next to the running case so you can read what is
- * actually asserted. It is extracted from the real file rather than stored
- * alongside the cases, so the two can't drift — and rather than
- * `verify.toString()`, which returns transpiled (and in production, minified)
- * output.
- *
- * Runs on the server; see the route's `page.tsx`.
- */
+// Extracted from the real file rather than `verify.toString()`, which returns
+// transpiled output in dev and minified output in production.
 
 function skipQuoted(src: string, i: number, quote: string): number {
   i++;

@@ -2,11 +2,8 @@ import { segmentText, diffSegments } from "torph";
 import { CASES, ALL_TAGS } from "@torph/test-cases";
 import type { Result, TorphApi } from "@torph/test-cases";
 
-/**
- * The cases live in `packages/test-cases` so this page and the vitest suite in
- * `packages/torph` run the same definitions. This module only binds them to the
- * bundled package.
- */
+// Cases live in `packages/test-cases`, shared with the vitest suite. This only
+// binds them to the bundled package.
 export const torph: TorphApi = { segmentText, diffSegments };
 
 export type BenchCase = {
@@ -15,7 +12,6 @@ export type BenchCase = {
   tags: string[];
   values: string[];
   align?: "left" | "center" | "right";
-  /** Minimum visual lines expected — checked by the browser-only DOM panel. */
   minLines?: number;
   verify: () => Result;
 };

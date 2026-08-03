@@ -1,13 +1,7 @@
 import type { Result } from "@torph/test-cases";
 
-/**
- * Browser-only verification: layout, transforms, inline-style cleanup, frame
- * timing. None of it can run in the node test suite — it needs real geometry
- * and the Web Animations API — so it lives here and runs against the selected
- * case in the bench.
- *
- * The text-matching assertions are in `packages/test-cases`, shared with vitest.
- */
+// Needs real geometry and the Web Animations API, so none of this can run in
+// the node suite. Text-matching assertions live in `packages/test-cases`.
 
 export type VerifyDomFn = (root: HTMLElement) => Result;
 

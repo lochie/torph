@@ -16,7 +16,6 @@ const SANDBOX = -1;
 export const PlaygroundTests = ({
   sources = {},
 }: {
-  /** Case label → its source in `packages/test-cases/src/cases.ts`. */
   sources?: Record<string, string>;
 }) => {
   const [selected, setSelected] = React.useState(0);
@@ -26,7 +25,6 @@ export const PlaygroundTests = ({
   const [align, setAlign] = React.useState<Align>("left");
   const [debug, setDebug] = React.useState(false);
 
-  // Assertions are pure, so they all run once on mount.
   const [results, setResults] = React.useState<(Result | null)[]>(() =>
     TESTS.map(() => null),
   );

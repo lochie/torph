@@ -38,10 +38,6 @@ function segmentTable(from: string, to: string): string {
   return lines.join("\n");
 }
 
-/**
- * Builds a self-contained description of one case in its current state —
- * enough to reproduce and debug it without the page in front of you.
- */
 export function buildIssueReport({
   test,
   index,

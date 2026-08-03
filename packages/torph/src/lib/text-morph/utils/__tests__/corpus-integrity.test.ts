@@ -4,18 +4,9 @@ import type { Segment, TorphApi } from "@torph/test-cases";
 import { segmentText } from "../segment";
 import { diffSegments } from "../diff";
 
-/**
- * Guards the corpus itself rather than the library.
- *
- * A case that renders in the playground looks like coverage, but a `verify`
- * can pass without asserting anything — comparing a value to itself, or
- * checking a condition that holds however the diff behaves. The bench would
- * still show it green.
- *
- * So each case is re-run against deliberately broken implementations. A case
- * that passes under *every* saboteur is not testing the library, and fails
- * here.
- */
+// Guards the corpus, not the library: a `verify` can pass without asserting
+// anything and still look green. Each case is re-run against deliberately
+// broken implementations — passing under every one means it tests nothing.
 
 type Saboteur = { name: string; api: TorphApi };
 
@@ -89,7 +80,6 @@ describe("corpus integrity", () => {
         try {
           return testCase.verify(s.api).pass;
         } catch {
-          // A crash still means the case noticed something was wrong.
           return false;
         }
       });

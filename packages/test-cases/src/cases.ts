@@ -12,14 +12,8 @@ import {
 
 const L = "en";
 
-/**
- * The single definition of torph's behavioural test cases.
- *
- * Consumed by the vitest suite in `packages/torph` (which injects the source
- * build) and by the playground at `/playground/tests` (which injects the
- * bundled package and layers its own DOM, jump, and perf checks on top).
- * Adding a case here adds it to both.
- */
+// Run by both the vitest suite in `packages/torph` and the playground at
+// `/playground/tests`. Adding a case here adds it to both.
 export const CASES: TestCase[] = [
   // ── Basics: word persistence, enter, exit, reorder ──
   {
@@ -434,8 +428,7 @@ export const CASES: TestCase[] = [
       const oldIds = new Set(old.map((s: Segment) => s.id));
       const carried = segments.filter((s: Segment) => oldIds.has(s.id));
 
-      // Asserting only the absences here (no splits, no "abcdef") would hold
-      // for a diff that returned nothing at all, so check the positive too.
+      // Absences alone would hold for a diff that returned nothing at all.
       return combineResults(
         {
           pass: rendered === "xyz",

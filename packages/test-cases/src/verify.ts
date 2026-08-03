@@ -115,7 +115,6 @@ export function verifyCycleStability(
   return { pass: true, detail: `"${word}" ID stable across 4 cycles` };
 }
 
-/** Renders segments back to plain text, undoing the nbsp substitution. */
 export function renderSegments(segments: Segment[]): string {
   return segments
     .map((s) => s.string)

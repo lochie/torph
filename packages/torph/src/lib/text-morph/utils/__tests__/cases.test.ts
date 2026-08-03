@@ -3,14 +3,8 @@ import { CASES } from "@torph/test-cases";
 import { segmentText } from "../segment";
 import { diffSegments } from "../diff";
 
-/**
- * Runs the shared case corpus against the source build.
- *
- * The same cases are rendered and re-run at `/playground/tests` against the
- * bundled package, where they also pick up DOM, jump, and perf checks that need
- * a real browser. Cases live in `packages/test-cases` — add them there, not
- * here, and both surfaces get them.
- */
+// Cases live in `packages/test-cases` — adding one there adds it here and to
+// the playground.
 describe("shared test cases", () => {
   const torph = { segmentText, diffSegments };
 

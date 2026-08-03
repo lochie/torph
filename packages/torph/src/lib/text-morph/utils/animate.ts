@@ -112,15 +112,8 @@ export function animateEnterOrPersist(
 
 const pendingCleanups = new WeakMap<HTMLElement, () => void>();
 
-/**
- * Stops a container transition that is still running, firing its
- * `onAnimationCancel`.
- *
- * Callers that take over the element's width and height without starting a
- * transition of their own must do this first: a running animation has
- * `fill: "both"` and outranks inline styles, so it would keep driving the size
- * and then reset it to `auto` when it finished.
- */
+// A running transition uses `fill: "both"`, which outranks inline styles — so
+// anything setting width/height directly has to stop it first.
 export function abortContainerTransition(element: HTMLElement) {
   const prev = pendingCleanups.get(element);
   if (prev) {
@@ -147,7 +140,6 @@ export function transitionContainerSize(
   if (oldWidth === 0 || oldHeight === 0) {
     element.style.width = "auto";
     element.style.height = "auto";
-    // Nothing to animate from, so this morph never runs to completion.
     onCancel?.();
     return;
   }

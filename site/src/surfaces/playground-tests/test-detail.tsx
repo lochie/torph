@@ -84,7 +84,6 @@ export function TestDetail({
 }: {
   test: BenchCase;
   result: Result | null;
-  /** The case's source from `packages/test-cases/src/cases.ts`. */
   source?: string;
   speed: Speed;
   easing: EasingKey;
@@ -101,7 +100,6 @@ export function TestDetail({
   const [notes, setNotes] = React.useState("");
   const align = test.align ?? globalAlign;
 
-  // Browser-only results, recomputed on each morph while the panel is open.
   const [dom, setDom] = React.useState<Result | null>(null);
   const [jump, setJump] = React.useState<Result | null>(null);
   const [perf, setPerf] = React.useState<PerfResult | null>(null);
@@ -115,7 +113,6 @@ export function TestDetail({
     setIndex((i) => (i + 1) % test.values.length);
   }, [test.values.length]);
 
-  // Reset when the selected case changes.
   React.useEffect(() => {
     setIndex(0);
     setAuto(false);

@@ -27,12 +27,6 @@ function childrenToString(node: React.ReactNode): string {
   );
 }
 
-/**
- * The initial markup goes through `dangerouslySetInnerHTML` so newlines can
- * render as `<br>` on the server, which means the text has to be escaped here —
- * it comes from `children`, and callers rightly expect React to treat that as
- * text rather than markup.
- */
 function escapeHTML(value: string): string {
   return value
     .replace(/&/g, "&amp;")
