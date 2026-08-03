@@ -165,9 +165,26 @@ All components accept the following props/options:
 - `respectReducedMotion?: boolean` - Respect user's prefers-reduced-motion setting (default: `true`)
 - `onAnimationStart?: () => void` - Callback fired when animation begins
 - `onAnimationComplete?: () => void` - Callback fired when animation completes
+- `onAnimationCancel?: () => void` - Callback fired when a morph is interrupted by the next one. Exactly one of `onAnimationComplete` and `onAnimationCancel` runs per morph
 - `className?: string` - CSS class name (React/Vue: `class`)
 - `style?: object | string` - Inline styles
 - `as?: string` - HTML element type (default: `"span"`)
+
+### Multi-line text
+
+Newlines in a value are rendered as line breaks, and text morphs normally
+across them. The React component includes them in its server-rendered markup;
+Vue and Svelte render them once the component mounts.
+
+### Utilities
+
+The text matching torph runs on is exported for building your own behaviour on
+top of it:
+
+- `segmentText(value, locale): Segment[]` - Split a value into segments
+- `diffSegments(oldSegments, newText, locale): DiffResult` - Match a new value
+  against existing segments, returning the segments that persist, enter and
+  exit
 
 ## Found this useful?
 

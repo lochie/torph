@@ -12,3 +12,7 @@ never fired.
 
 Cleanups are now tracked per element in a `WeakMap`, so instances only
 interrupt themselves.
+
+`destroy()` now stops a morph that is still running and restores the element's
+width, height and `transition-property`, instead of leaving it pinned at the
+size it happened to be mid-animation.

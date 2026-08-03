@@ -9,9 +9,10 @@ import {
   resolveExitingAnchors,
 } from "./utils/flip";
 import {
-  abortContainerTransition,
   animateExit,
   animateEnterOrPersist,
+  clearContainerTransition,
+  holdContainerSize,
   transitionContainerSize,
 } from "./utils/animate";
 import { detachFromFlow, splitWordSpans, reconcileChildren } from "./utils/dom";
@@ -22,6 +23,7 @@ import {
   ATTR_DEBUG,
   ATTR_EXITING,
   ATTR_ID,
+  EMPTY_ID,
 } from "./utils/constants";
 import {
   type ReducedMotionState,
@@ -54,7 +56,6 @@ export class TextMorph {
   private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
-  private emptyTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: TextMorphOptions) {
     const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
@@ -90,11 +91,8 @@ export class TextMorph {
   }
 
   destroy() {
-    if (this.emptyTransitionTimer !== null) {
-      clearTimeout(this.emptyTransitionTimer);
-      this.emptyTransitionTimer = null;
-    }
     this.reducedMotion?.destroy();
+    clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
     this.element.removeAttribute(ATTR_DEBUG);
@@ -130,17 +128,9 @@ export class TextMorph {
   }
 
   private createTextGroup(value: string, element: HTMLElement) {
-    // Cancel any pending empty-transition timeout from a previous morph
-    // and restore the styles it would have cleaned up
-    if (this.emptyTransitionTimer !== null) {
-      clearTimeout(this.emptyTransitionTimer);
-      this.emptyTransitionTimer = null;
-      element.style.width = "auto";
-      element.style.height = "auto";
-      element.style.transitionProperty = "";
-      this.options.onAnimationCancel?.();
-    }
-
+    // A transition still running from the previous morph is aborted by the one
+    // this morph starts, at the end of this function. Until then the container
+    // keeps its size, so `oldRect` is the size the new morph animates from.
     const oldRect = element.getBoundingClientRect();
     const oldWidth = oldRect.width;
     const oldHeight = oldRect.height;
@@ -161,7 +151,7 @@ export class TextMorph {
     // content, preserving the line box height during exit animations.
     const isEmptyTransition = segments.length === 0;
     if (isEmptyTransition) {
-      segments = [{ id: "empty", string: "\u200B" }];
+      segments = [{ id: EMPTY_ID, string: "\u200B" }];
     }
 
     splitWordSpans(element, splits);
@@ -203,7 +193,7 @@ export class TextMorph {
     this.updateStyles(segments, firstFrameMeasures);
 
     exiting.forEach((child) => {
-      if (this.isInitialRender || child.getAttribute(ATTR_ID) === "empty") {
+      if (this.isInitialRender || child.getAttribute(ATTR_ID) === EMPTY_ID) {
         child.remove();
         return;
       }
@@ -232,20 +222,14 @@ export class TextMorph {
     }
 
     if (isEmptyTransition) {
-      abortContainerTransition(element);
-
-      // Lock container at old size while exits play so the container
-      // doesn't reposition (e.g. under text-align: center).
-      element.style.transitionProperty = "none";
-      element.style.width = `${oldWidth}px`;
-      element.style.height = `${oldHeight}px`;
-      this.emptyTransitionTimer = setTimeout(() => {
-        this.emptyTransitionTimer = null;
-        element.style.width = "auto";
-        element.style.height = "auto";
-        element.style.transitionProperty = "";
-        this.options.onAnimationComplete?.();
-      }, this.options.duration!);
+      holdContainerSize(
+        element,
+        oldWidth,
+        oldHeight,
+        this.options.duration!,
+        this.options.onAnimationComplete,
+        this.options.onAnimationCancel,
+      );
     } else {
       transitionContainerSize(
         element,
@@ -273,7 +257,7 @@ export class TextMorph {
       if (child.hasAttribute(ATTR_EXITING)) return;
       if (child.tagName === "BR") return;
       const key = child.getAttribute(ATTR_ID) || `child-${index}`;
-      if (key === "empty") return;
+      if (key === EMPTY_ID) return;
       const isNew = !this.prevMeasures[key];
 
       const deltaKey = isNew

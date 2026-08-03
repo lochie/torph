@@ -19,7 +19,8 @@
     "pre-commit": "pnpm run --filter=torph pre-commit",
     "version": "changeset version && git add --all",
     "test": "pnpm --filter=torph test",
-    "release": "pnpm run test && pnpm build && changeset publish && git push --follow-tags"
+    "typecheck": "pnpm --filter=torph typecheck",
+    "release": "pnpm run typecheck && pnpm run test && pnpm build && changeset publish && git push --follow-tags"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.2",

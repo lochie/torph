@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "target": "ES2022",
     "lib": ["DOM", "ES2022", "DOM.Iterable"],
     "esModuleInterop": true,
     "jsx": "preserve",

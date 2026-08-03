@@ -51,6 +51,7 @@
     "lint": "eslint -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
     "lint:fix": "eslint --fix -c .eslintrc.cjs ./src/**/*.{ts,tsx}",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "pre-commit": "lint-staged"
   },
   "keywords": [

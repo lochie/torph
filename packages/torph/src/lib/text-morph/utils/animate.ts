@@ -110,16 +110,53 @@ export function animateEnterOrPersist(
   }
 }
 
-const pendingCleanups = new WeakMap<HTMLElement, () => void>();
+/**
+ * The container transition currently running on an element.
+ *
+ * `stop` drops whatever is driving the size — a WAAPI animation or a timer —
+ * without deciding how the morph should be reported. That call is the
+ * caller's: a superseded morph cancels, teardown reports nothing at all.
+ */
+type PendingTransition = {
+  stop: () => void;
+  onCancel?: () => void;
+};
 
-// A running transition uses `fill: "both"`, which outranks inline styles — so
-// anything setting width/height directly has to stop it first.
+const pending = new WeakMap<HTMLElement, PendingTransition>();
+
+/** Hands the element's size and transitions back to the page. */
+function restoreSize(element: HTMLElement) {
+  element.style.width = "auto";
+  element.style.height = "auto";
+  element.style.transitionProperty = "";
+}
+
+/**
+ * Stops a running container transition and reports the morph as cancelled.
+ *
+ * A running transition uses `fill: "both"`, which outranks inline styles, so
+ * anything setting width/height directly has to stop it first. The size is
+ * left where it is — the caller is about to set its own.
+ */
 export function abortContainerTransition(element: HTMLElement) {
-  const prev = pendingCleanups.get(element);
-  if (prev) {
-    prev();
-    pendingCleanups.delete(element);
+  const entry = pending.get(element);
+  if (!entry) return;
+  pending.delete(element);
+  entry.stop();
+  entry.onCancel?.();
+}
+
+/**
+ * Stops a running container transition and gives the element its own size
+ * back. Fires neither callback — teardown is not an animation event.
+ */
+export function clearContainerTransition(element: HTMLElement) {
+  const entry = pending.get(element);
+  if (entry) {
+    pending.delete(element);
+    entry.stop();
   }
+  restoreSize(element);
 }
 
 export function transitionContainerSize(
@@ -131,19 +168,16 @@ export function transitionContainerSize(
   onComplete?: () => void,
   onCancel?: () => void,
 ) {
-  // Cancel any pending cleanup from a previous transition on this element
   abortContainerTransition(element);
 
-  // Disable CSS transitions — we use WAAPI for exact sync with item animations
-  element.style.transitionProperty = "none";
-
   if (oldWidth === 0 || oldHeight === 0) {
-    element.style.width = "auto";
-    element.style.height = "auto";
+    restoreSize(element);
     onCancel?.();
     return;
   }
 
+  // Disable CSS transitions — we use WAAPI for exact sync with item animations
+  element.style.transitionProperty = "none";
   element.style.width = "auto";
   element.style.height = "auto";
   void element.offsetWidth;
@@ -161,20 +195,42 @@ export function transitionContainerSize(
     { duration, easing: ease, fill: "both" },
   );
 
-  function cleanup() {
+  anim.onfinish = () => {
+    pending.delete(element);
     anim.cancel();
-    pendingCleanups.delete(element);
-    element.style.width = "auto";
-    element.style.height = "auto";
-    element.style.transitionProperty = "";
+    restoreSize(element);
     onComplete?.();
-  }
+  };
 
-  anim.onfinish = cleanup;
+  pending.set(element, { stop: () => anim.cancel(), onCancel });
+}
 
-  pendingCleanups.set(element, () => {
-    anim.cancel();
-    pendingCleanups.delete(element);
-    onCancel?.();
-  });
+/**
+ * Pins the container at a fixed size for the length of a morph.
+ *
+ * Used when the new value is empty: there is no new content to size the
+ * container to while the exits play, so it would otherwise collapse and drag
+ * the exiting text with it — visibly so under `text-align: center`.
+ */
+export function holdContainerSize(
+  element: HTMLElement,
+  width: number,
+  height: number,
+  duration: number,
+  onComplete?: () => void,
+  onCancel?: () => void,
+) {
+  abortContainerTransition(element);
+
+  element.style.transitionProperty = "none";
+  element.style.width = `${width}px`;
+  element.style.height = `${height}px`;
+
+  const timer = setTimeout(() => {
+    pending.delete(element);
+    restoreSize(element);
+    onComplete?.();
+  }, duration);
+
+  pending.set(element, { stop: () => clearTimeout(timer), onCancel });
 }
