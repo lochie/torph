@@ -10,18 +10,16 @@ const MAX_CHARS = 24;
 // often onto a different line entirely.
 const states = [
   {
-    tone: "Professional",
-    body: "I have reviewed the proposal and would be happy to proceed.",
+    tone: "Direct",
+    body: "Running late, be there soon.",
   },
   {
     tone: "Friendly",
-    body: "I read the proposal and I'm happy to get started.",
+    body: "Running a bit behind, I'll be there soon.",
   },
   {
-    tone: "Direct",
-    // An em dash rather than a second full stop: a `.` ending two lines would
-    // collide on segment id in multiline segmentation (see segment.ts).
-    body: "Reviewed the proposal — happy to proceed.",
+    tone: "Professional",
+    body: "I'm running a little behind, should be there soon.",
   },
 ];
 
@@ -36,20 +34,15 @@ export const ExampleRewrite = () => {
   }, []);
 
   return (
-    <div className={styles.draft}>
-      <div className={styles.to}>
-        To
-        <span>alex@acme.com</span>
-      </div>
-
-      <div className={styles.body}>
+    <div className={styles.rewrite}>
+      <div className={styles.bubble}>
         <TextMorph>{wrap(states[currentStateIndex].body, MAX_CHARS)}</TextMorph>
       </div>
 
       <div className={styles.tone}>
         <svg
-          width="12"
-          height="12"
+          width="11"
+          height="11"
           viewBox="0 0 12 12"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
