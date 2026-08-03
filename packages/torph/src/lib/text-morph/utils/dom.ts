@@ -86,7 +86,6 @@ export function reconcileChildren(
   newIds: Set<string>,
   segments: Segment[],
 ) {
-  // Build a map of reusable existing elements (non-exiting, persistent)
   const reusable = new Map<string, HTMLElement>();
   oldChildren.forEach((child) => {
     const id = child.getAttribute(ATTR_ID) as string;
@@ -104,14 +103,12 @@ export function reconcileChildren(
   });
 
   segments.forEach((segment) => {
-    // Each element can only be claimed once. Without this, two segments
-    // sharing an ID would both `appendChild` the same node, moving it to the
-    // later position and leaving the earlier one with nothing rendered.
+    // Claimed once only: two segments sharing an ID would both append the same
+    // node, leaving the earlier position empty.
     const existing = reusable.get(segment.id);
     if (existing) reusable.delete(segment.id);
 
     if (segment.string === "\n") {
-      // Newline segments render as <br> elements
       if (existing && existing.tagName === "BR") {
         element.appendChild(existing);
       } else {

@@ -110,13 +110,6 @@ export function animateEnterOrPersist(
   }
 }
 
-/**
- * The container transition currently running on an element.
- *
- * `stop` drops whatever is driving the size — a WAAPI animation or a timer —
- * without deciding how the morph should be reported. That call is the
- * caller's: a superseded morph cancels, teardown reports nothing at all.
- */
 type PendingTransition = {
   stop: () => void;
   onCancel?: () => void;
@@ -124,20 +117,14 @@ type PendingTransition = {
 
 const pending = new WeakMap<HTMLElement, PendingTransition>();
 
-/** Hands the element's size and transitions back to the page. */
 function restoreSize(element: HTMLElement) {
   element.style.width = "auto";
   element.style.height = "auto";
   element.style.transitionProperty = "";
 }
 
-/**
- * Stops a running container transition and reports the morph as cancelled.
- *
- * A running transition uses `fill: "both"`, which outranks inline styles, so
- * anything setting width/height directly has to stop it first. The size is
- * left where it is — the caller is about to set its own.
- */
+// A running transition uses `fill: "both"`, which outranks inline styles, so
+// anything setting width/height directly has to stop it first.
 export function abortContainerTransition(element: HTMLElement) {
   const entry = pending.get(element);
   if (!entry) return;
@@ -146,10 +133,7 @@ export function abortContainerTransition(element: HTMLElement) {
   entry.onCancel?.();
 }
 
-/**
- * Stops a running container transition and gives the element its own size
- * back. Fires neither callback — teardown is not an animation event.
- */
+// Fires neither callback — teardown is not an animation event.
 export function clearContainerTransition(element: HTMLElement) {
   const entry = pending.get(element);
   if (entry) {
@@ -176,7 +160,7 @@ export function transitionContainerSize(
     return;
   }
 
-  // Disable CSS transitions — we use WAAPI for exact sync with item animations
+  // WAAPI drives the size instead, so it shares a start time with the items
   element.style.transitionProperty = "none";
   element.style.width = "auto";
   element.style.height = "auto";
@@ -186,7 +170,6 @@ export function transitionContainerSize(
   const newWidth = newRect.width;
   const newHeight = newRect.height;
 
-  // Use WAAPI to animate width/height in perfect sync with item transforms
   const anim = element.animate(
     [
       { width: `${oldWidth}px`, height: `${oldHeight}px` },
@@ -205,13 +188,8 @@ export function transitionContainerSize(
   pending.set(element, { stop: () => anim.cancel(), onCancel });
 }
 
-/**
- * Pins the container at a fixed size for the length of a morph.
- *
- * Used when the new value is empty: there is no new content to size the
- * container to while the exits play, so it would otherwise collapse and drag
- * the exiting text with it — visibly so under `text-align: center`.
- */
+// For an emptied value: nothing is left to size the container to, so without
+// this it collapses and drags the exiting text with it when centred.
 export function holdContainerSize(
   element: HTMLElement,
   width: number,

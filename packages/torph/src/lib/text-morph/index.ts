@@ -128,9 +128,8 @@ export class TextMorph {
   }
 
   private createTextGroup(value: string, element: HTMLElement) {
-    // A transition still running from the previous morph is aborted by the one
-    // this morph starts, at the end of this function. Until then the container
-    // keeps its size, so `oldRect` is the size the new morph animates from.
+    // Measured before a running transition is aborted below, so an interrupted
+    // morph carries on from the size on screen rather than snapping.
     const oldRect = element.getBoundingClientRect();
     const oldWidth = oldRect.width;
     const oldHeight = oldRect.height;
@@ -182,9 +181,8 @@ export class TextMorph {
 
     this.currentMeasures = measure(this.element);
 
-    // Measure at oldWidth to get actual first-frame positions.
-    // This correctly handles text-align when content overflows the container
-    // (text-align has no effect on overflowing content).
+    // First-frame positions have to be measured at the old width, not derived
+    // from it — text-align has no effect on content that overflows.
     element.style.width = `${oldWidth}px`;
     void element.offsetWidth;
     const firstFrameMeasures = measure(this.element);

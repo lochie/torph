@@ -41,13 +41,9 @@ function groupIntoWords(segments: Segment[]): WordGroup[] {
 /**
  * Longest common subsequence, reported as paired indices into `a` and `b`.
  *
- * Many subsequences share the maximum length, and the one chosen decides which
- * old element each new element inherits its identity from. The table is built
- * over suffixes and walked *forwards* so that ties resolve to the earliest
- * possible match: when a word repeats, the first occurrence keeps the existing
- * element and later occurrences are treated as new. A backwards walk resolves
- * ties the other way, which makes text appear to fly in from the last
- * occurrence of a repeated word rather than from the matching position.
+ * Built over suffixes and walked *forwards* so ties resolve to the earliest
+ * match — a repeated word keeps its element on the first occurrence. Walking
+ * backwards resolves them the other way, and the text flies across the block.
  */
 function lcsIndices(a: string[], b: string[]): [number[], number[]] {
   const m = a.length;
@@ -71,8 +67,6 @@ function lcsIndices(a: string[], b: string[]): [number[], number[]] {
   let i = 0;
   let j = 0;
   while (i < m && j < n) {
-    // Matching on equality is always optimal here — dp confirms it costs
-    // nothing — so the first viable pairing wins.
     if (a[i] === b[j]) {
       ai.push(i);
       bi.push(j);
@@ -96,9 +90,8 @@ function charSimilarity(a: string, b: string): number {
 
 const MIN_SIMILARITY = 0.4;
 
-// Past these budgets the diff degrades instead of blocking the frame: pairing
-// is skipped so words enter and exit whole, then the diff is abandoned and the
-// value re-segmented. All of it runs synchronously before the first frame.
+// The whole diff runs synchronously before the first frame, so past these
+// budgets it degrades the animation rather than blocking on a long value.
 const MAX_MORPH_PAIRINGS = 2_500;
 const MAX_LCS_CELLS = 1_000_000;
 
@@ -115,7 +108,6 @@ export function diffSegments(
     return { segments: segmentText(newText, locale), splits: new Map() };
   }
 
-  // Split new text into words and track separators (space vs newline)
   const newWordStrings: string[] = [];
   const newSeparators: string[][] = []; // separators BEFORE each word
   const parts = newText.split(/( |\n)/);
@@ -137,7 +129,6 @@ export function diffSegments(
     return { segments: segmentText(newText, locale), splits: new Map() };
   }
 
-  // Word-level LCS
   const [oldLcsIdx, newLcsIdx] = lcsIndices(oldWordStrings, newWordStrings);
   const oldMatchedSet = new Set(oldLcsIdx);
   const newMatchedSet = new Set(newLcsIdx);
@@ -147,7 +138,6 @@ export function diffSegments(
     newToOldWord.set(newLcsIdx[k]!, oldLcsIdx[k]!);
   }
 
-  // Pair unmatched words by similarity
   let oldUnmatched = oldWordStrings
     .map((_, i) => i)
     .filter((i) => !oldMatchedSet.has(i));
@@ -198,18 +188,16 @@ export function diffSegments(
 
   const alloc = createIdAllocator();
 
-  // Reserve every ID inherited from the old segments before allocating any new
-  // ones. The allocator can only avoid collisions with IDs it already knows
-  // about, so an inherited ID that appears later in the build loop would
-  // otherwise be handed to an earlier new segment — leaving two segments
-  // sharing one ID, one DOM element, and one of them rendering nothing.
+  // Inherited IDs are reserved up front: the allocator only avoids collisions
+  // with IDs it already knows about, so one inherited later in the build loop
+  // would otherwise be handed to an earlier new segment.
   for (let ni = 0; ni < newWordStrings.length; ni++) {
     const oi = newToOldWord.get(ni) ?? morphPairs.get(ni);
     if (oi === undefined) continue;
     const oldGroup = oldWords[oi]!;
 
     if (!newToOldWord.has(ni) && oldGroup.segments.length === 1) {
-      // Word-level span that is about to be split into per-character spans.
+      // About to be split into per-character spans
       const wordSeg = oldGroup.segments[0]!;
       for (let i = 0; i < oldGroup.word.length; i++) {
         alloc.reserve(`${wordSeg.id}:${i}`);
@@ -246,18 +234,15 @@ export function diffSegments(
     pushSeparators(newSeparators[ni] ?? (ni > 0 ? [" "] : []));
 
     if (newToOldWord.has(ni)) {
-      // Exact word match — reuse old segments
       const oi = newToOldWord.get(ni)!;
       const oldGroup = oldWords[oi]!;
       for (const seg of oldGroup.segments) segments.push(seg);
     } else if (morphPairs.has(ni)) {
-      // Character morph between similar words
       const oi = morphPairs.get(ni)!;
       const oldGroup = oldWords[oi]!;
       const oldWord = oldGroup.word;
       const newWord = newWordStrings[ni]!;
 
-      // Get or create old char segments
       let oldCharSegs: Segment[];
       if (oldGroup.segments.length === 1) {
         const wordSeg = oldGroup.segments[0]!;
@@ -270,7 +255,6 @@ export function diffSegments(
         oldCharSegs = oldGroup.segments;
       }
 
-      // Character-level LCS
       const oldChars = oldWord.split("");
       const newChars = newWord.split("");
       const [oldCharLcs, newCharLcs] = lcsIndices(oldChars, newChars);
@@ -295,7 +279,6 @@ export function diffSegments(
         }
       }
     } else {
-      // No match — new word enters
       segments.push({
         id: alloc.take(newWordStrings[ni]!),
         string: newWordStrings[ni]!,

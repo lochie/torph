@@ -3,15 +3,9 @@ export type Segment = {
   string: string;
 };
 
-/**
- * Allocates segment IDs that are unique across the whole value.
- *
- * IDs are the identity used for FLIP tracking and DOM reconciliation, so a
- * collision makes two segments fight over one element and one of them silently
- * loses its text. Multi-line values are segmented line by line, which means
- * neither the "have I seen this string" check nor the character index can be
- * scoped to a single line.
- */
+// IDs are the identity used for FLIP tracking and DOM reconciliation, so a
+// collision makes two segments fight over one element and one of them silently
+// loses its text. Uniqueness has to hold across the whole value, not per line.
 export function createIdAllocator() {
   const used = new Set<string>();
 
@@ -47,9 +41,8 @@ export function segmentText(
   const alloc = createIdAllocator();
 
   if (hasNewlines) {
-    // Split by newlines, segment each line at word level, join with newline
-    // segments. `offset` tracks the character index into the full value so IDs
-    // stay unique across lines.
+    // `offset` is the character index into the full value, so IDs derived from
+    // it stay unique across lines.
     const lines = value.split("\n");
     const allSegments: Segment[] = [];
     let offset = 0;
@@ -122,8 +115,6 @@ function allocSegmentId(
   index: number,
   alloc: IdAllocator,
 ): string {
-  // First occurrence keeps the bare string as its ID; repeats are qualified by
-  // their position in the full value.
   return alloc.has(part) ? alloc.take(`${part}-${index}`) : alloc.take(part);
 }
 
