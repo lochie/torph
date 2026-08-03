@@ -1,8 +1,8 @@
 [
   {
     "name": "core",
-    "raw": 13925,
-    "gzip": 5350,
+    "raw": 14033,
+    "gzip": 5375,
     "publishedRaw": 9272,
     "publishedGzip": 3697
   },
@@ -15,8 +15,8 @@
   },
   {
     "name": "vue",
-    "raw": 1485,
-    "gzip": 600,
+    "raw": 1572,
+    "gzip": 612,
     "publishedRaw": 1485,
     "publishedGzip": 600
   }

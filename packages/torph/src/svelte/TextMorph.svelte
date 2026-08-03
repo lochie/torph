@@ -20,6 +20,7 @@
     respectReducedMotion = DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion,
     onAnimationStart = undefined,
     onAnimationComplete = undefined,
+    onAnimationCancel = undefined,
     as = DEFAULT_AS,
     ...props
   }: Props = $props();
@@ -30,7 +31,7 @@
   const options = $derived({
     locale, duration, ease, debug, scale,
     disabled, respectReducedMotion,
-    onAnimationStart, onAnimationComplete,
+    onAnimationStart, onAnimationComplete, onAnimationCancel,
   });
 
   const configKey = $derived(

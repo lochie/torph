@@ -33,7 +33,8 @@ function usePlaygroundParams() {
     ? wordsParam.split("|").filter(Boolean)
     : DEFAULT_WORDS;
   const initialAlign =
-    alignParam && TEXT_ALIGNMENTS.includes(alignParam as any)
+    alignParam &&
+    (TEXT_ALIGNMENTS as readonly (string | undefined)[]).includes(alignParam)
       ? (alignParam as React.CSSProperties["textAlign"])
       : TEXT_ALIGNMENTS[1];
 

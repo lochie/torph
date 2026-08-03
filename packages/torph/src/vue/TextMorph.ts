@@ -28,6 +28,7 @@ export default defineComponent({
     },
     onAnimationStart: { type: Function, default: undefined },
     onAnimationComplete: { type: Function, default: undefined },
+    onAnimationCancel: { type: Function, default: undefined },
   },
   setup(props) {
     const containerRef = ref<HTMLElement | null>(null);
@@ -55,6 +56,9 @@ export default defineComponent({
           respectReducedMotion: props.respectReducedMotion,
           onAnimationStart: props.onAnimationStart as (() => void) | undefined,
           onAnimationComplete: props.onAnimationComplete as
+            | (() => void)
+            | undefined,
+          onAnimationCancel: props.onAnimationCancel as
             | (() => void)
             | undefined,
         });

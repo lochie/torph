@@ -11,4 +11,5 @@ export interface TextMorphOptions {
   respectReducedMotion?: boolean;
   onAnimationStart?: () => void;
   onAnimationComplete?: () => void;
+  onAnimationCancel?: () => void;
 }

@@ -348,6 +348,52 @@ $fail: rgb(248, 113, 113);
   word-break: break-word;
 }
 
+// ── Browser-only checks ──
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.checkRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.checkName {
+  flex: none;
+  width: 3.75rem;
+  font-family: monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.checkDetail {
+  font-family: monospace;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.3);
+  word-break: break-word;
+  min-width: 0;
+}
+
+.pending {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.3);
+}
+
 // ── Case source ──
 
 .code {

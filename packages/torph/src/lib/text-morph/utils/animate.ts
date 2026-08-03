@@ -112,6 +112,23 @@ export function animateEnterOrPersist(
 
 const pendingCleanups = new WeakMap<HTMLElement, () => void>();
 
+/**
+ * Stops a container transition that is still running, firing its
+ * `onAnimationCancel`.
+ *
+ * Callers that take over the element's width and height without starting a
+ * transition of their own must do this first: a running animation has
+ * `fill: "both"` and outranks inline styles, so it would keep driving the size
+ * and then reset it to `auto` when it finished.
+ */
+export function abortContainerTransition(element: HTMLElement) {
+  const prev = pendingCleanups.get(element);
+  if (prev) {
+    prev();
+    pendingCleanups.delete(element);
+  }
+}
+
 export function transitionContainerSize(
   element: HTMLElement,
   oldWidth: number,
@@ -119,13 +136,10 @@ export function transitionContainerSize(
   duration: number,
   ease: string,
   onComplete?: () => void,
+  onCancel?: () => void,
 ) {
   // Cancel any pending cleanup from a previous transition on this element
-  const prev = pendingCleanups.get(element);
-  if (prev) {
-    prev();
-    pendingCleanups.delete(element);
-  }
+  abortContainerTransition(element);
 
   // Disable CSS transitions — we use WAAPI for exact sync with item animations
   element.style.transitionProperty = "none";
@@ -133,6 +147,8 @@ export function transitionContainerSize(
   if (oldWidth === 0 || oldHeight === 0) {
     element.style.width = "auto";
     element.style.height = "auto";
+    // Nothing to animate from, so this morph never runs to completion.
+    onCancel?.();
     return;
   }
 
@@ -167,5 +183,6 @@ export function transitionContainerSize(
   pendingCleanups.set(element, () => {
     anim.cancel();
     pendingCleanups.delete(element);
+    onCancel?.();
   });
 }

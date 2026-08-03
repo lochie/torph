@@ -14,7 +14,7 @@
     "example:svelte-ssr": "pnpm --filter=svelte-ssr-example dev",
     "example:typescript": "pnpm --filter=typescript-example dev",
     "example:vue": "pnpm --filter=vue-example dev",
-    "lint": "pnpm --filter=torph lint",
+    "lint": "pnpm --filter=torph lint && pnpm --filter=site lint",
     "lint:fix": "pnpm --filter=torph lint:fix",
     "pre-commit": "pnpm run --filter=torph pre-commit",
     "version": "changeset version && git add --all",

@@ -9,6 +9,7 @@ import {
   resolveExitingAnchors,
 } from "./utils/flip";
 import {
+  abortContainerTransition,
   animateExit,
   animateEnterOrPersist,
   transitionContainerSize,
@@ -137,6 +138,7 @@ export class TextMorph {
       element.style.width = "auto";
       element.style.height = "auto";
       element.style.transitionProperty = "";
+      this.options.onAnimationCancel?.();
     }
 
     const oldRect = element.getBoundingClientRect();
@@ -230,6 +232,11 @@ export class TextMorph {
     }
 
     if (isEmptyTransition) {
+      // A container animation still running from the previous morph has
+      // fill: "both" and outranks the inline size set below, so it has to be
+      // stopped before the lock will hold.
+      abortContainerTransition(element);
+
       // Lock container at old size while exits play so the container
       // doesn't reposition (e.g. under text-align: center).
       element.style.transitionProperty = "none";
@@ -250,6 +257,7 @@ export class TextMorph {
         this.options.duration!,
         this.options.ease!,
         this.options.onAnimationComplete,
+        this.options.onAnimationCancel,
       );
     }
   }

@@ -7,6 +7,15 @@ import { buildIssueReport, copyText } from "./issue";
 import { SPEEDS, EASINGS } from "./config";
 import type { Speed, EasingKey, Align } from "./config";
 import type { Result } from "@torph/test-cases";
+import { combineResults } from "@torph/test-cases";
+import type { JumpSnapshot, PerfResult } from "./verify-dom";
+import {
+  FrameMonitor,
+  takeJumpSnapshot,
+  verifyDomStandard,
+  verifyMultiline,
+  verifyNoJump,
+} from "./verify-dom";
 
 function SegmentInspector({ from, to }: { from: string; to: string }) {
   const old = torph.segmentText(from, "en");
@@ -86,10 +95,21 @@ export function TestDetail({
   const [index, setIndex] = React.useState(0);
   const [showSource, setShowSource] = React.useState(false);
   const [showInspector, setShowInspector] = React.useState(false);
+  const [showChecks, setShowChecks] = React.useState(false);
   const [auto, setAuto] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [notes, setNotes] = React.useState("");
   const align = test.align ?? globalAlign;
+
+  // Browser-only results, recomputed on each morph while the panel is open.
+  const [dom, setDom] = React.useState<Result | null>(null);
+  const [jump, setJump] = React.useState<Result | null>(null);
+  const [perf, setPerf] = React.useState<PerfResult | null>(null);
+
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
+  const preMorph = React.useRef<JumpSnapshot | null>(null);
+  const pendingJump = React.useRef<Result | null>(null);
+  const frames = React.useRef(new FrameMonitor());
 
   const advance = React.useCallback(() => {
     setIndex((i) => (i + 1) % test.values.length);
@@ -101,7 +121,51 @@ export function TestDetail({
     setAuto(false);
     setNotes("");
     setCopied(false);
+    setDom(null);
+    setJump(null);
+    setPerf(null);
   }, [test.label]);
+
+  React.useEffect(() => {
+    const monitor = frames.current;
+    return () => {
+      monitor.stop();
+    };
+  }, []);
+
+  const root = () =>
+    stageRef.current?.querySelector<HTMLElement>("[torph-root]") ?? null;
+
+  const handleStart = () => {
+    if (!showChecks) return;
+    frames.current.start();
+    const el = root();
+    if (!el) return;
+    preMorph.current = takeJumpSnapshot(el);
+    // Sampled a frame in, but reported on completion — a state update
+    // mid-animation would re-render the thing being measured.
+    requestAnimationFrame(() => {
+      if (preMorph.current) {
+        pendingJump.current = verifyNoJump(el, preMorph.current);
+      }
+    });
+  };
+
+  const handleComplete = () => {
+    if (!showChecks) return;
+    setPerf(frames.current.stop());
+    if (pendingJump.current) {
+      setJump(pendingJump.current);
+      pendingJump.current = null;
+    }
+    const el = root();
+    if (!el) return;
+    setDom(
+      test.minLines
+        ? combineResults(verifyDomStandard(el), verifyMultiline(el, test.minLines))
+        : verifyDomStandard(el),
+    );
+  };
 
   React.useEffect(() => {
     if (!auto) return;
@@ -165,6 +229,7 @@ export function TestDetail({
       <p className={styles.detailDescription}>{test.description}</p>
 
       <div
+        ref={stageRef}
         className={styles.stage}
         style={{ textAlign: align }}
         onClick={advance}
@@ -176,6 +241,8 @@ export function TestDetail({
           duration={SPEEDS[speed]}
           ease={EASINGS[easing]}
           debug={debug}
+          onAnimationStart={handleStart}
+          onAnimationComplete={handleComplete}
         >
           {test.values[index]}
         </TextMorph>
@@ -213,6 +280,14 @@ export function TestDetail({
             Code
           </button>
         )}
+        <button
+          type="button"
+          className={`${styles.btn} ${showChecks ? styles.btnActive : ""}`}
+          onClick={() => setShowChecks((s) => !s)}
+          title="Layout, style-cleanup and frame checks — run on each morph"
+        >
+          DOM
+        </button>
         <span className={styles.spacer} />
         <span className={result?.pass ? styles.pass : styles.fail}>
           {result ? (result.pass ? "PASS" : "FAIL") : "…"}
@@ -220,6 +295,36 @@ export function TestDetail({
       </div>
 
       {result && <p className={styles.assertion}>{result.detail}</p>}
+
+      {showChecks && (
+        <div className={styles.checks}>
+          {(
+            [
+              ["DOM", dom],
+              ["JUMP", jump],
+              [
+                "FRAMES",
+                perf
+                  ? {
+                      pass: perf.pass,
+                      detail: `${perf.totalFrames} frames, ${perf.droppedFrames} dropped, longest ${perf.longestFrame.toFixed(1)}ms — ${perf.detail}`,
+                    }
+                  : null,
+              ],
+            ] as const
+          ).map(([name, r]) => (
+            <div key={name} className={styles.checkRow}>
+              <span className={r ? (r.pass ? styles.pass : styles.fail) : styles.pending}>
+                {r ? (r.pass ? "PASS" : "FAIL") : "…"}
+              </span>
+              <span className={styles.checkName}>{name}</span>
+              <span className={styles.checkDetail}>
+                {r ? r.detail : "morph to run"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showSource && source && (
         <figure className={styles.code}>

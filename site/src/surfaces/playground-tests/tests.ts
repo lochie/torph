@@ -15,6 +15,8 @@ export type BenchCase = {
   tags: string[];
   values: string[];
   align?: "left" | "center" | "right";
+  /** Minimum visual lines expected — checked by the browser-only DOM panel. */
+  minLines?: number;
   verify: () => Result;
 };
 
@@ -24,6 +26,7 @@ export const TESTS: BenchCase[] = CASES.map((c) => ({
   tags: c.tags,
   values: c.values,
   align: c.align,
+  minLines: c.minLines,
   verify: () => c.verify(torph),
 }));
 
