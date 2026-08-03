@@ -72,13 +72,17 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
   const configKey = MorphController.serializeConfig(props);
 
   React.useEffect(() => {
+    const controller = controllerRef.current;
     if (ref.current) {
-      controllerRef.current.attach(ref.current, props);
+      controller.attach(ref.current, props);
     }
 
     return () => {
-      controllerRef.current.destroy();
+      controller.destroy();
     };
+    // Keyed on the serialized config: re-attaching on every `props` identity
+    // would tear the controller down on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey]);
 
   const update = React.useCallback((text: string) => {

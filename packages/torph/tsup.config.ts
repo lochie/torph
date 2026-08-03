@@ -1,8 +1,9 @@
 import { defineConfig, type Options } from "tsup";
+import type { PluginBuild } from "esbuild";
 
 const aliasCorePlugin = {
   name: "alias-core",
-  setup(build: any) {
+  setup(build: PluginBuild) {
     build.onResolve({ filter: /\.\.\/lib\/text-morph/ }, () => ({
       path: "torph",
       external: true,

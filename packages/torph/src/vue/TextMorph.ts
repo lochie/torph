@@ -1,4 +1,12 @@
-import { defineComponent, ref, computed, h, watch, onUnmounted } from "vue";
+import {
+  defineComponent,
+  ref,
+  computed,
+  h,
+  watch,
+  onUnmounted,
+  type PropType,
+} from "vue";
 import {
   DEFAULT_AS,
   DEFAULT_TEXT_MORPH_OPTIONS,
@@ -10,13 +18,18 @@ export default defineComponent({
   name: "TextMorph",
   props: {
     text: { type: String, required: true },
-    class: { type: [String, Object, Array] as any, default: undefined },
+    class: {
+      type: [String, Object, Array] as PropType<
+        string | Record<string, boolean> | string[]
+      >,
+      default: undefined,
+    },
     style: { type: Object, default: undefined },
     as: { type: String, default: DEFAULT_AS },
     locale: { type: String, default: DEFAULT_TEXT_MORPH_OPTIONS.locale },
     duration: { type: Number, default: DEFAULT_TEXT_MORPH_OPTIONS.duration },
     ease: {
-      type: [String, Object] as any,
+      type: [String, Object] as PropType<TextMorphProps["ease"]>,
       default: DEFAULT_TEXT_MORPH_OPTIONS.ease,
     },
     scale: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.scale },
@@ -41,7 +54,15 @@ export default defineComponent({
     const initialText = props.text;
 
     const configKey = computed(() =>
-      MorphController.serializeConfig(props as any),
+      MorphController.serializeConfig({
+        locale: props.locale,
+        duration: props.duration,
+        ease: props.ease,
+        debug: props.debug,
+        scale: props.scale,
+        disabled: props.disabled,
+        respectReducedMotion: props.respectReducedMotion,
+      }),
     );
 
     function createInstance() {

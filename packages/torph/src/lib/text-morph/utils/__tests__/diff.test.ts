@@ -11,10 +11,6 @@ function strings(segments: Segment[]): string[] {
   return segments.map((s) => s.string);
 }
 
-function wordIds(segments: Segment[]): string[] {
-  return segments.filter((s) => s.string !== "\u00A0").map((s) => s.id);
-}
-
 /**
  * ID of the segment covering the first occurrence of `needle` in the rendered
  * text. Segments may be whole words or single characters depending on how the
@@ -123,7 +119,7 @@ describe("diffSegments", () => {
     });
 
     it("IDs are consistent across repeated cycles", () => {
-      let prev = segmentText("Processing Transaction", "en");
+      const prev = segmentText("Processing Transaction", "en");
 
       const cycle1 = diffSegments(prev, "Transaction Safe", "en");
       const cycle2 = diffSegments(
@@ -367,7 +363,7 @@ describe("diffSegments", () => {
      * container jumps a line height.
      */
     function rendered(segments: Segment[]): string {
-      return strings(segments).join("").replace(/ /g, " ");
+      return strings(segments).join("").replace(/\u00A0/g, " ");
     }
 
     const cases = [
@@ -415,7 +411,7 @@ describe("diffSegments", () => {
       const next = words(200, "b");
       const { segments } = diffSegments(old, next, "en");
 
-      expect(strings(segments).join("").replace(/ /g, " ")).toBe(next);
+      expect(strings(segments).join("").replace(/\u00A0/g, " ")).toBe(next);
       expect(new Set(ids(segments)).size).toBe(segments.length);
     });
 
@@ -424,7 +420,7 @@ describe("diffSegments", () => {
       const next = words(600, "b");
       const { segments } = diffSegments(old, next, "en");
 
-      expect(strings(segments).join("").replace(/ /g, " ")).toBe(next);
+      expect(strings(segments).join("").replace(/\u00A0/g, " ")).toBe(next);
       expect(new Set(ids(segments)).size).toBe(segments.length);
     });
 
