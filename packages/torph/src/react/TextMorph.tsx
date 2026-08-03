@@ -19,11 +19,11 @@ function childrenToString(node: React.ReactNode): string {
   if (Array.isArray(node)) return node.map(childrenToString).join("");
   if (React.isValidElement(node)) {
     throw new Error(
-      "TextMorph only accepts text content. Found a React element — use strings, numbers, or expressions instead."
+      "TextMorph only accepts text content. Found a React element — use strings, numbers, or expressions instead.",
     );
   }
   throw new Error(
-    `TextMorph received an unsupported child of type "${typeof node}".`
+    `TextMorph received an unsupported child of type "${typeof node}".`,
   );
 }
 

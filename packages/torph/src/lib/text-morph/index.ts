@@ -47,7 +47,9 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
 
 export class TextMorph {
   private element: HTMLElement;
-  private options: Omit<TextMorphOptions, "element" | "ease"> & { ease?: string } = {};
+  private options: Omit<TextMorphOptions, "element" | "ease"> & {
+    ease?: string;
+  } = {};
 
   private data: HTMLElement | string;
 
@@ -58,7 +60,10 @@ export class TextMorph {
   private reducedMotion: ReducedMotionState | null = null;
 
   constructor(options: TextMorphOptions) {
-    const { ease: rawEase, ...rest } = { ...DEFAULT_TEXT_MORPH_OPTIONS, ...options };
+    const { ease: rawEase, ...rest } = {
+      ...DEFAULT_TEXT_MORPH_OPTIONS,
+      ...options,
+    };
     let ease: string;
     let duration: number;
 
@@ -138,7 +143,11 @@ export class TextMorph {
     let splits: Map<string, Segment[]>;
 
     if (this.previousSegments.length > 0) {
-      const result = diffSegments(this.previousSegments, value, this.options.locale!);
+      const result = diffSegments(
+        this.previousSegments,
+        value,
+        this.options.locale!,
+      );
       segments = result.segments;
       splits = result.splits;
     } else {
@@ -166,9 +175,7 @@ export class TextMorph {
     );
 
     const exitingSet = new Set(exiting);
-    const oldIds = oldChildren.map(
-      (c) => c.getAttribute(ATTR_ID) as string,
-    );
+    const oldIds = oldChildren.map((c) => c.getAttribute(ATTR_ID) as string);
     const exitingAnchorId = resolveExitingAnchors(
       oldChildren,
       exitingSet,
@@ -279,5 +286,4 @@ export class TextMorph {
       });
     });
   }
-
 }

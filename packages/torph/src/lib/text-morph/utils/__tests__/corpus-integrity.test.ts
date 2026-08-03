@@ -19,7 +19,10 @@ const SABOTEURS: Saboteur[] = [
         const { segments, splits } = diffSegments(old, next, locale);
         let n = 0;
         return {
-          segments: segments.map((s: Segment) => ({ ...s, id: `fresh-${n++}` })),
+          segments: segments.map((s: Segment) => ({
+            ...s,
+            id: `fresh-${n++}`,
+          })),
           splits,
         };
       },
@@ -39,7 +42,10 @@ const SABOTEURS: Saboteur[] = [
     name: "empty output — the diff returns no segments",
     api: {
       segmentText,
-      diffSegments: () => ({ segments: [], splits: new Map<string, Segment[]>() }),
+      diffSegments: () => ({
+        segments: [],
+        splits: new Map<string, Segment[]>(),
+      }),
     },
   },
   {
@@ -55,7 +61,8 @@ const SABOTEURS: Saboteur[] = [
   {
     name: "no segmentation — the whole value is one segment",
     api: {
-      segmentText: (value) => (value.length ? [{ id: value, string: value }] : []),
+      segmentText: (value) =>
+        value.length ? [{ id: value, string: value }] : [],
       diffSegments,
     },
   },

@@ -363,7 +363,9 @@ describe("diffSegments", () => {
      * container jumps a line height.
      */
     function rendered(segments: Segment[]): string {
-      return strings(segments).join("").replace(/\u00A0/g, " ");
+      return strings(segments)
+        .join("")
+        .replace(/\u00A0/g, " ");
     }
 
     const cases = [
@@ -411,7 +413,11 @@ describe("diffSegments", () => {
       const next = words(200, "b");
       const { segments } = diffSegments(old, next, "en");
 
-      expect(strings(segments).join("").replace(/\u00A0/g, " ")).toBe(next);
+      expect(
+        strings(segments)
+          .join("")
+          .replace(/\u00A0/g, " "),
+      ).toBe(next);
       expect(new Set(ids(segments)).size).toBe(segments.length);
     });
 
@@ -420,7 +426,11 @@ describe("diffSegments", () => {
       const next = words(600, "b");
       const { segments } = diffSegments(old, next, "en");
 
-      expect(strings(segments).join("").replace(/\u00A0/g, " ")).toBe(next);
+      expect(
+        strings(segments)
+          .join("")
+          .replace(/\u00A0/g, " "),
+      ).toBe(next);
       expect(new Set(ids(segments)).size).toBe(segments.length);
     });
 

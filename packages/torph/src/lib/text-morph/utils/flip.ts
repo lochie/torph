@@ -76,9 +76,7 @@ export function resolveExitingAnchors(
   newIds: Set<string>,
 ): Map<HTMLElement, string | null> {
   const persistentOldIds = new Set(
-    oldIds.filter(
-      (id, i) => newIds.has(id) && !exiting.has(oldChildren[i]!),
-    ),
+    oldIds.filter((id, i) => newIds.has(id) && !exiting.has(oldChildren[i]!)),
   );
 
   const anchors = new Map<HTMLElement, string | null>();

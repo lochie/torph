@@ -10,11 +10,7 @@ export interface SpringResult {
   duration: number;
 }
 
-function springPosition(
-  t: number,
-  omega0: number,
-  zeta: number,
-): number {
+function springPosition(t: number, omega0: number, zeta: number): number {
   if (zeta < 1) {
     const omegaD = omega0 * Math.sqrt(1 - zeta * zeta);
     return (
