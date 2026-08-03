@@ -19,10 +19,8 @@ type BundleSize = {
 };
 
 export const Playground = ({
-  sources = {},
   bundleSizes = [],
 }: {
-  sources?: Record<string, string>;
   bundleSizes?: BundleSize[];
 }) => {
   const [selected, setSelected] = React.useState(0);
@@ -199,7 +197,6 @@ export const Playground = ({
             key={current.label}
             test={current}
             result={results[selected] ?? null}
-            source={sources[current.label]}
             speed={speed}
             easing={easing}
             align={align}

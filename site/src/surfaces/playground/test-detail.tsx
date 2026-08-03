@@ -75,7 +75,6 @@ function SegmentInspector({ from, to }: { from: string; to: string }) {
 export function TestDetail({
   test,
   result,
-  source,
   speed,
   easing,
   align: globalAlign,
@@ -84,7 +83,6 @@ export function TestDetail({
 }: {
   test: BenchCase;
   result: Result | null;
-  source?: string;
   speed: Speed;
   easing: EasingKey;
   align: Align;
@@ -92,7 +90,6 @@ export function TestDetail({
   onTagClick?: (tag: string) => void;
 }) {
   const [index, setIndex] = React.useState(0);
-  const [showSource, setShowSource] = React.useState(false);
   const [showInspector, setShowInspector] = React.useState(false);
   const [showChecks, setShowChecks] = React.useState(false);
   const [auto, setAuto] = React.useState(false);
@@ -268,15 +265,6 @@ export function TestDetail({
         >
           Segments
         </button>
-        {source && (
-          <button
-            type="button"
-            className={`${styles.btn} ${showSource ? styles.btnActive : ""}`}
-            onClick={() => setShowSource((s) => !s)}
-          >
-            Code
-          </button>
-        )}
         <button
           type="button"
           className={`${styles.btn} ${showChecks ? styles.btnActive : ""}`}
@@ -323,14 +311,6 @@ export function TestDetail({
         </div>
       )}
 
-      {showSource && source && (
-        <figure className={styles.code}>
-          <figcaption>packages/test-cases/src/cases.ts</figcaption>
-          <pre>
-            <code>{source}</code>
-          </pre>
-        </figure>
-      )}
 
       {showInspector && (
         <SegmentInspector from={test.values[prev]!} to={test.values[index]!} />

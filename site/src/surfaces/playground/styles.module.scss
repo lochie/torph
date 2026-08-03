@@ -394,49 +394,6 @@ $fail: rgb(248, 113, 113);
   color: rgba(255, 255, 255, 0.3);
 }
 
-// ── Case source ──
-
-.code {
-  margin: 0;
-  border-radius: 0.75rem;
-  background: #131313;
-  overflow: hidden;
-
-  figcaption {
-    padding: 0.5rem 0.85rem;
-    font-family: monospace;
-    font-size: 0.62rem;
-    color: rgba(255, 255, 255, 0.25);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
-
-  pre {
-    margin: 0;
-    padding: 0.85rem;
-    max-height: 26rem;
-    overflow: auto;
-    font-family: monospace;
-    font-size: 0.72rem;
-    font-weight: 300;
-    line-height: 1.55;
-    color: rgba(255, 255, 255, 0.75);
-    tab-size: 2;
-  }
-
-  code {
-    // The global `code` rule adds padding and a pill background.
-    display: block;
-    padding: 0;
-    font-size: inherit;
-    line-height: inherit;
-    user-select: text;
-
-    &:before {
-      display: none;
-    }
-  }
-}
-
 // ── Segment inspector ──
 
 .inspector {
