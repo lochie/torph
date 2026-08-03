@@ -5,3 +5,4 @@ apps/*/dist
 # This is a pnpm workspace — other lockfiles only ever drift.
 package-lock.json
 yarn.lock
+site/src/surfaces/playground/bundle-sizes.json
