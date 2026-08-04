@@ -1,5 +1,9 @@
 import type { NumberMorphOptions } from "./types";
-import { type NumberSegment, segmentNumber } from "./segment";
+import {
+  type NumberSegment,
+  decimalSeparator,
+  segmentNumber,
+} from "./segment";
 import {
   animateNumberExit,
   animateNumberEnter,
@@ -38,11 +42,14 @@ export const DEFAULT_NUMBER_MORPH_OPTIONS = {
   ...BASE_DEFAULTS,
 } as const satisfies Omit<NumberMorphOptions, "element">;
 
+const MASK_PROPERTIES = ["mask-image", "mask-repeat", "mask-clip"] as const;
+
 export class NumberMorph {
   private element: HTMLElement;
   private duration: number;
   private ease: string;
   private locale: string;
+  private decimalChar: string;
   private decimals?: number;
   private disabled: boolean;
   private onAnimationStart?: () => void;
@@ -63,6 +70,7 @@ export class NumberMorph {
     this.duration = duration;
     this.ease = ease;
     this.locale = opts.locale!;
+    this.decimalChar = decimalSeparator(this.locale);
     this.decimals = opts.decimals;
     this.disabled = opts.disabled!;
     this.onAnimationStart = opts.onAnimationStart;
@@ -74,8 +82,8 @@ export class NumberMorph {
 
     if (!this.isDisabled()) {
       this.element.setAttribute(ATTR_ROOT, "");
-      // Digits slide vertically past the line box on enter/exit
-      this.element.style.overflow = "hidden";
+      this.clipBlockAxis();
+      this.fadeBlockEdges();
       addStyles();
     }
   }
@@ -85,7 +93,71 @@ export class NumberMorph {
     clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
+    this.element.style.overflow = "";
+    this.element.style.overflowX = "";
+    this.element.style.overflowY = "";
+    MASK_PROPERTIES.forEach((property) => {
+      this.element.style.removeProperty(property);
+      this.element.style.removeProperty(`-webkit-${property}`);
+    });
     removeStyles();
+  }
+
+  /**
+   * Digits slide vertically past the line box on enter and exit, so the block
+   * axis is masked. The inline axis must stay visible: the container spends the
+   * whole duration animating to its new width, and clipping it would mask every
+   * character sitting beyond the old width until the size transition catches up.
+   *
+   * `clip` is what makes that split legal — `overflow-x: visible` next to
+   * `overflow-y: hidden` computes to `auto`, which would scroll instead.
+   */
+  private clipBlockAxis() {
+    if (CSS.supports("overflow", "clip")) {
+      this.element.style.overflowX = "visible";
+      this.element.style.overflowY = "clip";
+    } else {
+      this.element.style.overflow = "hidden";
+    }
+  }
+
+  /**
+   * Softens the block-axis clip into a gradient, so characters dissolve across
+   * the edge of the line box instead of meeting a hard line. Positional rather
+   * than timed: how faint a character is depends on where it has slid to, which
+   * keeps it in step with its own movement at any duration.
+   *
+   * The band is `--torph-fade` on the root — set it to `0` for a hard edge.
+   *
+   * `no-clip` is load-bearing. A mask layer is otherwise clipped to the border
+   * box, which would hide every character sitting beyond the container's
+   * animating width — exactly what the visible inline axis exists to show.
+   * `repeat-x` then carries the same profile across that overflow, while the
+   * block axis stays a single tile so anything above or below the box is masked
+   * out. Without `no-clip` the mask would cost more than it gives, so the hard
+   * clip stands in.
+   */
+  private fadeBlockEdges() {
+    if (
+      !CSS.supports("mask-clip", "no-clip") &&
+      !CSS.supports("-webkit-mask-clip", "no-clip")
+    ) {
+      return;
+    }
+
+    const fade = "var(--torph-fade, 0.15em)";
+
+    this.setMaskProperty(
+      "mask-image",
+      `linear-gradient(to bottom, transparent, #000 ${fade}, #000 calc(100% - ${fade}), transparent)`,
+    );
+    this.setMaskProperty("mask-repeat", "repeat-x");
+    this.setMaskProperty("mask-clip", "no-clip");
+  }
+
+  private setMaskProperty(property: string, value: string) {
+    this.element.style.setProperty(property, value);
+    this.element.style.setProperty(`-webkit-${property}`, value);
   }
 
   private isDisabled(): boolean {
@@ -115,7 +187,12 @@ export class NumberMorph {
       this.onAnimationStart();
     }
 
-    const segments = segmentNumber(formatted, this.currentSegments, cursorIndex);
+    const segments = segmentNumber(
+      formatted,
+      this.currentSegments,
+      cursorIndex,
+      this.decimalChar,
+    );
     this.animate(segments);
   }
 
@@ -152,6 +229,16 @@ export class NumberMorph {
     reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(element);
+
+    // Frame-0 positions have to be measured with the container still at its old
+    // width. The root inherits text-align, so under centre/right alignment a
+    // digit's layout position depends on the container width, and the container
+    // does not reach its new width until the size transition finishes.
+    element.style.width = `${oldWidth}px`;
+    void element.offsetWidth;
+    const firstFrameMeasures = measure(element);
+    element.style.width = "auto";
+
     this.currentSegments = segments;
 
     exiting.forEach((child) => {
@@ -181,7 +268,7 @@ export class NumberMorph {
       return;
     }
 
-    this.animateChildren(segments, slideDistance);
+    this.animateChildren(segments, slideDistance, firstFrameMeasures);
 
     transitionContainerSize(
       element,
@@ -193,7 +280,11 @@ export class NumberMorph {
     );
   }
 
-  private animateChildren(segments: NumberSegment[], slideDistance: number) {
+  private animateChildren(
+    segments: NumberSegment[],
+    slideDistance: number,
+    firstFrameMeasures: Measures,
+  ) {
     const segmentIds = segments.map((s) => s.id);
     const persistentIds = new Set(
       segmentIds.filter((id) => this.prevMeasures[id]),
@@ -215,7 +306,7 @@ export class NumberMorph {
         );
 
         const { dx: deltaX, dy: deltaY } = anchorKey
-          ? computeDelta(this.prevMeasures, this.currentMeasures, anchorKey)
+          ? computeDelta(this.prevMeasures, firstFrameMeasures, anchorKey)
           : { dx: 0, dy: 0 };
 
         animateNumberEnter(child, {
@@ -229,7 +320,7 @@ export class NumberMorph {
       } else {
         const { dx: deltaX, dy: deltaY } = computeDelta(
           this.prevMeasures,
-          this.currentMeasures,
+          firstFrameMeasures,
           key,
         );
 

@@ -6,8 +6,33 @@ export type NumberSegment = {
 
 let nextNewId = 0;
 
+function isDigit(char: string): boolean {
+  return char >= "0" && char <= "9";
+}
+
 function classifyKind(char: string): NumberSegment["kind"] {
-  return /[0-9]/.test(char) ? "digit" : "symbol";
+  return isDigit(char) ? "digit" : "symbol";
+}
+
+const separators = new Map<string, string>();
+
+/** The locale's decimal separator — the pivot every alignment is measured from. */
+export function decimalSeparator(locale: string): string {
+  const cached = separators.get(locale);
+  if (cached) return cached;
+
+  let separator = ".";
+  try {
+    separator =
+      new Intl.NumberFormat(locale)
+        .formatToParts(1.1)
+        .find((part) => part.type === "decimal")?.value ?? ".";
+  } catch {
+    // Invalid locale tag. `toLocaleString` surfaces it on the first number.
+  }
+
+  separators.set(locale, separator);
+  return separator;
 }
 
 /**
@@ -17,13 +42,14 @@ function classifyKind(char: string): NumberSegment["kind"] {
  * characters before the edit keep their old IDs by position,
  * characters after the edit keep theirs offset by the length change.
  *
- * When `cursorIndex` is not provided, falls back to greedy forward
- * matching (works well for distinct characters).
+ * When `cursorIndex` is not provided, characters are matched by place
+ * value \u2014 see `placeMatch`.
  */
 export function segmentNumber(
   value: string,
   prevSegments?: NumberSegment[],
   cursorIndex?: number,
+  decimalChar = ".",
 ): NumberSegment[] {
   const chars = value.split("");
 
@@ -38,7 +64,7 @@ export function segmentNumber(
   const matches =
     cursorIndex != null
       ? cursorMatch(oldChars, chars, cursorIndex)
-      : greedyMatch(oldChars, chars);
+      : placeMatch(oldChars, chars, decimalChar);
 
   const usedIds = new Set<string>();
   for (const [, oldIdx] of matches) {
@@ -146,27 +172,87 @@ function cursorMatch(
 }
 
 /**
- * Greedy forward matching: matches each old character to the earliest
- * available position in the new string. Fallback when no cursor info.
+ * Matches characters by place value rather than by scanning left to right.
  *
- * Returns a Map of newIndex → oldIndex for matched characters.
+ * A digit's identity is its significance: the units digit stays the units digit
+ * however many digits appear in front of it. So the integer side is walked
+ * outward from the decimal separator towards the left and the fraction side
+ * towards the right, pairing whatever sits at the same distance from the pivot.
+ * Group separators fall into place as a side effect — 999,999 → 1,000,000 slides
+ * its comma along by one group, where a left-to-right scan would snap it to the
+ * front and break the cadence.
+ *
+ * Fixed affixes ($, %, " MB") aren't part of the number, so they are paired from
+ * the outside in first and excluded from the place alignment.
+ *
+ * Returns a Map of newIndex → oldIndex for matched characters. Both walks skip
+ * over mismatches instead of stopping: one digit changing says nothing about the
+ * alignment of the digits either side of it.
  */
-function greedyMatch(
+function placeMatch(
   oldChars: string[],
   newChars: string[],
+  decimalChar: string,
 ): Map<number, number> {
   const matches = new Map<number, number>();
-  let newStart = 0;
 
-  for (let i = 0; i < oldChars.length; i++) {
-    for (let j = newStart; j < newChars.length; j++) {
-      if (oldChars[i] === newChars[j]) {
-        matches.set(j, i);
-        newStart = j + 1;
-        break;
+  let start = 0;
+  while (
+    start < oldChars.length &&
+    start < newChars.length &&
+    oldChars[start] === newChars[start] &&
+    !isDigit(oldChars[start]!)
+  ) {
+    matches.set(start, start);
+    start++;
+  }
+
+  let oldEnd = oldChars.length;
+  let newEnd = newChars.length;
+  while (
+    oldEnd > start &&
+    newEnd > start &&
+    oldChars[oldEnd - 1] === newChars[newEnd - 1] &&
+    !isDigit(oldChars[oldEnd - 1]!)
+  ) {
+    matches.set(newEnd - 1, oldEnd - 1);
+    oldEnd--;
+    newEnd--;
+  }
+
+  const oldPivot = findPivot(oldChars, start, oldEnd, decimalChar);
+  const newPivot = findPivot(newChars, start, newEnd, decimalChar);
+
+  for (let k = 1; oldPivot - k >= start && newPivot - k >= start; k++) {
+    if (oldChars[oldPivot - k] === newChars[newPivot - k]) {
+      matches.set(newPivot - k, oldPivot - k);
+    }
+  }
+
+  // Absent from either value, the pivot is that value's end and there is no
+  // fraction to walk.
+  if (oldPivot < oldEnd && newPivot < newEnd) {
+    matches.set(newPivot, oldPivot);
+
+    for (let k = 1; oldPivot + k < oldEnd && newPivot + k < newEnd; k++) {
+      if (oldChars[oldPivot + k] === newChars[newPivot + k]) {
+        matches.set(newPivot + k, oldPivot + k);
       }
     }
   }
 
   return matches;
+}
+
+/** Last decimal separator within the affix-trimmed range, else the range end. */
+function findPivot(
+  chars: string[],
+  start: number,
+  end: number,
+  decimalChar: string,
+): number {
+  for (let i = end - 1; i >= start; i--) {
+    if (chars[i] === decimalChar) return i;
+  }
+  return end;
 }

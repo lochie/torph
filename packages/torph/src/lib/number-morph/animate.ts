@@ -1,8 +1,17 @@
-import {
-  parseTranslate,
-  cancelAnimations,
-  fadeDuration,
-} from "../utils/animate";
+import { parseTranslate, cancelAnimations } from "../utils/animate";
+
+/**
+ * Fades are a share of the morph rather than a fixed length, and the outgoing
+ * share is the larger one: a digit that has already left is a hole in the
+ * number, so it stays legible well into the slide, while the incoming digit
+ * asserts itself early instead of ghosting in behind it.
+ *
+ * The block-axis mask is doing most of the work here — both sets of characters
+ * are also being clipped as they cross the line box — so these only have to
+ * soften the edges of that.
+ */
+const EXIT_FADE = 0.45;
+const ENTER_FADE = 0.25;
 
 export function animateNumberExit(
   child: HTMLElement,
@@ -34,12 +43,14 @@ export function animateNumberExit(
       offset: 1,
     },
     {
-      duration: fadeDuration(duration, 0.25),
+      duration: duration * EXIT_FADE,
       easing: "linear",
       fill: "both",
     },
   );
 
+  // Removal is the fade finishing, so the share above is also how long an
+  // exiting character stays in the DOM.
   fadeAnimation.onfinish = () => child.remove();
 }
 
@@ -76,14 +87,11 @@ export function animateNumberEnter(
 
   const startOpacity = prev.opacity >= 1 ? 0 : prev.opacity;
   if (startOpacity < 1) {
-    child.animate(
-      [{ opacity: startOpacity }, { opacity: 1 }],
-      {
-        duration: fadeDuration(duration, 0.5),
-        easing: "linear",
-        fill: "both",
-      },
-    );
+    child.animate([{ opacity: startOpacity }, { opacity: 1 }], {
+      duration: duration * ENTER_FADE,
+      easing: "linear",
+      fill: "both",
+    });
   }
 }
 
