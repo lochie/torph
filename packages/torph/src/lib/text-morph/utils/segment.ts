@@ -1,6 +1,6 @@
 export type { Segment } from "../../utils/types";
 import type { Segment } from "../../utils/types";
-import { isNumericWord, numbersAllowed, segmentNumber } from "./number";
+import { isNumericWord, segmentNumber } from "./number";
 
 // IDs are the identity used for FLIP tracking and DOM reconciliation, so a
 // collision makes two segments fight over one element and one of them silently
@@ -107,7 +107,6 @@ export function segmentText(
   const hasNewlines = value.includes("\n");
   const byWord = value.includes(" ") || hasNewlines;
   const alloc = createIdAllocator();
-  const withNumbers = numbersAllowed(value, numbers);
 
   if (hasNewlines) {
     // `offset` is the character index into the full value, so IDs derived from
@@ -130,11 +129,11 @@ export function segmentText(
       offset += line.length;
     });
 
-    return withNumbers ? expandNumbers(allSegments) : allSegments;
+    return numbers ? expandNumbers(allSegments) : allSegments;
   }
 
   const segments = segmentLine(value, locale, byWord, 0, alloc);
-  return withNumbers ? expandNumbers(segments) : segments;
+  return numbers ? expandNumbers(segments) : segments;
 }
 
 function segmentLine(

@@ -1,5 +1,11 @@
 import type { Segment } from "./types";
-import { ATTR_EXITING, ATTR_ID, ATTR_ITEM, ATTR_KIND } from "./constants";
+import {
+  ATTR_EXITING,
+  ATTR_ID,
+  ATTR_ITEM,
+  ATTR_KIND,
+  ATTR_SLOT,
+} from "./constants";
 
 export function detachFromFlow(
   container: HTMLElement,
@@ -73,19 +79,54 @@ export function splitWordSpans(
       const span = document.createElement("span");
       span.setAttribute(ATTR_ITEM, "");
       span.setAttribute(ATTR_ID, seg.id);
-      applyKind(span, seg);
-      span.textContent = seg.string;
+      syncSlot(span, seg);
       child.before(span);
     }
     child.remove();
   }
 }
 
-// An exit outlives the segment that described it — the element is all that is
-// left by the time it animates — so the kind has to live on the element.
-function applyKind(element: HTMLElement, segment: Segment) {
-  if (segment.kind) element.setAttribute(ATTR_KIND, segment.kind);
-  else element.removeAttribute(ATTR_KIND);
+/**
+ * Gives a numeric character the nested box its slide needs, and takes it away
+ * again when the same character stops being one.
+ *
+ * The kind is written to the element because an exit outlives the segment that
+ * described it — by the time it animates, the element is all that is left.
+ *
+ * Both directions have to work on an element being reused: a figure that gains
+ * a second line becomes text and has to shed its slot, and gets it back when
+ * the value returns to one line.
+ */
+function syncSlot(element: HTMLElement, segment: Segment) {
+  if (!segment.kind) {
+    element.removeAttribute(ATTR_KIND);
+    element.removeAttribute(ATTR_SLOT);
+    // Also discards the inner span, if this element had one.
+    element.textContent = segment.string;
+    return;
+  }
+
+  element.setAttribute(ATTR_KIND, segment.kind);
+  element.setAttribute(ATTR_SLOT, "");
+
+  let inner = element.firstElementChild as HTMLElement | null;
+  if (!inner) {
+    element.textContent = "";
+    inner = document.createElement("span");
+    element.appendChild(inner);
+  }
+  inner.textContent = segment.string;
+}
+
+/**
+ * The box the slide is applied to. For a slot that is the nested span, so the
+ * movement is clipped by the slot around it; for anything else the element is
+ * its own mover.
+ */
+export function moverOf(element: HTMLElement): HTMLElement {
+  return element.hasAttribute(ATTR_SLOT)
+    ? ((element.firstElementChild as HTMLElement | null) ?? element)
+    : element;
 }
 
 export function reconcileChildren(
@@ -129,15 +170,13 @@ export function reconcileChildren(
     }
 
     if (existing && existing.tagName !== "BR") {
-      existing.textContent = segment.string;
-      applyKind(existing, segment);
+      syncSlot(existing, segment);
       element.appendChild(existing);
     } else {
       const span = document.createElement("span");
       span.setAttribute(ATTR_ITEM, "");
       span.setAttribute(ATTR_ID, segment.id);
-      applyKind(span, segment);
-      span.textContent = segment.string;
+      syncSlot(span, segment);
       element.appendChild(span);
     }
   });

@@ -2,7 +2,6 @@ import type { TextMorphOptions } from "./types";
 import { BASE_DEFAULTS, type Segment } from "../utils/types";
 import { resolveEase } from "../utils/spring";
 import { segmentText } from "./utils/segment";
-import { numbersAllowed } from "./utils/number";
 import {
   type Measures,
   measure,
@@ -23,12 +22,7 @@ import {
 } from "./utils/number-animate";
 import { detachFromFlow, splitWordSpans, reconcileChildren } from "../utils/dom";
 import { diffSegments } from "./utils/diff";
-import {
-  addStyles,
-  applyBlockFade,
-  clearBlockFade,
-  removeStyles,
-} from "../utils/styles";
+import { addStyles, removeStyles } from "../utils/styles";
 import {
   ATTR_ROOT,
   ATTR_DEBUG,
@@ -67,8 +61,6 @@ export class TextMorph {
   private previousSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
-  private fadeApplied = false;
-  private hadNumbers = false;
 
   constructor(options: TextMorphOptions) {
     const { ease: rawEase, ...rest } = {
@@ -98,7 +90,6 @@ export class TextMorph {
 
   destroy() {
     this.reducedMotion?.destroy();
-    clearBlockFade(this.element);
     clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
     this.element.removeAttribute(ATTR_ROOT);
@@ -157,10 +148,7 @@ export class TextMorph {
     const oldRect = element.getBoundingClientRect();
     const oldWidth = oldRect.width;
     const oldHeight = oldRect.height;
-    // The block-axis travel of a digit is one line, so the line box measures it.
-    const slideDistance = element.offsetHeight || 20;
-
-    const numbers = numbersAllowed(value, this.options.numbers !== false);
+    const numbers = this.options.numbers !== false;
 
     let segments: Segment[];
     let splits: Map<string, Segment[]>;
@@ -178,8 +166,6 @@ export class TextMorph {
       segments = segmentText(value, this.options.locale!, numbers);
       splits = new Map();
     }
-
-    this.applyFade(segments.some((segment) => segment.kind !== undefined));
 
     // Keep a zero-width space segment so the container always has in-flow
     // content, preserving the line box height during exit animations.
@@ -213,6 +199,15 @@ export class TextMorph {
     reconcileChildren(element, oldChildren, newIds, segments);
 
     this.currentMeasures = measure(this.element);
+
+    // One line's worth, not the whole block. Every line box is the same height
+    // here — the root is `white-space: nowrap`, so a line exists only where the
+    // value put a newline — which makes counting them exact.
+    const lineCount = segments.reduce(
+      (lines, segment) => (segment.string === "\n" ? lines + 1 : lines),
+      1,
+    );
+    const slideDistance = (element.offsetHeight || 20 * lineCount) / lineCount;
 
     // First-frame positions have to be measured at the old width, not derived
     // from it — text-align has no effect on content that overflows.
@@ -282,22 +277,6 @@ export class TextMorph {
         this.options.onAnimationCancel,
       );
     }
-  }
-
-  /**
-   * Held one update past the last number so digits on their way out are still
-   * masked while they slide, and only installed once a value actually contains
-   * one — a mask on every root would cost a stacking context for nothing.
-   */
-  private applyFade(hasNumbers: boolean) {
-    const wanted = hasNumbers || this.hadNumbers;
-    this.hadNumbers = hasNumbers;
-
-    if (wanted === this.fadeApplied) return;
-    this.fadeApplied = wanted;
-
-    if (wanted) applyBlockFade(this.element);
-    else clearBlockFade(this.element);
   }
 
   private updateStyles(

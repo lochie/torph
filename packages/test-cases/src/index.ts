@@ -8,6 +8,7 @@ export {
   verifyCycleStability,
   verifyGraphemeMorph,
   verifyKinds,
+  verifyKindsAfterMorph,
   verifyNoMorph,
   verifyTextPlaces,
   verifyWordAbsent,

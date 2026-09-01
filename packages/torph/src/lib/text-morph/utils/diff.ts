@@ -6,7 +6,6 @@ import {
   decimalSeparator,
   hasDigit,
   isNumericWord,
-  numbersAllowed,
   numericSkeleton,
   segmentNumber,
 } from "./number";
@@ -166,7 +165,7 @@ export function diffSegments(
   const newHasNewlines = newText.includes("\n");
   const oldWords = groupIntoWords(oldSegments);
 
-  const numbersOn = numbersAllowed(newText, options.numbers !== false);
+  const numbersOn = options.numbers !== false;
   const isNum = (word: string) => numbersOn && isNumericWord(word);
   const token = (word: string) => (isNum(word) ? NUMBER_TOKEN : word);
 

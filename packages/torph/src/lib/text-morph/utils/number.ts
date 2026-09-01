@@ -44,19 +44,6 @@ export function numericSkeleton(word: string): string {
   return out;
 }
 
-/**
- * Whether numeric morphing applies to a value at all.
- *
- * A multi-line root is taller than one line, so the block-axis mask that hides a
- * sliding digit has nothing to hide it against — the digit would simply travel
- * over the line below. The rule lives here because `segmentText`, `diffSegments`
- * and the engine all have to reach the same verdict; two of them disagreeing
- * puts a kind on a segment the root cannot clip.
- */
-export function numbersAllowed(value: string, enabled = true): boolean {
-  return enabled && !value.includes("\n");
-}
-
 /** Separators that can appear *between* digits without ending the number. */
 const CORE_SEPARATORS = ".,'\u00A0\u202F\u2009\u2007";
 const PREFIX_CHARS = "+-\u2212(#";

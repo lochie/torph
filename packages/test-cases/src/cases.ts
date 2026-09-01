@@ -6,6 +6,7 @@ import {
   verifyCycleStability,
   verifyGraphemeMorph,
   verifyKinds,
+  verifyKindsAfterMorph,
   verifyNoMorph,
   verifyTextPlaces,
   verifyWordAbsent,
@@ -263,7 +264,7 @@ export const CASES: TestCase[] = [
   {
     label: "Version strings stay text",
     description:
-      "A token has to be a quantity all the way through to morph as one. \"v1.2.3\" has no units column, so it morphs character by character like any other word.",
+      'A token has to be a quantity all the way through to morph as one. "v1.2.3" has no units column, so it morphs character by character like any other word.',
     tags: ["number"],
     values: ["v1.2.3", "v1.3.0", "v2.0.0"],
     verify: (t) => verifyKinds(t, "v1.2.3", new Array(6).fill(undefined)),
@@ -285,7 +286,7 @@ export const CASES: TestCase[] = [
   {
     label: "Emptying a number to its affix",
     description:
-      "Backspacing the last digit out of \"$4\" leaves a token with no digits left to be a number by. The dollar sign is still the same dollar sign, so it holds rather than re-entering.",
+      'Backspacing the last digit out of "$4" leaves a token with no digits left to be a number by. The dollar sign is still the same dollar sign, so it holds rather than re-entering.',
     tags: ["number", "exit"],
     values: ["$4", "$", "$4", "$420"],
     verify: (t) =>
@@ -297,7 +298,7 @@ export const CASES: TestCase[] = [
   {
     label: "A number never claims a word",
     description:
-      "\"5\" and \"five\" are the same quantity and share no characters, so the digit leaves and the word arrives. Spelling is the only thing the diff can see.",
+      '"5" and "five" are the same quantity and share no characters, so the digit leaves and the word arrives. Spelling is the only thing the diff can see.',
     tags: ["number"],
     values: ["5 items", "five items"],
     verify: (t) =>
@@ -321,6 +322,90 @@ export const CASES: TestCase[] = [
         [0, 0],
         [2, 2],
         [6, 6],
+      ]),
+  },
+  {
+    label: "A number holds across a new line",
+    description:
+      "A second line arrives above a figure that has not itself changed. Each numeric character sits in its own clip box rather than relying on the root, so gaining a line costs the number nothing — every digit keeps its identity and its place.",
+    tags: ["number", "multiline"],
+    values: ["1,234", "Total\n1,234"],
+    minLines: 2,
+    verify: (t) =>
+      combineResults(
+        verifyTextPlaces(t, "1,234", "Total\n1,234", [
+          [2, 0],
+          [3, 1],
+          [4, 2],
+          [5, 3],
+          [6, 4],
+        ]),
+        verifyKindsAfterMorph(t, "1,234", "Total\n1,234", [
+          undefined,
+          undefined,
+          "digit",
+          "symbol",
+          "digit",
+          "digit",
+          "digit",
+        ]),
+      ),
+  },
+  {
+    label: "A number changes as a line arrives",
+    description:
+      "The second line and a new figure land on the same morph. Place matching still applies across the line change, and every digit here is different — so the group separator is the one thing that carries.",
+    tags: ["number", "multiline", "place"],
+    values: ["1,234", "Total\n5,678"],
+    minLines: 2,
+    verify: (t) =>
+      verifyTextPlaces(t, "1,234", "Total\n5,678", [
+        [2, null],
+        [3, 1],
+      ]),
+  },
+  {
+    label: "A number on a middle line updates",
+    description:
+      "The figure between two other lines is replaced while they hold still, newlines included. A digit slides one line box, not the height of the whole block, and its slot is what it disappears behind — so the lines around it are never touched.",
+    tags: ["number", "multiline", "place"],
+    values: ["a\n1,234\nb", "a\n5,678\nb"],
+    minLines: 3,
+    verify: (t) =>
+      combineResults(
+        verifyTextPlaces(t, "a\n1,234\nb", "a\n5,678\nb", [
+          [0, 0],
+          [1, 1],
+          [3, 3],
+          [7, 7],
+          [8, 8],
+        ]),
+        verifyKindsAfterMorph(t, "a\n1,234\nb", "a\n5,678\nb", [
+          undefined,
+          undefined,
+          "digit",
+          "symbol",
+          "digit",
+          "digit",
+          "digit",
+          undefined,
+          undefined,
+        ]),
+      ),
+  },
+  {
+    label: "A number swaps lines with its label",
+    description:
+      "The figure moves from the bottom line to the top and the label goes the other way. Both are matched as whole words across the newline, so they trade places intact rather than being rebuilt.",
+    tags: ["number", "multiline"],
+    values: ["text\n1,234", "1,234\ntext"],
+    minLines: 2,
+    verify: (t) =>
+      verifyTextPlaces(t, "text\n1,234", "1,234\ntext", [
+        [0, 2],
+        [1, 3],
+        [4, 6],
+        [6, 0],
       ]),
   },
   {

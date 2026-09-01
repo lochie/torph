@@ -196,3 +196,33 @@ export function verifyKinds(
       : `expected ${render(expected)}, got ${render(kinds)}`,
   };
 }
+
+/**
+ * The kinds a value ends up with after morphing into it.
+ *
+ * Distinct from `verifyKinds`, which segments a value from scratch. A morph can
+ * inherit whole words from the value before it, kinds and all, so the two paths
+ * can disagree about the same string — and only this one sees it.
+ */
+export function verifyKindsAfterMorph(
+  t: TorphApi,
+  from: string,
+  to: string,
+  expected: (string | undefined)[],
+): Result {
+  const { segments } = t.diffSegments(t.segmentText(from, L), to, L);
+  const kinds = segments.map((s) => s.kind);
+  const pass =
+    kinds.length === expected.length &&
+    kinds.every((kind, i) => kind === expected[i]);
+
+  const render = (list: (string | undefined)[]) =>
+    `[${list.map((k) => k ?? "text").join(",")}]`;
+
+  return {
+    pass,
+    detail: pass
+      ? `${render(kinds)} as expected`
+      : `expected ${render(expected)}, got ${render(kinds)}`,
+  };
+}

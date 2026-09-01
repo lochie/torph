@@ -2,7 +2,12 @@
 import { describe, it, expect, afterEach, beforeAll } from "vitest";
 import { TextMorph } from "../index";
 import type { TextMorphOptions } from "../types";
-import { ATTR_EXITING, ATTR_ID, ATTR_KIND } from "../../utils/constants";
+import {
+  ATTR_EXITING,
+  ATTR_ID,
+  ATTR_KIND,
+  ATTR_SLOT,
+} from "../../utils/constants";
 
 // The segmentation and diff suites assert what a morph *should* be. This one
 // asserts what the engine does with that: which of the two animation families
@@ -32,8 +37,20 @@ beforeAll(() => {
   } as typeof Element.prototype.animate;
 });
 
-type Recorded = { id: string | null; keyframes: unknown; options: unknown };
+type Recorded = {
+  id: string | null;
+  onMover: boolean;
+  keyframes: unknown;
+  options: unknown;
+};
 
+/**
+ * A numeric character's animation is split across two elements: the slot takes
+ * the FLIP correction and the span nested inside it takes the slide, so the
+ * slide happens behind the slot's clip. Only the slot carries an ID, so an
+ * animation is attributed to the nearest ancestor that has one and flagged with
+ * which of the two it landed on.
+ */
 function recordAnimations() {
   const calls: Recorded[] = [];
   const original = Element.prototype.animate;
@@ -43,7 +60,13 @@ function recordAnimations() {
     keyframes: unknown,
     options: unknown,
   ) {
-    calls.push({ id: this.getAttribute(ATTR_ID), keyframes, options });
+    const owner = this.closest(`[${ATTR_ID}]`);
+    calls.push({
+      id: owner?.getAttribute(ATTR_ID) ?? null,
+      onMover: owner !== this,
+      keyframes,
+      options,
+    });
     return original.call(this, keyframes as never, options as never);
   } as typeof Element.prototype.animate;
 
@@ -59,18 +82,35 @@ type Frame = { transform?: string; opacity?: number; offset?: number };
  * keyframe pinned to one end of the timeline, a text morph is a pair walking
  * from an offset to `none`.
  */
-function motion(calls: Recorded[], id: string): string | null {
-  const call = calls.find((c) => {
-    if (c.id !== id) return false;
+function transformCall(
+  calls: Recorded[],
+  id: string,
+  onMover: boolean,
+): Recorded | undefined {
+  return calls.find((c) => {
+    if (c.id !== id || c.onMover !== onMover) return false;
     const frames = (Array.isArray(c.keyframes) ? c.keyframes : [c.keyframes]) as Frame[];
     return frames.some((frame) => frame.transform !== undefined);
   });
+}
+
+/** What layout did to a character — the transform on the item itself. */
+function motion(calls: Recorded[], id: string): string | null {
+  const call = transformCall(calls, id, false);
   if (!call) return null;
 
   if (Array.isArray(call.keyframes)) {
     const [from, to] = call.keyframes as Frame[];
     return `${from!.transform} → ${to!.transform}`;
   }
+  const frame = call.keyframes as Frame;
+  return `${frame.transform} @${frame.offset}`;
+}
+
+/** What the character did inside its slot — the block-axis slide. */
+function slide(calls: Recorded[], id: string): string | null {
+  const call = transformCall(calls, id, true);
+  if (!call) return null;
   const frame = call.keyframes as Frame;
   return `${frame.transform} @${frame.offset}`;
 }
@@ -171,8 +211,9 @@ describe("animation dispatch", () => {
 
     // Digits arrive from above and symbols from below, so a separator appearing
     // between them reads as a different event from the digit that displaced it.
-    expect(motion(calls, leading)).toBe(slideFrom(-SLIDE));
-    expect(motion(calls, comma)).toBe(slideFrom(SLIDE));
+    // Both happen on the nested span, behind the slot's clip.
+    expect(slide(calls, leading)).toBe(slideFrom(-SLIDE));
+    expect(slide(calls, comma)).toBe(slideFrom(SLIDE));
   });
 
   it("leaves a digit that held its place untouched", () => {
@@ -185,8 +226,12 @@ describe("animation dispatch", () => {
     restore();
 
     // Place matching keeps 2, 3 and 4 in their columns. With no delta to
-    // correct, animating them at all would be motion the number does not have.
-    for (const id of held) expect(motion(calls, id)).toBeNull();
+    // correct and nothing to slide, animating them at all — on either the slot
+    // or the character inside it — would be motion the number does not have.
+    for (const id of held) {
+      expect(motion(calls, id), `slot ${id}`).toBeNull();
+      expect(slide(calls, id), `mover ${id}`).toBeNull();
+    }
   });
 
   it("sends words through the text morph, not the slide", () => {
@@ -225,86 +270,141 @@ describe("animation dispatch", () => {
     morph.update("hello");
     restore();
 
-    for (const id of digits) expect(motion(calls, id)).toBe(slideOut);
+    for (const id of digits) expect(slide(calls, id)).toBe(slideOut);
   });
 });
 
-describe("the block-axis mask", () => {
-  it("is installed only once a value holds a number, and held until it stops", () => {
+describe("the clip a slide happens behind", () => {
+  it("gives every numeric character its own box, and nothing else one", () => {
     const { element, morph } = mount();
+    morph.update("3 apples");
 
-    morph.update("hello");
-    expect(element.style.overflowY).toBe("");
-    expect(element.style.getPropertyValue("mask-image")).toBe("");
+    const slots = Array.from(element.children).filter((child) =>
+      child.hasAttribute(ATTR_SLOT),
+    );
 
-    morph.update("5 apples");
-    expect(element.style.overflowY).toBe("clip");
-    expect(element.style.getPropertyValue("mask-image")).toContain("--torph-fade");
+    // Exactly the digit, and the character itself moved into a nested span so
+    // the slot around it has something to clip against.
+    expect(slots.map((s) => s.textContent)).toEqual(["3"]);
+    expect(slots[0]!.children.length).toBe(1);
+    expect(slots[0]!.firstElementChild!.textContent).toBe("3");
+  });
 
-    // The digit is mid-exit on this update — dropping the mask now would let it
-    // slide out in full view.
-    morph.update("hello");
-    expect(element.style.overflowY).toBe("clip");
+  it("leaves the root unclipped, which is the whole reason slots exist", () => {
+    const { element, morph } = mount();
+    morph.update("a\n1,234\nb");
 
-    morph.update("goodbye");
+    // The root spans every line of the value, so clipping there would bound
+    // only the first line's top and the last line's bottom — a digit on the
+    // middle line would slide over its neighbour in plain view.
     expect(element.style.overflowY).toBe("");
     expect(element.style.getPropertyValue("mask-image")).toBe("");
   });
 
-  it("is cleared on destroy", () => {
+  it("clips and fades the slot from the stylesheet, not per element", () => {
     const { element, morph } = mount();
     morph.update("$5");
-    expect(element.style.overflowY).toBe("clip");
 
-    morph.destroy();
-    mounted.pop();
+    const slot = element.querySelector(`[${ATTR_SLOT}]`)!;
+    expect(slot.getAttribute("style")).toBeNull();
 
-    expect(element.style.overflowY).toBe("");
-    expect(element.style.getPropertyValue("mask-image")).toBe("");
+    const css = document.querySelector("style[data-torph]")!.textContent!;
+    expect(css).toContain(`[${ATTR_SLOT}]`);
+    expect(css).toContain("overflow-y: clip");
+    expect(css).toContain("--torph-fade");
   });
 });
 
 describe("opting out", () => {
-  it("numbers: false leaves digits as text and never masks", () => {
+  it("numbers: false leaves digits as text, with no slots to slide in", () => {
     const { element, morph } = mount({ numbers: false });
     morph.update("hello");
     morph.update("$1,234");
 
     expect(shape(element).every((entry) => entry.endsWith(":text"))).toBe(true);
-    expect(element.style.overflowY).toBe("");
-  });
-
-  it("a multi-line value falls back to text", () => {
-    const { element, morph } = mount();
-    morph.update("Total");
-    morph.update("Total\n1,234");
-
-    expect(shape(element).some((entry) => entry.includes(":digit"))).toBe(false);
-    expect(element.style.overflowY).toBe("");
+    expect(element.querySelector(`[${ATTR_SLOT}]`)).toBeNull();
   });
 });
 
-describe("numeric values", () => {
-  it("formats through locale and decimals", () => {
-    const { element, morph } = mount({ locale: "en", decimals: 2 });
-    morph.update(1234.5);
+describe("numbers across line changes", () => {
+  // Each of these moves a value between one line and several with a figure in
+  // it. A digit's clip box is its own slot rather than the root, so none of it
+  // should make any difference to how the number behaves.
+  const steps = [
+    "1,234",
+    "1,234\ntotal", // gains a line below
+    "Total\n5,678", // gains a line above and changes at once
+    "a\n1,234\nb", // figure on a middle line
+    "a\n5,678\nb", // middle line updates
+    "text\n1,234",
+    "1,234\ntext", // swaps lines with its label
+    "5,678", // back onto one line
+  ];
 
-    expect(rendered(element)).toBe("1,234.50");
+  it("keeps the figure a number on every line", () => {
+    const { element, morph } = mount();
+
+    for (const value of steps) {
+      morph.update(value);
+
+      const digits = live(element).filter((c) => c.kind !== null);
+      expect(digits.length, `${JSON.stringify(value)} lost its number`).toBe(5);
+
+      const ids = live(element).map((c) => c.id);
+      const duplicate = ids.find((id, i) => ids.indexOf(id) !== i);
+      expect(duplicate, `${JSON.stringify(value)} repeats an ID`).toBeUndefined();
+
+      // `<br>` carries the line break and holds no text of its own.
+      expect(rendered(element)).toBe(value.replace(/\n/g, ""));
+    }
   });
 
-  it("takes a caret for a value that is a single number", () => {
+  it("slides one line box, not the height of the whole block", () => {
     const { element, morph } = mount();
-    morph.update("$4");
-    const dollar = idOf(element, "$");
-    const four = idOf(element, "4");
+    // happy-dom has no layout, so the block height is stated rather than
+    // measured. Three lines of it is what a digit must not travel.
+    Object.defineProperty(element, "offsetHeight", {
+      value: 60,
+      configurable: true,
+    });
 
-    // Typing "2" after the 4: place matching would read the 4 as having changed
-    // magnitude, the caret says it simply stayed where it was.
-    morph.update("$42", 3);
+    morph.update("1,234");
+    let recorder = recordAnimations();
+    morph.update("5,678");
+    recorder.restore();
+    expect(slide(recorder.calls, idOf(element, "5"))).toBe(slideFrom(-60));
 
-    const after = live(element);
-    expect(after.map((c) => c.id)).toEqual([dollar, four, after[2]!.id]);
-    expect(rendered(element)).toBe("$42");
+    morph.update("a\n1,234\nb");
+    recorder = recordAnimations();
+    morph.update("a\n5,678\nb");
+    recorder.restore();
+
+    // Same 60px block, now three lines tall: the digit travels one of them.
+    expect(slide(recorder.calls, idOf(element, "5"))).toBe(slideFrom(-20));
+  });
+
+  it("never hands the lines around the figure a slide", () => {
+    const { element, morph } = mount();
+    morph.update("a\n1,234\nb");
+    const above = idOf(element, "a");
+    const below = idOf(element, "b");
+
+    const { calls, restore } = recordAnimations();
+    morph.update("a\n5,678\nb");
+    restore();
+
+    // Whether they *moved* is a layout question happy-dom cannot answer — every
+    // rect here is zero, so every delta is too. What it can answer is whether
+    // they were treated as part of the number, which is what a leaked kind
+    // would do to them.
+    for (const id of [above, below]) {
+      expect(slide(calls, id), `mover ${id}`).toBeNull();
+    }
+    expect(
+      live(element)
+        .filter((c) => c.text === "a" || c.text === "b")
+        .map((c) => c.kind),
+    ).toEqual([null, null]);
   });
 });
 
