@@ -17,7 +17,7 @@ export const NUMBER_TESTS: NumberBenchCase[] = NUMBER_CASES.map((testCase) => ({
 
 export { ALL_NUMBER_TAGS };
 
-/** What `NumberMorph` will render for a value — numbers are formatted, strings are not. */
+/** What `TextMorph` will render for a numeric value — numbers are formatted, strings are not. */
 export function formatValue(
   value: string | number,
   locale: string,

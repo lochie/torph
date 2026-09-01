@@ -1,6 +1,6 @@
 "use client";
 
-import { NumberMorph } from "torph/react";
+import { TextMorph } from "torph/react";
 import styles from "./styles.module.scss";
 
 import React from "react";
@@ -25,7 +25,7 @@ export const InputPlayground = () => {
           }}
         />
         <div className={styles.output}>
-          <NumberMorph cursorIndex={cursor}>{query}</NumberMorph>
+          <TextMorph cursorIndex={cursor}>{query}</TextMorph>
         </div>
       </div>
     </div>

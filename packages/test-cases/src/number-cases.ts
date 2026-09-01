@@ -173,7 +173,7 @@ export const NUMBER_CASES: NumberCase[] = [
   {
     label: "Locale formatting",
     description:
-      "Raw numbers formatted by NumberMorph itself. Grouping follows the locale, so the same value reads differently per step.",
+      "Raw numbers formatted by TextMorph itself. Grouping follows the locale, so the same value reads differently per step.",
     tags: ["locale"],
     values: [1234567.891, 9876543.21],
     locale: "de-DE",

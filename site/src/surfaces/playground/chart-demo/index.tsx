@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { NumberMorph } from "torph/react";
+import { TextMorph } from "torph/react";
 import styles from "./styles.module.scss";
 
 const DATA = [
@@ -31,7 +31,7 @@ export const ChartPlayground = () => {
   return (
     <div className={styles.container}>
       <div className={styles.value}>
-        <NumberMorph>{formatValue(DATA[activeIndex].value)}</NumberMorph>
+        <TextMorph>{formatValue(DATA[activeIndex].value)}</TextMorph>
       </div>
       <div className={styles.label}>
         Monthly revenue · {DATA[activeIndex].month}

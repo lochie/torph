@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decimalSeparator, segmentNumber } from "../segment";
+import { decimalSeparator, segmentNumber } from "../number";
 
 /**
  * Where each character of `to` came from in `from`, by position — `null` for a

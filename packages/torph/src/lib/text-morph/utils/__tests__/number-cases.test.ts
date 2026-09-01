@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NUMBER_CASES } from "@torph/test-cases";
-import { segmentNumber } from "../segment";
+import { segmentNumber } from "../number";
 
 // Cases live in `packages/test-cases` — adding one there adds it here and to
 // the playground.

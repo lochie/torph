@@ -33,6 +33,7 @@ export default defineComponent({
       default: DEFAULT_TEXT_MORPH_OPTIONS.ease,
     },
     scale: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.scale },
+    numbers: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.numbers },
     debug: { type: Boolean, default: undefined },
     disabled: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.disabled },
     respectReducedMotion: {
@@ -60,6 +61,7 @@ export default defineComponent({
         ease: props.ease,
         debug: props.debug,
         scale: props.scale,
+        numbers: props.numbers,
         disabled: props.disabled,
         respectReducedMotion: props.respectReducedMotion,
       }),
@@ -73,6 +75,7 @@ export default defineComponent({
           ease: props.ease as TextMorphProps["ease"],
           debug: props.debug,
           scale: props.scale,
+          numbers: props.numbers,
           disabled: props.disabled,
           respectReducedMotion: props.respectReducedMotion,
           onAnimationStart: props.onAnimationStart as (() => void) | undefined,

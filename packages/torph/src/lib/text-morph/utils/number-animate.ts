@@ -1,4 +1,4 @@
-import { parseTranslate, cancelAnimations } from "../utils/animate";
+import { parseTranslate, cancelAnimations } from "../../utils/animate";
 
 /**
  * Fades are a share of the morph rather than a fixed length, and the outgoing

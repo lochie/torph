@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { NUMBER_CASES } from "@torph/test-cases";
 import type { NumberSegment, NumberTorphApi } from "@torph/test-cases";
-import { segmentNumber } from "../segment";
+import { segmentNumber } from "../number";
 
 // Guards the corpus, not the library: a `verify` can pass without asserting
 // anything and still look green. Each case is re-run against deliberately

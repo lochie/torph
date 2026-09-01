@@ -1,5 +1,5 @@
 import React from "react";
-import { NumberMorph } from "torph/react";
+import { TextMorph } from "torph/react";
 import styles from "./styles.module.scss";
 import { SPEEDS, EASINGS, DECIMALS } from "./config";
 import type { Speed, EasingKey, Align, Locale, DecimalsKey } from "./config";
@@ -106,14 +106,14 @@ export function TickerDemo({
         }}
         role="presentation"
       >
-        <NumberMorph
+        <TextMorph
           duration={duration}
           ease={EASINGS[easing]}
           locale={locale}
           decimals={DECIMALS[decimals]}
         >
           {format(value, kind, locale)}
-        </NumberMorph>
+        </TextMorph>
       </div>
 
       <div className={styles.stageBar}>

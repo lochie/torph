@@ -3,10 +3,13 @@ export { ALL_NUMBER_TAGS, NUMBER_CASES } from "./number-cases";
 export {
   combineResults,
   renderSegments,
+  textAlignment,
   verifyCharMorph,
   verifyCycleStability,
   verifyGraphemeMorph,
+  verifyKinds,
   verifyNoMorph,
+  verifyTextPlaces,
   verifyWordAbsent,
   verifyWordPersistence,
 } from "./verify";

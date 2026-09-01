@@ -1,5 +1,5 @@
 import type { Segment } from "./types";
-import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
+import { ATTR_EXITING, ATTR_ID, ATTR_ITEM, ATTR_KIND } from "./constants";
 
 export function detachFromFlow(
   container: HTMLElement,
@@ -73,11 +73,19 @@ export function splitWordSpans(
       const span = document.createElement("span");
       span.setAttribute(ATTR_ITEM, "");
       span.setAttribute(ATTR_ID, seg.id);
+      applyKind(span, seg);
       span.textContent = seg.string;
       child.before(span);
     }
     child.remove();
   }
+}
+
+// An exit outlives the segment that described it — the element is all that is
+// left by the time it animates — so the kind has to live on the element.
+function applyKind(element: HTMLElement, segment: Segment) {
+  if (segment.kind) element.setAttribute(ATTR_KIND, segment.kind);
+  else element.removeAttribute(ATTR_KIND);
 }
 
 export function reconcileChildren(
@@ -122,11 +130,13 @@ export function reconcileChildren(
 
     if (existing && existing.tagName !== "BR") {
       existing.textContent = segment.string;
+      applyKind(existing, segment);
       element.appendChild(existing);
     } else {
       const span = document.createElement("span");
       span.setAttribute(ATTR_ITEM, "");
       span.setAttribute(ATTR_ID, segment.id);
+      applyKind(span, segment);
       span.textContent = segment.string;
       element.appendChild(span);
     }

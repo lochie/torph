@@ -1,42 +1,84 @@
 import type { Segment } from "./segment";
-import { createIdAllocator, segmentText } from "./segment";
+import { createIdAllocator, groupIntoWords, segmentText } from "./segment";
+import type { NumberSegment } from "./number";
+import {
+  classifyKind,
+  decimalSeparator,
+  hasDigit,
+  isNumericWord,
+  numbersAllowed,
+  numericSkeleton,
+  segmentNumber,
+} from "./number";
 
 export type DiffResult = {
   segments: Segment[];
   splits: Map<string, Segment[]>;
 };
 
-type WordGroup = {
-  word: string;
-  segments: Segment[];
+export type DiffOptions = {
+  /** Numeric words morph by place value. Off falls back to character LCS. */
+  numbers?: boolean;
+  /** Caret position, honoured only when the value holds a single number. */
+  cursorIndex?: number;
 };
 
-function groupIntoWords(segments: Segment[]): WordGroup[] {
-  const groups: WordGroup[] = [];
-  let current: Segment[] = [];
+/**
+ * Stands in for every numeric word while the word-level LCS runs.
+ *
+ * Two numbers have almost no characters in common — "$1,234" against "$5,678"
+ * scores below the morph-pairing threshold — so left to itself the diff retires
+ * one number and introduces the other as a stranger. Collapsing them to a
+ * single token makes the LCS pair *a number with a number* positionally, which
+ * is what carries "the second figure in the sentence" from one value to the
+ * next. Prefixed with a NULL so no real word can spell it.
+ */
+const NUMBER_TOKEN = "\u0000#";
 
-  for (const seg of segments) {
-    if (seg.string === "\u00A0" || seg.string === "\n") {
-      if (current.length > 0) {
-        groups.push({
-          word: current.map((s) => s.string).join(""),
-          segments: [...current],
-        });
-        current = [];
-      }
-    } else {
-      current.push(seg);
-    }
-  }
-  if (current.length > 0) {
-    groups.push({
-      word: current.map((s) => s.string).join(""),
-      segments: [...current],
-    });
+/**
+ * The per-character segments of an old word, cutting it up first if it is still
+ * a single span. The cut is registered in `splits` so `splitWordSpans` performs
+ * the matching surgery on the DOM before anything is measured.
+ */
+function splitIfWhole(
+  oldGroup: { word: string; segments: Segment[] },
+  splits: Map<string, Segment[]>,
+): Segment[] {
+  // A one-character word is already as split as it gets. Cutting it anyway
+  // would mint a new ID for a character that never moved, and a single-digit
+  // counter would re-enter its digit on every tick.
+  if (oldGroup.segments.length !== 1 || oldGroup.word.length <= 1) {
+    return oldGroup.segments;
   }
 
-  return groups;
+  const wordSeg = oldGroup.segments[0]!;
+  const charSegs = oldGroup.word.split("").map((char, i) => ({
+    id: `${wordSeg.id}:${i}`,
+    string: char,
+  }));
+  splits.set(wordSeg.id, charSegs);
+
+  return charSegs;
 }
+
+/** Fills in kinds an older, non-numeric segmentation of the same word lacked. */
+function asNumberSegments(segments: Segment[]): NumberSegment[] {
+  return segments.map((seg) => ({
+    ...seg,
+    kind: seg.kind ?? classifyKind(seg.string),
+  }));
+}
+
+/**
+ * How a new word gets its segments. Resolved once, then read by both the ID
+ * reservation pre-pass and the build loop — they have to agree on which words
+ * are about to be split, and drifting apart silently duplicates an ID.
+ */
+type WordPlan =
+  | { mode: "fresh" }
+  | { mode: "reuse"; oi: number }
+  | { mode: "morph"; oi: number }
+  | { mode: "number"; oi: number };
 
 /**
  * Longest common subsequence, reported as paired indices into `a` and `b`.
@@ -90,6 +132,25 @@ function charSimilarity(a: string, b: string): number {
 
 const MIN_SIMILARITY = 0.4;
 
+/**
+ * How strongly an old word claims a new one when neither the LCS nor an exact
+ * match placed it.
+ *
+ * Shared characters are the wrong measure for a quantity: "$420" and "$" have
+ * one character in common out of four, and they are unmistakably the same
+ * figure being emptied out. So when digits are in play on either side, matching
+ * skeletons settle it outright and the character count never gets a vote.
+ */
+function pairAffinity(a: string, b: string): number {
+  if (
+    (hasDigit(a) || hasDigit(b)) &&
+    numericSkeleton(a) === numericSkeleton(b)
+  ) {
+    return 1;
+  }
+  return charSimilarity(a, b);
+}
+
 // The whole diff runs synchronously before the first frame, so past these
 // budgets it degrades the animation rather than blocking on a long value.
 const MAX_MORPH_PAIRINGS = 2_500;
@@ -99,13 +160,34 @@ export function diffSegments(
   oldSegments: Segment[],
   newText: string,
   locale: Intl.LocalesArgument,
+  options: DiffOptions = {},
 ): DiffResult {
   const newHasSpaces = newText.includes(" ");
   const newHasNewlines = newText.includes("\n");
   const oldWords = groupIntoWords(oldSegments);
 
-  if (oldWords.length <= 1 && !newHasSpaces && !newHasNewlines) {
-    return { segments: segmentText(newText, locale), splits: new Map() };
+  const numbersOn = numbersAllowed(newText, options.numbers !== false);
+  const isNum = (word: string) => numbersOn && isNumericWord(word);
+  const token = (word: string) => (isNum(word) ? NUMBER_TOKEN : word);
+
+  // Re-segmenting from scratch keeps text identity for free, because a text ID
+  // is derived from the text: "cart" and "card" agree on "c", "a" and "r"
+  // without the diff being consulted. Numeric IDs are minted, so they survive
+  // nothing — any value with a digit on either side has to take the long way
+  // round or the whole figure re-enters.
+  const digitsInvolved =
+    numbersOn && (hasDigit(newText) || oldWords.some((g) => hasDigit(g.word)));
+
+  if (
+    oldWords.length <= 1 &&
+    !newHasSpaces &&
+    !newHasNewlines &&
+    !digitsInvolved
+  ) {
+    return {
+      segments: segmentText(newText, locale, numbersOn),
+      splits: new Map(),
+    };
   }
 
   const newWordStrings: string[] = [];
@@ -126,10 +208,16 @@ export function diffSegments(
   const oldWordStrings = oldWords.map((g) => g.word);
 
   if (oldWordStrings.length * newWordStrings.length > MAX_LCS_CELLS) {
-    return { segments: segmentText(newText, locale), splits: new Map() };
+    return {
+      segments: segmentText(newText, locale, numbersOn),
+      splits: new Map(),
+    };
   }
 
-  const [oldLcsIdx, newLcsIdx] = lcsIndices(oldWordStrings, newWordStrings);
+  const [oldLcsIdx, newLcsIdx] = lcsIndices(
+    oldWordStrings.map(token),
+    newWordStrings.map(token),
+  );
   const oldMatchedSet = new Set(oldLcsIdx);
   const newMatchedSet = new Set(newLcsIdx);
 
@@ -150,7 +238,7 @@ export function diffSegments(
   for (const ni of newUnmatched) {
     for (const oi of oldUnmatched) {
       if (exactUsed.has(oi)) continue;
-      if (newWordStrings[ni] === oldWordStrings[oi]) {
+      if (token(newWordStrings[ni]!) === token(oldWordStrings[oi]!)) {
         newToOldWord.set(ni, oi);
         exactUsed.add(oi);
         break;
@@ -172,7 +260,12 @@ export function diffSegments(
 
       for (const oi of oldUnmatched) {
         if (usedOld.has(oi)) continue;
-        const sim = charSimilarity(oldWordStrings[oi]!, newWordStrings[ni]!);
+        // Numeric and non-numeric words pair freely here. Whether a token is a
+        // quantity is not the same question as whether it is *this* token's
+        // predecessor: deleting the last digit of "$4" leaves "$", which has no
+        // digits left to be a number by and is still the very same "$".
+        // `MIN_SIMILARITY` is what keeps a number from claiming a real word.
+        const sim = pairAffinity(oldWordStrings[oi]!, newWordStrings[ni]!);
         if (sim > bestSim) {
           bestSim = sim;
           bestOi = oi;
@@ -186,17 +279,39 @@ export function diffSegments(
     }
   }
 
+  // Keyed on what the word is *becoming*, not on what it was: a value on its
+  // way to being a number should align by place even if its predecessor had no
+  // digits yet, and one on its way out of being a number should not.
+  //
+  // A word paired by the LCS is identical to its partner unless the token stood
+  // in for it, which only ever happens between two numbers — so anything left
+  // over for `reuse` really is the same word.
+  const plans: WordPlan[] = newWordStrings.map((newWord, ni): WordPlan => {
+    const lcsOi = newToOldWord.get(ni);
+    const oi = lcsOi ?? morphPairs.get(ni);
+    if (oi === undefined) return { mode: "fresh" };
+    if (isNum(newWord)) return { mode: "number", oi };
+    return lcsOi !== undefined ? { mode: "reuse", oi } : { mode: "morph", oi };
+  });
+
+  // Meaningless once a sentence holds several figures, so it is spent only on
+  // the value that is unambiguously one number.
+  const cursorIndex =
+    plans.filter((plan) => plan.mode === "number").length === 1
+      ? options.cursorIndex
+      : undefined;
+  const decimalChar = decimalSeparator(locale);
+
   const alloc = createIdAllocator();
 
   // Inherited IDs are reserved up front: the allocator only avoids collisions
   // with IDs it already knows about, so one inherited later in the build loop
   // would otherwise be handed to an earlier new segment.
-  for (let ni = 0; ni < newWordStrings.length; ni++) {
-    const oi = newToOldWord.get(ni) ?? morphPairs.get(ni);
-    if (oi === undefined) continue;
-    const oldGroup = oldWords[oi]!;
+  for (const plan of plans) {
+    if (plan.mode === "fresh") continue;
+    const oldGroup = oldWords[plan.oi]!;
 
-    if (!newToOldWord.has(ni) && oldGroup.segments.length === 1) {
+    if (plan.mode !== "reuse" && oldGroup.segments.length === 1) {
       // About to be split into per-character spans
       const wordSeg = oldGroup.segments[0]!;
       for (let i = 0; i < oldGroup.word.length; i++) {
@@ -233,27 +348,26 @@ export function diffSegments(
   for (let ni = 0; ni < newWordStrings.length; ni++) {
     pushSeparators(newSeparators[ni] ?? (ni > 0 ? [" "] : []));
 
-    if (newToOldWord.has(ni)) {
-      const oi = newToOldWord.get(ni)!;
-      const oldGroup = oldWords[oi]!;
-      for (const seg of oldGroup.segments) segments.push(seg);
-    } else if (morphPairs.has(ni)) {
-      const oi = morphPairs.get(ni)!;
-      const oldGroup = oldWords[oi]!;
-      const oldWord = oldGroup.word;
-      const newWord = newWordStrings[ni]!;
+    const plan = plans[ni]!;
+    const newWord = newWordStrings[ni]!;
 
-      let oldCharSegs: Segment[];
-      if (oldGroup.segments.length === 1) {
-        const wordSeg = oldGroup.segments[0]!;
-        oldCharSegs = oldWord.split("").map((c, i) => ({
-          id: `${wordSeg.id}:${i}`,
-          string: c,
-        }));
-        splits.set(wordSeg.id, oldCharSegs);
-      } else {
-        oldCharSegs = oldGroup.segments;
-      }
+    if (plan.mode === "reuse") {
+      for (const seg of oldWords[plan.oi]!.segments) segments.push(seg);
+    } else if (plan.mode === "number") {
+      const oldGroup = oldWords[plan.oi]!;
+
+      segments.push(
+        ...segmentNumber(
+          newWord,
+          asNumberSegments(splitIfWhole(oldGroup, splits)),
+          cursorIndex === undefined ? undefined : cursorIndex - charOffset,
+          decimalChar,
+        ),
+      );
+    } else if (plan.mode === "morph") {
+      const oldGroup = oldWords[plan.oi]!;
+      const oldWord = oldGroup.word;
+      const oldCharSegs = splitIfWhole(oldGroup, splits);
 
       const oldChars = oldWord.split("");
       const newChars = newWord.split("");
@@ -278,14 +392,13 @@ export function diffSegments(
           });
         }
       }
+    } else if (isNum(newWord)) {
+      segments.push(...segmentNumber(newWord));
     } else {
-      segments.push({
-        id: alloc.take(newWordStrings[ni]!),
-        string: newWordStrings[ni]!,
-      });
+      segments.push({ id: alloc.take(newWord), string: newWord });
     }
 
-    charOffset += newWordStrings[ni]!.length;
+    charOffset += newWord.length;
   }
 
   pushSeparators(trailingSeparators);

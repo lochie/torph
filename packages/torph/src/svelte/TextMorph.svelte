@@ -15,6 +15,7 @@
     duration = DEFAULT_TEXT_MORPH_OPTIONS.duration,
     ease = DEFAULT_TEXT_MORPH_OPTIONS.ease,
     scale = DEFAULT_TEXT_MORPH_OPTIONS.scale,
+    numbers = DEFAULT_TEXT_MORPH_OPTIONS.numbers,
     debug = DEFAULT_TEXT_MORPH_OPTIONS.debug,
     disabled = DEFAULT_TEXT_MORPH_OPTIONS.disabled,
     respectReducedMotion = DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion,
@@ -29,7 +30,7 @@
   const controller = new MorphController();
 
   const options = $derived({
-    locale, duration, ease, debug, scale,
+    locale, duration, ease, debug, scale, numbers,
     disabled, respectReducedMotion,
     onAnimationStart, onAnimationComplete, onAnimationCancel,
   });

@@ -1,5 +1,5 @@
 import React from "react";
-import { NumberMorph } from "torph/react";
+import { TextMorph } from "torph/react";
 import { decimalSeparator } from "torph";
 import styles from "./styles.module.scss";
 import { SPEEDS, EASINGS, DECIMALS } from "./config";
@@ -155,7 +155,7 @@ export function NumberSandbox({
         }}
         role="presentation"
       >
-        <NumberMorph
+        <TextMorph
           duration={SPEEDS[speed]}
           ease={EASINGS[easing]}
           locale={locale}
@@ -163,7 +163,7 @@ export function NumberSandbox({
           cursorIndex={activeCursor}
         >
           {value}
-        </NumberMorph>
+        </TextMorph>
       </div>
 
       <div className={styles.stageBar}>

@@ -1,5 +1,6 @@
 export type { Segment } from "../../utils/types";
 import type { Segment } from "../../utils/types";
+import { isNumericWord, numbersAllowed, segmentNumber } from "./number";
 
 // IDs are the identity used for FLIP tracking and DOM reconciliation, so a
 // collision makes two segments fight over one element and one of them silently
@@ -30,13 +31,83 @@ export function createIdAllocator() {
 
 export type IdAllocator = ReturnType<typeof createIdAllocator>;
 
+/**
+ * Splits segments into whitespace-delimited words, the unit the word-level diff
+ * aligns on. A number is whatever one of those words turns out to be, so this is
+ * also what decides where a number starts and ends.
+ */
+export function groupIntoWords(segments: Segment[]): {
+  word: string;
+  segments: Segment[];
+}[] {
+  const groups: { word: string; segments: Segment[] }[] = [];
+  let current: Segment[] = [];
+
+  const flush = () => {
+    if (current.length === 0) return;
+    groups.push({
+      word: current.map((s) => s.string).join(""),
+      segments: current,
+    });
+    current = [];
+  };
+
+  for (const seg of segments) {
+    if (seg.string === "\u00A0" || seg.string === "\n") flush();
+    else current.push(seg);
+  }
+  flush();
+
+  return groups;
+}
+
+/**
+ * Re-cuts every numeric word into per-character segments carrying a kind.
+ *
+ * Run as a pass over the finished segmentation rather than inside it: word
+ * segmentation is `Intl.Segmenter`'s job and it splits a token like "$1,234"
+ * on its own terms, which is the wrong shape for place matching. Regrouping
+ * afterwards on whitespace is what keeps this pass and the diff agreeing on
+ * where a number begins.
+ *
+ * The IDs abandoned here stay reserved in the allocator. That costs nothing —
+ * they are only ever checked for collisions — and the alternative is deciding
+ * what is a number before knowing where the words are.
+ */
+function expandNumbers(segments: Segment[]): Segment[] {
+  const out: Segment[] = [];
+  let run: Segment[] = [];
+
+  const flush = () => {
+    if (run.length === 0) return;
+    const word = run.map((s) => s.string).join("");
+    if (isNumericWord(word)) out.push(...segmentNumber(word));
+    else out.push(...run);
+    run = [];
+  };
+
+  for (const seg of segments) {
+    if (seg.string === "\u00A0" || seg.string === "\n") {
+      flush();
+      out.push(seg);
+    } else {
+      run.push(seg);
+    }
+  }
+  flush();
+
+  return out;
+}
+
 export function segmentText(
   value: string,
   locale: Intl.LocalesArgument,
+  numbers = true,
 ): Segment[] {
   const hasNewlines = value.includes("\n");
   const byWord = value.includes(" ") || hasNewlines;
   const alloc = createIdAllocator();
+  const withNumbers = numbersAllowed(value, numbers);
 
   if (hasNewlines) {
     // `offset` is the character index into the full value, so IDs derived from
@@ -59,10 +130,11 @@ export function segmentText(
       offset += line.length;
     });
 
-    return allSegments;
+    return withNumbers ? expandNumbers(allSegments) : allSegments;
   }
 
-  return segmentLine(value, locale, byWord, 0, alloc);
+  const segments = segmentLine(value, locale, byWord, 0, alloc);
+  return withNumbers ? expandNumbers(segments) : segments;
 }
 
 function segmentLine(

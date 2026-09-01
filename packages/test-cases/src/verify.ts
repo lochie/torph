@@ -128,3 +128,71 @@ export function combineResults(...results: Result[]): Result {
     detail: results.map((r) => r.detail).join("; "),
   };
 }
+
+/**
+ * Where each character of `to` came from in `from`, by index — `null` for a
+ * character that entered rather than persisted.
+ *
+ * The number-side twin of this lives in `number-verify`, but it addresses
+ * `segmentNumber` directly. This one goes the whole way round through
+ * `segmentText` and `diffSegments`, which is the only way to assert that the
+ * text pipeline hands its numeric words to place matching at all.
+ */
+export function textAlignment(
+  t: TorphApi,
+  from: string,
+  to: string,
+): (number | null)[] {
+  const old = t.segmentText(from, L);
+  const { segments } = t.diffSegments(old, to, L);
+  const positions = new Map(old.map((segment, i) => [segment.id, i]));
+
+  return segments.map((segment) => positions.get(segment.id) ?? null);
+}
+
+/** Individual `[newIndex, oldIndex]` origins through the text pipeline. */
+export function verifyTextPlaces(
+  t: TorphApi,
+  from: string,
+  to: string,
+  pairs: [newIndex: number, oldIndex: number | null][],
+): Result {
+  const places = textAlignment(t, from, to);
+  const wrong = pairs.filter(([newIndex, oldIndex]) => places[newIndex] !== oldIndex);
+
+  return {
+    pass: wrong.length === 0,
+    detail: wrong.length
+      ? wrong
+          .map(
+            ([newIndex, oldIndex]) =>
+              `"${to[newIndex]}" at ${newIndex} should come from ${
+                oldIndex === null ? "nowhere" : oldIndex
+              }, came from ${places[newIndex] ?? "nowhere"}`,
+          )
+          .join("; ")
+      : `${pairs.length} place${pairs.length === 1 ? "" : "s"} held`,
+  };
+}
+
+/** Every segment of `value` that belongs to a number carries a kind. */
+export function verifyKinds(
+  t: TorphApi,
+  value: string,
+  expected: (string | undefined)[],
+): Result {
+  const kinds = t.segmentText(value, L).map((s) => s.kind);
+  const pass =
+    kinds.length === expected.length &&
+    kinds.every((kind, i) => kind === expected[i]);
+
+  const render = (list: (string | undefined)[]) =>
+    `[${list.map((k) => k ?? "text").join(",")}]`;
+
+  return {
+    pass,
+    detail: pass
+      ? `${render(kinds)} as expected`
+      : `expected ${render(expected)}, got ${render(kinds)}`,
+  };
+}

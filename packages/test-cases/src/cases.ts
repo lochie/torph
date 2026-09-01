@@ -5,7 +5,9 @@ import {
   verifyCharMorph,
   verifyCycleStability,
   verifyGraphemeMorph,
+  verifyKinds,
   verifyNoMorph,
+  verifyTextPlaces,
   verifyWordAbsent,
   verifyWordPersistence,
 } from "./verify";
@@ -215,14 +217,119 @@ export const CASES: TestCase[] = [
     },
   },
   {
-    label: "Numbers",
+    label: "Numbers morph by place",
     description:
-      "Shared digits and symbols ($, commas) persist. New digits enter.",
-    tags: ["char morph"],
+      "A numeric word goes to place matching, not character matching. The comma slides one group along and the affix holds; the leading 1 does not stay a leading 1, because it is a different magnitude now.",
+    tags: ["number", "place"],
     values: ["$1,234", "$12,345,678", "$99"],
     align: "right",
     verify: (t) =>
-      verifyGraphemeMorph(t, "$1,234", "$12,345,678", ["$", "1", ","]),
+      verifyTextPlaces(t, "$1,234", "$12,345,678", [
+        [0, 0],
+        [1, null],
+        [7, 2],
+      ]),
+  },
+  {
+    label: "Number inside a sentence",
+    description:
+      "The figure morphs by place while the words around it hold their identity — the units digit stays put as the count grows a tens column.",
+    tags: ["number", "place"],
+    values: ["3 unread messages", "13 unread messages", "9 unread messages"],
+    verify: (t) =>
+      verifyTextPlaces(t, "3 unread messages", "13 unread messages", [
+        [0, null],
+        [1, 0],
+        [3, 2],
+        [5, 4],
+      ]),
+  },
+  {
+    label: "Digits and symbols are told apart",
+    description:
+      "Kinds drive the animation: digits slide down into place, the symbols around them slide up. Everything else stays text.",
+    tags: ["number"],
+    values: ["$1,234", "$5,678"],
+    verify: (t) =>
+      verifyKinds(t, "$1,234", [
+        "symbol",
+        "digit",
+        "symbol",
+        "digit",
+        "digit",
+        "digit",
+      ]),
+  },
+  {
+    label: "Version strings stay text",
+    description:
+      "A token has to be a quantity all the way through to morph as one. \"v1.2.3\" has no units column, so it morphs character by character like any other word.",
+    tags: ["number"],
+    values: ["v1.2.3", "v1.3.0", "v2.0.0"],
+    verify: (t) => verifyKinds(t, "v1.2.3", new Array(6).fill(undefined)),
+  },
+  {
+    label: "Two numbers, one sentence",
+    description:
+      "The second figure pairs with the second figure, not with the first. Both numbers stand in for each other during the word-level match, so their order in the sentence is what carries them across.",
+    tags: ["number", "place"],
+    values: ["2 of 10 done", "2 of 15 done", "7 of 15 done"],
+    verify: (t) =>
+      verifyTextPlaces(t, "2 of 10 done", "2 of 15 done", [
+        [0, 0],
+        [4, 4],
+        [5, null],
+        [7, 7],
+      ]),
+  },
+  {
+    label: "Emptying a number to its affix",
+    description:
+      "Backspacing the last digit out of \"$4\" leaves a token with no digits left to be a number by. The dollar sign is still the same dollar sign, so it holds rather than re-entering.",
+    tags: ["number", "exit"],
+    values: ["$4", "$", "$4", "$420"],
+    verify: (t) =>
+      combineResults(
+        verifyTextPlaces(t, "$4", "$", [[0, 0]]),
+        verifyTextPlaces(t, "$", "$420", [[0, 0]]),
+      ),
+  },
+  {
+    label: "A number never claims a word",
+    description:
+      "\"5\" and \"five\" are the same quantity and share no characters, so the digit leaves and the word arrives. Spelling is the only thing the diff can see.",
+    tags: ["number"],
+    values: ["5 items", "five items"],
+    verify: (t) =>
+      combineResults(
+        verifyTextPlaces(t, "5 items", "five items", [
+          [0, null],
+          [2, 2],
+        ]),
+        verifyWordPersistence(t, "5 items", "five items", "items"),
+      ),
+  },
+  {
+    label: "Affixes hold while digits churn",
+    description:
+      "Brackets, currency symbols and group separators are the still part of a number. Every digit can change under them without any of them moving.",
+    tags: ["number", "place"],
+    values: ["(1,234)", "(5,678)", "12%", "97%"],
+    align: "right",
+    verify: (t) =>
+      verifyTextPlaces(t, "(1,234)", "(5,678)", [
+        [0, 0],
+        [2, 2],
+        [6, 6],
+      ]),
+  },
+  {
+    label: "Dates stay text",
+    description:
+      "Same rule, and the one that matters most for a default: a hyphen is not a group separator, so a date is never mistaken for a number.",
+    tags: ["number"],
+    values: ["2024-01-01", "2024-02-01"],
+    verify: (t) => verifyKinds(t, "2024-01-01", new Array(10).fill(undefined)),
   },
   {
     label: "Long word char morph",

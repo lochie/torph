@@ -1,6 +1,7 @@
 export type Segment = {
   id: string;
   string: string;
+  kind?: "digit" | "symbol";
 };
 
 export type DiffResult = {
@@ -59,7 +60,7 @@ export type NumberCase = {
   label: string;
   description: string;
   tags: string[];
-  /** Rendered through `NumberMorph`; numbers are formatted by it, strings are not. */
+  /** Rendered through `TextMorph`; numbers are formatted by it, strings are not. */
   values: (string | number)[];
   /**
    * Caret position for each value, switching that step from place matching to

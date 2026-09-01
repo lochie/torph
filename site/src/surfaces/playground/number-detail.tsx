@@ -1,5 +1,5 @@
 import React from "react";
-import { NumberMorph } from "torph/react";
+import { TextMorph } from "torph/react";
 import { decimalSeparator } from "torph";
 import styles from "./styles.module.scss";
 import { formatValue } from "./number-tests";
@@ -199,7 +199,7 @@ export function NumberDetail({
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && advance()}
       >
-        <NumberMorph
+        <TextMorph
           duration={SPEEDS[speed]}
           ease={EASINGS[easing]}
           locale={locale}
@@ -209,7 +209,7 @@ export function NumberDetail({
           onAnimationComplete={handleComplete}
         >
           {test.values[index]!}
-        </NumberMorph>
+        </TextMorph>
       </div>
 
       <div className={styles.stageBar}>

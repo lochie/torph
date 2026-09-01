@@ -1,24 +1,113 @@
-export type NumberSegment = {
-  id: string;
-  string: string;
-  kind: "digit" | "symbol";
-};
+import type { Segment, SegmentKind } from "../../utils/types";
 
+export type NumberSegment = Segment & { kind: SegmentKind };
+
+/**
+ * Numeric IDs share one namespace with the text segments around them, and a
+ * collision between the two would hand one DOM node to two characters. Text IDs
+ * are derived from the text itself, so a prefix that cannot occur in content
+ * keeps the two sets disjoint by construction, and a counter that only ever
+ * climbs keeps every minted ID unique for the life of the page — including
+ * against an ID a number is still carrying from several morphs ago.
+ */
+const MINTED_PREFIX = "\u0000n";
 let nextNewId = 0;
 
-function isDigit(char: string): boolean {
+function mintId(): string {
+  return `${MINTED_PREFIX}${nextNewId++}`;
+}
+
+export function isDigit(char: string): boolean {
   return char >= "0" && char <= "9";
 }
 
-function classifyKind(char: string): NumberSegment["kind"] {
+export function hasDigit(value: string): boolean {
+  for (const char of value) {
+    if (isDigit(char)) return true;
+  }
+  return false;
+}
+
+/**
+ * What is left of a token once the volatile part of a quantity is removed.
+ *
+ * Digits and the separators between them are exactly what a number is expected
+ * to churn through, so they say nothing about whether two tokens are the same
+ * thing. What is left — "$", "%", "()" — is the part that holds still, and two
+ * tokens sharing it are the same figure at different magnitudes.
+ */
+export function numericSkeleton(word: string): string {
+  let out = "";
+  for (const char of word) {
+    if (!isDigit(char) && !CORE_SEPARATORS.includes(char)) out += char;
+  }
+  return out;
+}
+
+/**
+ * Whether numeric morphing applies to a value at all.
+ *
+ * A multi-line root is taller than one line, so the block-axis mask that hides a
+ * sliding digit has nothing to hide it against — the digit would simply travel
+ * over the line below. The rule lives here because `segmentText`, `diffSegments`
+ * and the engine all have to reach the same verdict; two of them disagreeing
+ * puts a kind on a segment the root cannot clip.
+ */
+export function numbersAllowed(value: string, enabled = true): boolean {
+  return enabled && !value.includes("\n");
+}
+
+/** Separators that can appear *between* digits without ending the number. */
+const CORE_SEPARATORS = ".,'\u00A0\u202F\u2009\u2007";
+const PREFIX_CHARS = "+-\u2212(#";
+const SUFFIX_CHARS = "%.,!?:;)\"'\u201D\u2019";
+const CURRENCY = /\p{Sc}/u;
+
+function isAffix(char: string, set: string): boolean {
+  return set.includes(char) || CURRENCY.test(char);
+}
+
+/**
+ * Whether a whitespace-delimited token is a quantity, and so should morph by
+ * place value rather than by character.
+ *
+ * The test is deliberately strict — the whole token has to be a number, give or
+ * take a currency symbol on the front and punctuation on the back. Merely
+ * *containing* a digit is not enough: "COVID-19", "GPT-4" and "2024-01-01" all
+ * do, and none of them has a units column. Reading them as numbers would slide
+ * their letters around on a rule no one asked for, and this is on by default.
+ *
+ * Trailing sentence punctuation is stripped first, so the figure in "it cost
+ * $1,234." is still a figure.
+ */
+export function isNumericWord(word: string): boolean {
+  let start = 0;
+  let end = word.length;
+
+  while (start < end && isAffix(word[start]!, PREFIX_CHARS)) start++;
+  while (end > start && isAffix(word[end - 1]!, SUFFIX_CHARS)) end--;
+
+  if (start >= end) return false;
+  if (!isDigit(word[start]!) || !isDigit(word[end - 1]!)) return false;
+
+  for (let i = start; i < end; i++) {
+    const char = word[i]!;
+    if (!isDigit(char) && !CORE_SEPARATORS.includes(char)) return false;
+  }
+
+  return true;
+}
+
+export function classifyKind(char: string): SegmentKind {
   return isDigit(char) ? "digit" : "symbol";
 }
 
 const separators = new Map<string, string>();
 
 /** The locale's decimal separator — the pivot every alignment is measured from. */
-export function decimalSeparator(locale: string): string {
-  const cached = separators.get(locale);
+export function decimalSeparator(locale: Intl.LocalesArgument): string {
+  const key = String(locale);
+  const cached = separators.get(key);
   if (cached) return cached;
 
   let separator = ".";
@@ -31,7 +120,7 @@ export function decimalSeparator(locale: string): string {
     // Invalid locale tag. `toLocaleString` surfaces it on the first number.
   }
 
-  separators.set(locale, separator);
+  separators.set(key, separator);
   return separator;
 }
 
@@ -86,9 +175,9 @@ export function segmentNumber(
         kind,
       });
     } else {
-      let id = `${char}_n${nextNewId++}`;
+      let id = mintId();
       while (usedIds.has(id)) {
-        id = `${char}_n${nextNewId++}`;
+        id = mintId();
       }
       usedIds.add(id);
       result.push({ id, string: displayChar, kind });
@@ -98,29 +187,13 @@ export function segmentNumber(
   return result;
 }
 
-/** Occurrence-based segmentation for initial render. */
+/** Fresh segmentation for a number with nothing to carry over from. */
 function simpleSegment(chars: string[]): NumberSegment[] {
-  const counts = new Map<string, number>();
-
-  return chars.map((char) => {
-    const kind = classifyKind(char);
-    const count = counts.get(char) ?? 0;
-    counts.set(char, count + 1);
-
-    if (char === " ") {
-      return {
-        id: count > 0 ? `space_${count}` : "space",
-        string: "\u00A0",
-        kind,
-      };
-    }
-
-    return {
-      id: count > 0 ? `${char}_${count}` : char,
-      string: char,
-      kind,
-    };
-  });
+  return chars.map((char) => ({
+    id: mintId(),
+    string: char === " " ? "\u00A0" : char,
+    kind: classifyKind(char),
+  }));
 }
 
 /**

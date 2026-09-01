@@ -25,7 +25,7 @@ const TICKER_DEMO = -4;
 const MODES = ["text", "numbers"] as const;
 type Mode = (typeof MODES)[number];
 
-// Scoped per mode: the chart and input demos drive NumberMorph, so they have
+// Scoped per mode: the chart and input demos drive numeric morphs, so they have
 // nothing to show under text. The mode switch already says "numbers", so the
 // labels don't repeat it.
 const PANELS: Record<Mode, { id: number; label: string }[]> = {

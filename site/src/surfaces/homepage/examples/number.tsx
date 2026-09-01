@@ -1,7 +1,7 @@
 import styles from "./styles.module.scss";
 
 import React from "react";
-import { NumberMorph } from "torph/react";
+import { TextMorph } from "torph/react";
 
 const sequence = [
   // Type $20
@@ -54,7 +54,7 @@ export const ExampleNumber = () => {
   return (
     <div className={styles.number}>
       <div ref={containerRef} style={{ position: "relative" }}>
-        <NumberMorph cursorIndex={step.cursor}>{step.value}</NumberMorph>
+        <TextMorph cursorIndex={step.cursor}>{step.value}</TextMorph>
         <span
           ref={measureRef}
           aria-hidden

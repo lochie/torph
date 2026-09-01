@@ -7,10 +7,24 @@ import type { TextMorphOptions } from "../lib/text-morph/types";
 
 export type TextMorphProps = Omit<TextMorphOptions, "element"> & {
   children: React.ReactNode;
+  /**
+   * Caret position, for a value that is a single number. Switches that step
+   * from place matching to caret matching — what an editable field wants.
+   */
+  cursorIndex?: number;
   className?: string;
   style?: React.CSSProperties;
   as?: React.ElementType;
 };
+
+/**
+ * A lone number is handed over as a number so `locale` and `decimals` can
+ * format it. Anything else is already text by the time it gets here.
+ */
+function childrenToValue(node: React.ReactNode): string | number {
+  if (typeof node === "number") return node;
+  return childrenToString(node);
+}
 
 function childrenToString(node: React.ReactNode): string {
   if (typeof node === "string") return node;
@@ -38,20 +52,23 @@ function escapeHTML(value: string): string {
 
 export const TextMorph = ({
   children,
+  cursorIndex,
   className,
   style,
   as = DEFAULT_AS,
   ...props
 }: TextMorphProps) => {
   const { ref, update } = useTextMorph(props);
-  const text = childrenToString(children);
+  const value = childrenToValue(children);
+  const cursorRef = React.useRef(cursorIndex);
+  cursorRef.current = cursorIndex;
   const initialHTML = React.useRef({
-    __html: escapeHTML(text).replace(/\n/g, "<br>"),
+    __html: escapeHTML(String(value)).replace(/\n/g, "<br>"),
   });
 
   React.useEffect(() => {
-    update(text);
-  }, [text, update]);
+    update(value, cursorRef.current);
+  }, [value, update]);
 
   const Component = as;
 
@@ -97,9 +114,12 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey]);
 
-  const update = React.useCallback((text: string) => {
-    controllerRef.current.update(text);
-  }, []);
+  const update = React.useCallback(
+    (value: string | number, cursorIndex?: number) => {
+      controllerRef.current.update(value, cursorIndex);
+    },
+    [],
+  );
 
   return { ref, update };
 }

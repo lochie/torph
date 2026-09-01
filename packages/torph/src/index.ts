@@ -9,9 +9,11 @@ export type { SpringParams } from "./lib/utils/spring";
 export { segmentText } from "./lib/text-morph/utils/segment";
 export type { Segment } from "./lib/text-morph/utils/segment";
 export { diffSegments } from "./lib/text-morph/utils/diff";
-export type { DiffResult } from "./lib/text-morph/utils/diff";
+export type { DiffOptions, DiffResult } from "./lib/text-morph/utils/diff";
 
-export { DEFAULT_NUMBER_MORPH_OPTIONS, NumberMorph } from "./lib/number-morph";
-export type { NumberMorphOptions } from "./lib/number-morph/types";
-export { decimalSeparator, segmentNumber } from "./lib/number-morph/segment";
-export type { NumberSegment } from "./lib/number-morph/segment";
+export {
+  decimalSeparator,
+  isNumericWord,
+  segmentNumber,
+} from "./lib/text-morph/utils/number";
+export type { NumberSegment } from "./lib/text-morph/utils/number";

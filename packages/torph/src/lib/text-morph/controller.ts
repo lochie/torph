@@ -3,7 +3,8 @@ import type { TextMorphOptions } from "./types";
 
 export class MorphController {
   private instance: TextMorph | null = null;
-  private lastText = "";
+  private lastText: string | number = "";
+  private lastCursorIndex?: number;
   private configKey = "";
 
   attach(element: HTMLElement, options: Omit<TextMorphOptions, "element">) {
@@ -11,14 +12,15 @@ export class MorphController {
     this.instance = new TextMorph({ element, ...options });
     this.configKey = MorphController.serializeConfig(options);
 
-    if (this.lastText) {
-      this.instance.update(this.lastText);
+    if (this.lastText !== "") {
+      this.instance.update(this.lastText, this.lastCursorIndex);
     }
   }
 
-  update(text: string) {
+  update(text: string | number, cursorIndex?: number) {
     this.lastText = text;
-    this.instance?.update(text);
+    this.lastCursorIndex = cursorIndex;
+    this.instance?.update(text, cursorIndex);
   }
 
   needsRecreate(options: Omit<TextMorphOptions, "element">): boolean {
@@ -36,6 +38,8 @@ export class MorphController {
       duration: options.duration,
       locale: options.locale,
       scale: options.scale,
+      numbers: options.numbers,
+      decimals: options.decimals,
       debug: options.debug,
       disabled: options.disabled,
       respectReducedMotion: options.respectReducedMotion,

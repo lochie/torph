@@ -102,7 +102,7 @@ export async function copyText(value: string): Promise<boolean> {
   }
 }
 
-// ── NumberMorph ──
+// ── Numbers ──
 
 function placeTable(
   from: string,
@@ -155,7 +155,7 @@ export function buildNumberIssueReport({
   const ease = EASINGS[easing];
 
   return [
-    `# torph issue — ${test.label} (NumberMorph)`,
+    `# torph issue — ${test.label} (numbers)`,
     "",
     notes
       ? `**What looks wrong:** ${notes}`

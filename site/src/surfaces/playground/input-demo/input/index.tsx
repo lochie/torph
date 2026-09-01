@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import styles from "./styles.module.scss";
 import { stringToLocaleString } from "./utils";
 import { useMouse } from "./useMouse";
-import { NumberMorph } from "torph/react";
+import { TextMorph } from "torph/react";
 
 const MAX_FONT_SIZE = 80;
 const MIN_FONT_SIZE = 16;
@@ -214,11 +214,11 @@ export const InputNumber = ({
             </AnimatePresence>
             <div className={styles.value}>
               <div className={styles.caret} ref={caretRef} />
-              <NumberMorph
+              <TextMorph
                 cursorIndex={inputRef.current?.selectionStart ?? undefined}
               >
                 {formattedValue || "0"}
-              </NumberMorph>
+              </TextMorph>
             </div>
           </div>
         </div>
