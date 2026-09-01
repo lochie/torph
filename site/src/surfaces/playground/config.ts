@@ -16,3 +16,13 @@ export type Speed = keyof typeof SPEEDS;
 
 export const ALIGNS = ["left", "center", "right"] as const;
 export type Align = (typeof ALIGNS)[number];
+
+// ── NumberMorph ──
+
+// en-IN earns its place: lakh/crore grouping (12,34,567) puts separators where
+// no other locale does, so it catches grouping assumed to be every three digits.
+export const LOCALES = ["en", "de-DE", "en-IN"] as const;
+export type Locale = (typeof LOCALES)[number];
+
+export const DECIMALS = { auto: undefined, "0": 0, "2": 2 } as const;
+export type DecimalsKey = keyof typeof DECIMALS;

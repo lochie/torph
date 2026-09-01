@@ -559,3 +559,11 @@ $fail: rgb(248, 113, 113);
     max-height: 20rem;
   }
 }
+
+// ── Mode switch ──
+
+.modeBtn {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  text-align: center;
+}

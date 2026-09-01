@@ -71,10 +71,22 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
 
   const configKey = MorphController.serializeConfig(props);
 
+  // Callbacks are deliberately absent from the config key — changing one should
+  // not tear the morph down. That leaves them captured at attach time, so they
+  // are called through a ref instead: a handler closing over component state is
+  // the normal case, and a frozen one would silently keep reading the state it
+  // saw on mount.
+  const handlers = React.useRef(props);
+  handlers.current = props;
+
   React.useEffect(() => {
     const controller = controllerRef.current;
     if (ref.current) {
-      controller.attach(ref.current, props);
+      controller.attach(ref.current, {
+        ...props,
+        onAnimationStart: () => handlers.current.onAnimationStart?.(),
+        onAnimationComplete: () => handlers.current.onAnimationComplete?.(),
+      });
     }
 
     return () => {

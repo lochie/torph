@@ -534,3 +534,43 @@ export function measurePerf(
   const elapsed = performance.now() - start;
   return { ...result, timeMs: elapsed / iterations };
 }
+
+/**
+ * Every rendered digit occupies the same advance width.
+ *
+ * The corpus asserts that no persisted character changes index; this asserts
+ * the other half of the tabular promise, which only real layout can answer —
+ * that the font actually delivers equal-width figures and that nothing in the
+ * morph (a stray transform, a per-character style) has widened one of them.
+ */
+export function verifyTabularDigits(root: HTMLElement): {
+  pass: boolean;
+  detail: string;
+} {
+  const digits = Array.from(
+    root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting])"),
+  ).filter((item) => /^\d$/.test(item.textContent ?? ""));
+
+  if (digits.length < 2) {
+    return { pass: true, detail: `${digits.length} digits — nothing to compare` };
+  }
+
+  const tolerance = 0.5;
+  const widths = digits.map((d) => d.getBoundingClientRect().width);
+  const min = Math.min(...widths);
+  const max = Math.max(...widths);
+
+  if (max - min > tolerance) {
+    const widest = digits[widths.indexOf(max)]!.textContent;
+    const narrowest = digits[widths.indexOf(min)]!.textContent;
+    return {
+      pass: false,
+      detail: `digit widths vary by ${(max - min).toFixed(2)}px ("${widest}" ${max.toFixed(2)}px vs "${narrowest}" ${min.toFixed(2)}px) — not tabular`,
+    };
+  }
+
+  return {
+    pass: true,
+    detail: `${digits.length} digits share a ${max.toFixed(2)}px column`,
+  };
+}

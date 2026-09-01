@@ -4,13 +4,19 @@ import React from "react";
 import styles from "./styles.module.scss";
 import pkg from "../../../../packages/torph/package.json";
 import { TESTS } from "./tests";
-import type { Speed, EasingKey, Align } from "./config";
-import { SPEEDS, EASINGS, ALIGNS } from "./config";
+import { NUMBER_TESTS } from "./number-tests";
+import type { Speed, EasingKey, Align, Locale, DecimalsKey } from "./config";
+import { SPEEDS, EASINGS, ALIGNS, LOCALES, DECIMALS } from "./config";
 import { TestDetail } from "./test-detail";
 import { SandboxCard } from "./sandbox-card";
+import { NumberDetail } from "./number-detail";
+import { NumberSandbox } from "./number-sandbox";
 import type { Result } from "@torph/test-cases";
 
 const SANDBOX = -1;
+
+const MODES = ["text", "numbers"] as const;
+type Mode = (typeof MODES)[number];
 
 type BundleSize = {
   name: string;
@@ -23,33 +29,53 @@ export const Playground = ({
 }: {
   bundleSizes?: BundleSize[];
 }) => {
-  const [selected, setSelected] = React.useState(0);
+  const [mode, setMode] = React.useState<Mode>("text");
+  // Kept per mode so switching back lands on the case you left.
+  const [selection, setSelection] = React.useState<Record<Mode, number>>({
+    text: 0,
+    numbers: 0,
+  });
   const [filter, setFilter] = React.useState("");
   const [speed, setSpeed] = React.useState<Speed>("default");
   const [easing, setEasing] = React.useState<EasingKey>("default");
   const [align, setAlign] = React.useState<Align>("left");
   const [debug, setDebug] = React.useState(false);
+  const [locale, setLocale] = React.useState<Locale>("en");
+  const [decimals, setDecimals] = React.useState<DecimalsKey>("auto");
+  const [tabular, setTabular] = React.useState(false);
 
-  const [results, setResults] = React.useState<(Result | null)[]>(() =>
-    TESTS.map(() => null),
+  const cases = mode === "text" ? TESTS : NUMBER_TESTS;
+  const selected = selection[mode]!;
+  const select = (index: number) =>
+    setSelection((s) => ({ ...s, [mode]: index }));
+
+  const [results, setResults] = React.useState<Record<Mode, (Result | null)[]>>(
+    () => ({ text: TESTS.map(() => null), numbers: NUMBER_TESTS.map(() => null) }),
   );
   React.useEffect(() => {
-    setResults(TESTS.map((t) => t.verify()));
+    setResults({
+      text: TESTS.map((t) => t.verify()),
+      numbers: NUMBER_TESTS.map((t) => t.verify()),
+    });
   }, []);
 
-  const query = filter.trim().toLowerCase();
-  const visible = TESTS.map((_, i) => i).filter((i) => {
-    if (!query) return true;
-    const t = TESTS[i]!;
-    return (
-      t.label.toLowerCase().includes(query) ||
-      t.tags.some((tag) => tag.toLowerCase().includes(query))
-    );
-  });
+  const modeResults = results[mode]!;
 
-  const failing = results.filter((r) => r && !r.pass).length;
-  const ran = results.filter(Boolean).length;
-  const current = selected >= 0 ? TESTS[selected] : null;
+  const query = filter.trim().toLowerCase();
+  const visible = cases
+    .map((_, i) => i)
+    .filter((i) => {
+      if (!query) return true;
+      const t = cases[i]!;
+      return (
+        t.label.toLowerCase().includes(query) ||
+        t.tags.some((tag) => tag.toLowerCase().includes(query))
+      );
+    });
+
+  const failing = modeResults.filter((r) => r && !r.pass).length;
+  const ran = modeResults.filter(Boolean).length;
+  const current = selected >= 0 ? cases[selected] : null;
 
   return (
     <div className={styles.layout}>
@@ -65,6 +91,24 @@ export const Playground = ({
           <span className={styles.version}>v{pkg.version}</span>
         </div>
 
+        <div className={styles.group}>
+          {MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={`${styles.btn} ${styles.modeBtn} ${
+                mode === m ? styles.btnActive : ""
+              }`}
+              onClick={() => {
+                setMode(m);
+                setFilter("");
+              }}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
         <input
           className={styles.search}
           placeholder="Filter…"
@@ -78,22 +122,22 @@ export const Playground = ({
             className={`${styles.listItem} ${
               selected === SANDBOX ? styles.listItemActive : ""
             }`}
-            onClick={() => setSelected(SANDBOX)}
+            onClick={() => select(SANDBOX)}
           >
             <span className={styles.dotIdle} />
             <span className={styles.listLabel}>Sandbox</span>
           </button>
 
           {visible.map((i) => {
-            const r = results[i];
+            const r = modeResults[i];
             return (
               <button
-                key={TESTS[i]!.label}
+                key={cases[i]!.label}
                 type="button"
                 className={`${styles.listItem} ${
                   selected === i ? styles.listItemActive : ""
                 }`}
-                onClick={() => setSelected(i)}
+                onClick={() => select(i)}
               >
                 <span
                   className={
@@ -104,7 +148,7 @@ export const Playground = ({
                         : styles.dotFail
                   }
                 />
-                <span className={styles.listLabel}>{TESTS[i]!.label}</span>
+                <span className={styles.listLabel}>{cases[i]!.label}</span>
               </button>
             );
           })}
@@ -183,38 +227,109 @@ export const Playground = ({
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className={`${styles.btn} ${debug ? styles.btnActive : ""}`}
-            onClick={() => setDebug((d) => !d)}
-          >
-            debug
-          </button>
+
+          {mode === "text" ? (
+            <button
+              type="button"
+              className={`${styles.btn} ${debug ? styles.btnActive : ""}`}
+              onClick={() => setDebug((d) => !d)}
+            >
+              debug
+            </button>
+          ) : (
+            <>
+              <div className={styles.group}>
+                {LOCALES.map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    className={`${styles.btn} ${locale === l ? styles.btnActive : ""}`}
+                    onClick={() => setLocale(l)}
+                    title={`Format with ${l}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div className={styles.group}>
+                {(Object.keys(DECIMALS) as DecimalsKey[]).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    className={`${styles.btn} ${decimals === d ? styles.btnActive : ""}`}
+                    onClick={() => setDecimals(d)}
+                    title={
+                      d === "auto"
+                        ? "Let the locale decide"
+                        : `Format to ${d} decimal places`
+                    }
+                  >
+                    {d === "auto" ? "auto" : `.${d}`}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className={`${styles.btn} ${tabular ? styles.btnActive : ""}`}
+                onClick={() => setTabular((t) => !t)}
+                title="Render with font-variant-numeric: tabular-nums — every digit gets the same advance width, so a same-length morph should be perfectly still"
+              >
+                tabular
+              </button>
+            </>
+          )}
         </div>
 
-        {current ? (
-          <TestDetail
+        {mode === "text" ? (
+          current ? (
+            <TestDetail
+              key={current.label}
+              test={current as (typeof TESTS)[number]}
+              result={modeResults[selected] ?? null}
+              speed={speed}
+              easing={easing}
+              align={align}
+              debug={debug}
+              onTagClick={(tag) => setFilter(tag)}
+            />
+          ) : (
+            <SandboxCard
+              speed={speed}
+              easing={easing}
+              align={align}
+              debug={debug}
+            />
+          )
+        ) : current ? (
+          <NumberDetail
             key={current.label}
-            test={current}
-            result={results[selected] ?? null}
+            test={current as (typeof NUMBER_TESTS)[number]}
+            result={modeResults[selected] ?? null}
             speed={speed}
             easing={easing}
             align={align}
-            debug={debug}
+            locale={locale}
+            decimals={decimals}
+            tabular={tabular}
             onTagClick={(tag) => setFilter(tag)}
           />
         ) : (
-          <SandboxCard
+          <NumberSandbox
             speed={speed}
             easing={easing}
             align={align}
-            debug={debug}
+            locale={locale}
+            decimals={decimals}
+            tabular={tabular}
           />
         )}
 
         <p className={styles.hint}>
           <kbd>Space</kbd> morph · cases live in{" "}
-          <code>packages/test-cases/src/cases.ts</code>
+          <code>
+            packages/test-cases/src/
+            {mode === "text" ? "cases.ts" : "number-cases.ts"}
+          </code>
         </p>
       </main>
     </div>

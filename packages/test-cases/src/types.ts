@@ -37,3 +37,39 @@ export type TestCase = {
   minLines?: number;
   verify: (t: TorphApi) => Result;
 };
+
+export type NumberSegment = {
+  id: string;
+  string: string;
+  kind: "digit" | "symbol";
+};
+
+// Same injection as `TorphApi` above: vitest passes the source function, the
+// playground passes the bundled one.
+export type NumberTorphApi = {
+  segmentNumber: (
+    value: string,
+    prevSegments?: NumberSegment[],
+    cursorIndex?: number,
+    decimalChar?: string,
+  ) => NumberSegment[];
+};
+
+export type NumberCase = {
+  label: string;
+  description: string;
+  tags: string[];
+  /** Rendered through `NumberMorph`; numbers are formatted by it, strings are not. */
+  values: (string | number)[];
+  /**
+   * Caret position for each value, switching that step from place matching to
+   * cursor matching. `undefined` for a step leaves it on place matching.
+   */
+  cursors?: (number | undefined)[];
+  locale?: string;
+  decimals?: number;
+  align?: "left" | "center" | "right";
+  /** Renders the stage with `font-variant-numeric: tabular-nums`. Playground only — needs real layout. */
+  tabular?: boolean;
+  verify: (t: NumberTorphApi) => Result;
+};

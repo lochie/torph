@@ -13,3 +13,5 @@ export type { DiffResult } from "./lib/text-morph/utils/diff";
 
 export { DEFAULT_NUMBER_MORPH_OPTIONS, NumberMorph } from "./lib/number-morph";
 export type { NumberMorphOptions } from "./lib/number-morph/types";
+export { decimalSeparator, segmentNumber } from "./lib/number-morph/segment";
+export type { NumberSegment } from "./lib/number-morph/segment";
