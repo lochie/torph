@@ -567,3 +567,28 @@ $fail: rgb(248, 113, 113);
   padding: 0.35rem 0.5rem;
   text-align: center;
 }
+
+// ── Ticker ──
+
+.range {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  input[type="range"] {
+    width: 6rem;
+    accent-color: var(--primary);
+  }
+
+  code {
+    font-family: monospace;
+    font-size: 0.62rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.tagActive {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.85);
+}

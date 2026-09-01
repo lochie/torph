@@ -1,0 +1,187 @@
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-0.15em);
+  }
+  50% {
+    transform: translateX(0.15em);
+  }
+  75% {
+    transform: translateX(-0.15em);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.container {
+  min-height: 6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+  user-select: none;
+  transition: color 100ms ease;
+
+  &:has(input:focus) {
+    .caret {
+      display: block;
+    }
+  }
+
+  &:has(input:disabled) {
+    &:not(:has(input[readonly])) {
+      cursor: not-allowed;
+    }
+  }
+
+  &:has(input[value=""]) {
+    color: var(--color-muted);
+  }
+}
+
+.inputContainer {
+  cursor: text;
+  display: flex;
+  align-items: center;
+  font-size: 5rem;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 120%;
+  transition: font-size 100ms ease;
+  //font-variant-numeric: tabular-nums;
+
+  &:has(input[data-invalid="true"]) {
+    animation: shake ease 200ms both;
+  }
+
+  &:has(input[data-pop="true"]) {
+    animation: pop ease 200ms both;
+  }
+}
+.input {
+  width: 100%;
+  color: transparent;
+  text-align: center;
+  background: transparent;
+  font: inherit !important;
+  outline: none;
+  border: none;
+  box-shadow: none;
+  user-select: auto;
+  caret-color: transparent;
+
+  // remove arrows from number input
+  -moz-appearance: textfield;
+  appearance: textfield;
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  &::selection {
+    background: transparent;
+  }
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.value {
+  position: relative;
+}
+.valueContainer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+}
+
+.valueContainerInner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+
+  sup {
+    display: block;
+    position: relative;
+    margin-right: -1em;
+    right: 1em;
+    top: -0.25em;
+    font-size: 0.5em;
+    font-weight: 900;
+    line-height: 1;
+    padding-right: 0.2em;
+  }
+
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 0.125em,
+    black calc(100% - 0.125em),
+    transparent 100%
+  );
+
+  > span {
+    &:before {
+      display: block;
+      content: " ";
+      position: absolute;
+      left: -0.75em;
+      top: 0.25em;
+      font-size: 0.5em;
+    }
+  }
+}
+
+@keyframes caretBlink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.caret {
+  display: none;
+  transition: 100ms ease;
+  transition-property: width, left, transform;
+  position: absolute;
+  top: 15%;
+  bottom: 12%;
+  width: 1px;
+  &[data-blink="true"] {
+    transition-property: none;
+    animation: caretBlink steps(1) 1060ms infinite;
+  }
+  &:before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 0.125em;
+    background: var(--primary);
+  }
+}

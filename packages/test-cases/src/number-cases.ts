@@ -1,4 +1,5 @@
 import type { NumberCase } from "./types";
+import { combineResults } from "./verify";
 import {
   verifyAlignment,
   verifyNoLateralShift,
@@ -183,6 +184,23 @@ export const NUMBER_CASES: NumberCase[] = [
       }),
   },
 
+  {
+    label: "French narrow spaces",
+    description:
+      "fr-FR groups with a narrow no-break space (U+202F) rather than a glyph. It should walk out from the decimal comma exactly like any other separator.",
+    tags: ["locale", "separator", "space"],
+    values: ["1\u202F234,56", "12\u202F345,67", "1\u202F234\u202F567,89"],
+    locale: "fr-FR",
+    verify: (t) =>
+      verifyAlignment(
+        t,
+        "1\u202F234,56",
+        "12\u202F345,67",
+        [null, null, 1, null, null, null, 5, null, null],
+        { decimalChar: "," },
+      ),
+  },
+
   // ── Cursor matching: text input, not a counter ──
   {
     label: "Cursor insert",
@@ -212,6 +230,41 @@ export const NUMBER_CASES: NumberCase[] = [
     cursors: [1, 2, 3, 2, 4, 3],
     verify: (t) =>
       verifyUniqueIds(t, ["$", "$2", "$20", "$420", "$4,020", "$4.20"]),
+  },
+
+  // ── Symbols and affixes that are not currency ──
+  {
+    label: "Currency symbol swaps",
+    description:
+      "Only the symbol changes. Every digit, the separator and the decimal point should be perfectly still — this is the case where any wobble is unambiguously a bug.",
+    tags: ["currency", "place"],
+    values: ["$99.00", "€99.00", "£99.00", "¥99.00"],
+    verify: (t) => verifyNoLateralShift(t, "$99.00", "€99.00", 5),
+  },
+  {
+    label: "Delta badge",
+    description:
+      "A signed percentage. The sign flips and the digits change, but the decimal point and the % hold their places on either side of them.",
+    tags: ["unit", "sign"],
+    values: ["+2.4%", "\u22120.8%", "+11.2%", "0.0%"],
+    verify: (t) =>
+      verifyAlignment(t, "+2.4%", "\u22120.8%", [null, null, 2, null, 4]),
+  },
+  {
+    label: "Compact suffix",
+    description:
+      "999K → 1.2K rewrites the number and grows a decimal point, but the K is an affix and belongs where it already is.",
+    tags: ["unit", "decimal"],
+    values: ["999K", "1.2K", "12.4M", "1.1B"],
+    verify: (t) => verifyAlignment(t, "999K", "1.2K", [null, null, null, 3]),
+  },
+  {
+    label: "Scoreline",
+    description:
+      "Spaces are segments too. Only the digit that actually changed should move; the spaces and the dash between them hold.",
+    tags: ["space", "place"],
+    values: ["0 - 0", "1 - 0", "1 - 1", "2 - 1"],
+    verify: (t) => verifyNoLateralShift(t, "0 - 0", "1 - 0", 4),
   },
 
   // ── Tabular figures ──
@@ -250,6 +303,28 @@ export const NUMBER_CASES: NumberCase[] = [
         [2, 1],
         [0, null],
       ]),
+  },
+
+  // ── Edges ──
+  {
+    label: "Repeated digit shrinks",
+    description:
+      "Which of four identical 1s survives? Place matching keeps the rightmost three — the units digit stays the units digit — rather than the leftmost, which would shift the whole number one column left.",
+    tags: ["repeat", "place"],
+    values: ["1111", "111", "11", "1"],
+    verify: (t) => verifyAlignment(t, "1111", "111", [1, 2, 3]),
+  },
+  {
+    label: "Empty and back",
+    description:
+      "Nothing to match against, so both characters enter fresh. Collapsing to zero width is the rough edge here — watch the container, not the diff.",
+    tags: ["empty", "container"],
+    values: ["", "42", ""],
+    verify: (t) =>
+      combineResults(
+        verifyAlignment(t, "", "42", [null, null]),
+        verifyUniqueIds(t, ["", "42", ""]),
+      ),
   },
 
   // ── Invariants ──

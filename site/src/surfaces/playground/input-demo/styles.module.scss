@@ -1,0 +1,40 @@
+.container {
+  position: relative;
+  padding: 6rem 2rem;
+  font-family: var(--font-secondary);
+  font-size: 2.5rem;
+  font-weight: 500;
+  color: #ffffff;
+  border-radius: 1rem;
+  background: var(--body-light);
+}
+
+.input {
+  position: relative;
+  padding: 0.5rem 1rem;
+  font-family: var(--font-secondary);
+  font-size: 2rem;
+  font-weight: 500;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  border: 1px solid #363636;
+
+  input {
+    all: unset;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    color: transparent;
+    caret-color: white;
+    font: inherit;
+  }
+
+  .output {
+    position: absolute;
+    inset: 0;
+    padding: inherit;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+  }
+}

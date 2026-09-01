@@ -11,12 +11,38 @@ import { TestDetail } from "./test-detail";
 import { SandboxCard } from "./sandbox-card";
 import { NumberDetail } from "./number-detail";
 import { NumberSandbox } from "./number-sandbox";
+import { ChartPlayground } from "./chart-demo";
+import { InputPlayground } from "./input-demo";
+import { TickerDemo } from "./ticker-demo";
 import type { Result } from "@torph/test-cases";
 
+// Negative ids sit outside the corpus — they select a panel, not a case.
 const SANDBOX = -1;
+const CHART_DEMO = -2;
+const INPUT_DEMO = -3;
+const TICKER_DEMO = -4;
 
 const MODES = ["text", "numbers"] as const;
 type Mode = (typeof MODES)[number];
+
+// Scoped per mode: the chart and input demos drive NumberMorph, so they have
+// nothing to show under text. The mode switch already says "numbers", so the
+// labels don't repeat it.
+const PANELS: Record<Mode, { id: number; label: string }[]> = {
+  text: [{ id: SANDBOX, label: "Sandbox" }],
+  numbers: [
+    { id: SANDBOX, label: "Sandbox" },
+    { id: TICKER_DEMO, label: "Ticker" },
+    { id: CHART_DEMO, label: "Chart" },
+    { id: INPUT_DEMO, label: "Input" },
+  ],
+};
+
+// The chart and input demos style their own numbers, so the shared duration,
+// easing and alignment controls would sit there doing nothing. The ticker runs
+// on them — its whole point is the interval measured against the duration.
+const SELF_STYLED: number[] = [CHART_DEMO, INPUT_DEMO];
+const DEMOS: number[] = [CHART_DEMO, INPUT_DEMO, TICKER_DEMO];
 
 type BundleSize = {
   name: string;
@@ -77,6 +103,9 @@ export const Playground = ({
   const ran = modeResults.filter(Boolean).length;
   const current = selected >= 0 ? cases[selected] : null;
 
+  const isSelfStyled = SELF_STYLED.includes(selected);
+  const isDemo = DEMOS.includes(selected);
+
   return (
     <div className={styles.layout}>
       <aside className={styles.sidebar}>
@@ -117,16 +146,19 @@ export const Playground = ({
         />
 
         <nav className={styles.list}>
-          <button
-            type="button"
-            className={`${styles.listItem} ${
-              selected === SANDBOX ? styles.listItemActive : ""
-            }`}
-            onClick={() => select(SANDBOX)}
-          >
-            <span className={styles.dotIdle} />
-            <span className={styles.listLabel}>Sandbox</span>
-          </button>
+          {PANELS[mode].map((panel) => (
+            <button
+              key={panel.id}
+              type="button"
+              className={`${styles.listItem} ${
+                selected === panel.id ? styles.listItemActive : ""
+              }`}
+              onClick={() => select(panel.id)}
+            >
+              <span className={styles.dotIdle} />
+              <span className={styles.listLabel}>{panel.label}</span>
+            </button>
+          ))}
 
           {visible.map((i) => {
             const r = modeResults[i];
@@ -189,96 +221,97 @@ export const Playground = ({
       </aside>
 
       <main className={styles.main}>
-        <div className={styles.controls}>
-          <div className={styles.group}>
-            {(Object.keys(SPEEDS) as Speed[]).map((s) => (
+        {!isSelfStyled && (
+          <div className={styles.controls}>
+            <div className={styles.group}>
+              {(Object.keys(SPEEDS) as Speed[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`${styles.btn} ${speed === s ? styles.btnActive : ""}`}
+                  onClick={() => setSpeed(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div className={styles.group}>
+              {(Object.keys(EASINGS) as EasingKey[]).map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  className={`${styles.btn} ${easing === e ? styles.btnActive : ""}`}
+                  onClick={() => setEasing(e)}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+            <div className={styles.group}>
+              {ALIGNS.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  className={`${styles.btn} ${align === a ? styles.btnActive : ""}`}
+                  onClick={() => setAlign(a)}
+                  title={`Align ${a}`}
+                >
+                  {a[0]!.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            {mode === "text" ? (
               <button
-                key={s}
                 type="button"
-                className={`${styles.btn} ${speed === s ? styles.btnActive : ""}`}
-                onClick={() => setSpeed(s)}
+                className={`${styles.btn} ${debug ? styles.btnActive : ""}`}
+                onClick={() => setDebug((d) => !d)}
               >
-                {s}
+                debug
               </button>
-            ))}
+            ) : (
+              <>
+                <div className={styles.group}>
+                  {LOCALES.map((l) => (
+                    <button
+                      key={l}
+                      type="button"
+                      className={`${styles.btn} ${locale === l ? styles.btnActive : ""}`}
+                      onClick={() => setLocale(l)}
+                      title={`Format with ${l}`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.group}>
+                  {(Object.keys(DECIMALS) as DecimalsKey[]).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      className={`${styles.btn} ${decimals === d ? styles.btnActive : ""}`}
+                      onClick={() => setDecimals(d)}
+                      title={
+                        d === "auto"
+                          ? "Let the locale decide"
+                          : `Format to ${d} decimal places`
+                      }
+                    >
+                      {d === "auto" ? "auto" : `.${d}`}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className={`${styles.btn} ${tabular ? styles.btnActive : ""}`}
+                  onClick={() => setTabular((t) => !t)}
+                  title="Render with font-variant-numeric: tabular-nums — every digit gets the same advance width, so a same-length morph should be perfectly still"
+                >
+                  tabular
+                </button>
+              </>
+            )}
           </div>
-          <div className={styles.group}>
-            {(Object.keys(EASINGS) as EasingKey[]).map((e) => (
-              <button
-                key={e}
-                type="button"
-                className={`${styles.btn} ${easing === e ? styles.btnActive : ""}`}
-                onClick={() => setEasing(e)}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-          <div className={styles.group}>
-            {ALIGNS.map((a) => (
-              <button
-                key={a}
-                type="button"
-                className={`${styles.btn} ${align === a ? styles.btnActive : ""}`}
-                onClick={() => setAlign(a)}
-                title={`Align ${a}`}
-              >
-                {a[0]!.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          {mode === "text" ? (
-            <button
-              type="button"
-              className={`${styles.btn} ${debug ? styles.btnActive : ""}`}
-              onClick={() => setDebug((d) => !d)}
-            >
-              debug
-            </button>
-          ) : (
-            <>
-              <div className={styles.group}>
-                {LOCALES.map((l) => (
-                  <button
-                    key={l}
-                    type="button"
-                    className={`${styles.btn} ${locale === l ? styles.btnActive : ""}`}
-                    onClick={() => setLocale(l)}
-                    title={`Format with ${l}`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-              <div className={styles.group}>
-                {(Object.keys(DECIMALS) as DecimalsKey[]).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    className={`${styles.btn} ${decimals === d ? styles.btnActive : ""}`}
-                    onClick={() => setDecimals(d)}
-                    title={
-                      d === "auto"
-                        ? "Let the locale decide"
-                        : `Format to ${d} decimal places`
-                    }
-                  >
-                    {d === "auto" ? "auto" : `.${d}`}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className={`${styles.btn} ${tabular ? styles.btnActive : ""}`}
-                onClick={() => setTabular((t) => !t)}
-                title="Render with font-variant-numeric: tabular-nums — every digit gets the same advance width, so a same-length morph should be perfectly still"
-              >
-                tabular
-              </button>
-            </>
-          )}
-        </div>
+        )}
 
         {mode === "text" ? (
           current ? (
@@ -313,6 +346,19 @@ export const Playground = ({
             tabular={tabular}
             onTagClick={(tag) => setFilter(tag)}
           />
+        ) : selected === CHART_DEMO ? (
+          <ChartPlayground />
+        ) : selected === INPUT_DEMO ? (
+          <InputPlayground />
+        ) : selected === TICKER_DEMO ? (
+          <TickerDemo
+            speed={speed}
+            easing={easing}
+            align={align}
+            locale={locale}
+            decimals={decimals}
+            tabular={tabular}
+          />
         ) : (
           <NumberSandbox
             speed={speed}
@@ -324,13 +370,15 @@ export const Playground = ({
           />
         )}
 
-        <p className={styles.hint}>
-          <kbd>Space</kbd> morph · cases live in{" "}
-          <code>
-            packages/test-cases/src/
-            {mode === "text" ? "cases.ts" : "number-cases.ts"}
-          </code>
-        </p>
+        {!isDemo && (
+          <p className={styles.hint}>
+            <kbd>Space</kbd> morph · cases live in{" "}
+            <code>
+              packages/test-cases/src/
+              {mode === "text" ? "cases.ts" : "number-cases.ts"}
+            </code>
+          </p>
+        )}
       </main>
     </div>
   );
