@@ -2,11 +2,15 @@
 import { describe, it, expect, afterEach, beforeAll } from "vitest";
 import { TextMorph } from "../index";
 import type { TextMorphOptions } from "../types";
+import { GROUP_MIN } from "../utils/replace-animate";
 import {
   ATTR_EXITING,
   ATTR_ID,
+  ATTR_ITEM,
   ATTR_KIND,
+  ATTR_ROOT,
   ATTR_SLOT,
+  ATTR_SR,
 } from "../../utils/constants";
 
 // The segmentation and diff suites assert what a morph *should* be. This one
@@ -124,12 +128,16 @@ const textExit = "translate(0px, 0px) scale(0.95) @1";
 type Child = { id: string; text: string; kind: string | null; exiting: boolean };
 
 function children(element: HTMLElement): Child[] {
-  return Array.from(element.children).map((child) => ({
-    id: child.getAttribute(ATTR_ID)!,
-    text: child.textContent ?? "",
-    kind: child.getAttribute(ATTR_KIND),
-    exiting: child.hasAttribute(ATTR_EXITING),
-  }));
+  // The root also holds the accessible copy of the value, which is not a
+  // segment — counting it would double every string these assertions rebuild.
+  return Array.from(element.children)
+    .filter((child) => !child.hasAttribute(ATTR_SR))
+    .map((child) => ({
+      id: child.getAttribute(ATTR_ID)!,
+      text: child.textContent ?? "",
+      kind: child.getAttribute(ATTR_KIND),
+      exiting: child.hasAttribute(ATTR_EXITING),
+    }));
 }
 
 const live = (element: HTMLElement) => children(element).filter((c) => !c.exiting);
@@ -447,6 +455,88 @@ describe("invariants across a chained morph", () => {
   });
 });
 
+describe("wholesale replacement", () => {
+  const grouped = (calls: Recorded[]) =>
+    calls.filter((call) => {
+      const frames = (
+        Array.isArray(call.keyframes) ? call.keyframes : [call.keyframes]
+      ) as Frame[];
+      return frames.some((frame) => frame.transform?.startsWith("scale("));
+    });
+
+  it("collapses a long replaced run instead of moving it character by character", () => {
+    const { element, morph } = mount();
+    morph.update("abcdefghijklmnop");
+    const survivors = ["a", "b", "c", "m", "n", "o", "p"].map((c) =>
+      idOf(element, c),
+    );
+
+    const { calls, restore } = recordAnimations();
+    morph.update("abcmnopqrstuvwx");
+    restore();
+
+    // "defghijkl" leaves together and "qrstuvwx" arrives together — nine and
+    // eight characters with nothing surviving between them.
+    const ids = new Set(grouped(calls).map((call) => call.id));
+    expect(ids.size).toBe(17);
+
+    // The letters that survived are not part of either gesture; they still
+    // move relative to their neighbours as themselves.
+    for (const id of survivors) expect(ids.has(id)).toBe(false);
+  });
+
+  it("scales about a shared origin rather than each character's own", () => {
+    const { element, morph } = mount();
+    morph.update("abcdefghijklmnop");
+
+    morph.update("abcmnopqrstuvwx");
+
+    // Every member of a run states the same point in its own coordinates, which
+    // is what makes one scale out of what would otherwise be sixteen.
+    const origins = live(element)
+      .filter((c) => ["q", "r", "s", "t", "u", "v", "w", "x"].includes(c.text))
+      .map(
+        (c) =>
+          (
+            Array.from(element.children).find(
+              (child) => child.getAttribute(ATTR_ID) === c.id,
+            ) as HTMLElement
+          ).style.transformOrigin,
+      );
+
+    expect(origins.length).toBe(8);
+    for (const origin of origins) expect(origin).not.toBe("");
+  });
+
+  it("leaves a short replacement to move on its own", () => {
+    const { morph } = mount();
+    morph.update("999,999");
+
+    const { calls, restore } = recordAnimations();
+    morph.update("1,000,000");
+    restore();
+
+    // The comma survives and splits the value into runs of five and three, so
+    // nothing here is long enough to be worth replacing wholesale — and this is
+    // the counter tick whose separator slide would be lost if it were.
+    expect(grouped(calls)).toEqual([]);
+  });
+
+  it("replaces a figure that jumped orders of magnitude", () => {
+    const { element, morph } = mount();
+    morph.update("$999.50");
+    const dollar = idOf(element, "$");
+
+    const { calls, restore } = recordAnimations();
+    morph.update("$1,000,000.00");
+    restore();
+
+    const ids = new Set(grouped(calls).map((call) => call.id));
+    expect(ids.size).toBeGreaterThan(GROUP_MIN);
+    expect(ids.has(dollar)).toBe(false);
+  });
+});
+
 describe("timing", () => {
   it("keeps every fade a share of the duration at any speed", () => {
     for (const duration of [150, 400, 3000]) {
@@ -509,5 +599,103 @@ describe("disabled", () => {
 
     expect(element.textContent).toBe("$1,234");
     expect(element.children.length).toBe(0);
+  });
+});
+
+/**
+ * What the root draws and what it reads as come apart during a morph, and only
+ * one of them is the value. The segments are a word cut to the character with
+ * the last value's characters still animating out between them; read in order
+ * they are a spelled-out jumble of two values at once.
+ */
+describe("what a screen reader gets", () => {
+  const srNode = (element: HTMLElement) =>
+    element.querySelector(`[${ATTR_SR}]`);
+
+  it("carries the value as text, once, whatever the segments are doing", () => {
+    const { element, morph } = mount();
+
+    morph.update("hello world");
+    expect(srNode(element)?.textContent).toBe("hello world");
+
+    // Mid-morph: the previous value has characters still on their way out, and
+    // the new one is split across boxes. Neither is readable; this is.
+    morph.update("hello there");
+    expect(leaving(element).length).toBeGreaterThan(0);
+    expect(srNode(element)?.textContent).toBe("hello there");
+  });
+
+  it("hides every fragment it draws, including the ones exiting", () => {
+    const { element, morph } = mount();
+    morph.update("npm install");
+    morph.update("npm i");
+
+    const items = Array.from(
+      element.querySelectorAll<HTMLElement>(`[${ATTR_ITEM}]`),
+    );
+
+    expect(items.length).toBeGreaterThan(0);
+    expect(
+      items.filter((item) => item.getAttribute("aria-hidden") !== "true"),
+    ).toEqual([]);
+  });
+
+  it("does not read as a segment, so nothing tries to animate it", () => {
+    const { element, morph } = mount();
+    morph.update("hello");
+    morph.update("world");
+
+    const node = srNode(element) as HTMLElement;
+
+    // It has no ID and never matches a segment, so the exit path would claim it
+    // as an old child with no counterpart and animate it off.
+    expect(node.hasAttribute(ATTR_EXITING)).toBe(false);
+    expect(node.getAnimations().length).toBe(0);
+    expect(node.style.position).toBe("");
+  });
+
+  it("comes back when reduced motion goes off again", () => {
+    // The one runtime route out of animating: the query is live, and while it
+    // matches a value is written as plain text, which replaces the root's
+    // contents wholesale — stand-in included. An instance built under it has
+    // also never been given the root attribute or the stylesheet.
+    const listeners = new Set<(event: MediaQueryListEvent) => void>();
+    const query = {
+      matches: true,
+      addEventListener: (_: string, fn: (event: MediaQueryListEvent) => void) =>
+        listeners.add(fn),
+      removeEventListener: (
+        _: string,
+        fn: (event: MediaQueryListEvent) => void,
+      ) => listeners.delete(fn),
+    };
+    const original = window.matchMedia;
+    window.matchMedia = (() => query) as unknown as typeof window.matchMedia;
+
+    try {
+      const { element, morph } = mount({ respectReducedMotion: true });
+
+      morph.update("world");
+      expect(element.textContent).toBe("world");
+      expect(srNode(element)).toBe(null);
+
+      query.matches = false;
+      listeners.forEach((fn) => fn({ matches: false } as MediaQueryListEvent));
+
+      morph.update("hello again");
+      expect(element.hasAttribute(ATTR_ROOT)).toBe(true);
+      expect(srNode(element)?.textContent).toBe("hello again");
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("leaves nothing behind to render as a second copy", () => {
+    const { element, morph } = mount();
+    morph.update("hello");
+
+    morph.destroy();
+
+    expect(srNode(element)).toBe(null);
   });
 });

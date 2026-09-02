@@ -149,6 +149,61 @@ function App() {
 | `mass`      | `number` | `1`     | Mass of the spring                        |
 | `precision` | `number` | `0.001` | Threshold for determining settled position |
 
+## Numbers
+
+Numeric words morph by place value: digits slide along the block axis, and the
+symbols around them — currency, separators, signs, suffixes — travel with the
+places they belong to. It is on by default, so any value that contains a number
+already animates this way. Pass `numbers={false}` to fall back to the
+character-level text morph.
+
+```tsx
+import { TextMorph } from "torph/react";
+
+// 1,204 → 1,318 rolls the hundreds and tens, leaves the thousands alone
+<TextMorph>{`$${total.toLocaleString("en")}`}</TextMorph>;
+```
+
+A value passed as a number rather than a string is formatted for you, so
+`locale` and `decimals` apply:
+
+```tsx
+<TextMorph decimals={2} locale="de-DE">
+  {1234.5}
+</TextMorph>
+```
+
+### Editable fields
+
+Place matching is the right default for a value that changes on its own — a
+counter, a total, a chart readout. It is the wrong one for a field somebody is
+typing in, where the character that just changed is known and place value is not
+the point: typing `1` in front of `20` should insert a digit, not renumber the
+column.
+
+Pass `cursorIndex` to switch that update from place matching to caret matching.
+It is available on the React component and as the second argument to
+`update()`; a caret position is a DOM concern, so there is no Vue or Svelte prop
+for it.
+
+```tsx
+const [value, setValue] = useState("");
+const [caret, setCaret] = useState<number>();
+
+<input
+  value={value}
+  onChange={(e) => {
+    setCaret(e.target.selectionStart ?? undefined);
+    setValue(e.target.value);
+  }}
+/>
+<TextMorph cursorIndex={caret}>{value}</TextMorph>
+```
+
+```js
+morph.update("$120", 2);
+```
+
 ## API
 
 ### Options
@@ -159,7 +214,14 @@ All components accept the following props/options:
 - `duration?: number` - Animation duration in milliseconds (default: `400`)
 - `ease?: string | SpringParams` - CSS easing function or spring parameters (default: `"cubic-bezier(0.19, 1, 0.22, 1)"`)
 - `scale?: boolean` - Enable scale animation on exiting segments (default: `true`)
-- `locale?: Intl.LocalesArgument` - Locale for text segmentation (default: `"en"`)
+- `numbers?: boolean` - Morph numeric words by place value, sliding digits along
+  the block axis. Off falls back to the character-level text morph (default:
+  `true`)
+- `decimals?: number` - Fraction digits to format a numeric value to. Applies
+  when the value is a number (React children, or `update(number)`); ignored for
+  strings
+- `locale?: Intl.LocalesArgument` - Locale for text segmentation, and for
+  formatting a numeric value (default: `"en"`)
 - `debug?: boolean` - Enable debug mode with visual indicators
 - `disabled?: boolean` - Disable all morphing animations (default: `false`)
 - `respectReducedMotion?: boolean` - Respect user's prefers-reduced-motion setting (default: `true`)

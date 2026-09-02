@@ -189,6 +189,9 @@ importers:
       '@torph/test-cases':
         specifier: workspace:*
         version: link:../packages/test-cases
+      '@vercel/analytics':
+        specifier: ^2.0.1
+        version: 2.0.1(@sveltejs/kit@2.53.4(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)))(svelte@5.53.7)(typescript@5.9.3)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)))(next@16.1.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.93.0))(react@19.2.3)(svelte@5.53.7)(vue@3.5.24(typescript@5.9.3))
       motion:
         specifier: ^12.23.16
         version: 12.34.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -1699,6 +1702,35 @@ packages:
     resolution: {integrity: sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==}
     cpu: [x64]
     os: [win32]
+
+  '@vercel/analytics@2.0.1':
+    resolution: {integrity: sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g==}
+    peerDependencies:
+      '@remix-run/react': ^2
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      nuxt: '>= 3'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      nuxt:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
 
   '@vitejs/plugin-react@4.7.0':
     resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
@@ -5777,6 +5809,27 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
 
+  '@sveltejs/kit@2.53.4(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)))(svelte@5.53.7)(typescript@5.9.3)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1))':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      '@sveltejs/acorn-typescript': 1.0.9(acorn@8.15.0)
+      '@sveltejs/vite-plugin-svelte': 6.2.4(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1))
+      '@types/cookie': 0.6.0
+      acorn: 8.15.0
+      cookie: 0.6.0
+      devalue: 5.6.3
+      esm-env: 1.2.2
+      kleur: 4.1.5
+      magic-string: 0.30.21
+      mrmime: 2.0.1
+      set-cookie-parser: 3.0.1
+      sirv: 3.0.2
+      svelte: 5.53.7
+      vite: 6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)
+    optionalDependencies:
+      typescript: 5.9.3
+    optional: true
+
   '@sveltejs/vite-plugin-svelte-inspector@4.0.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)))(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1))':
     dependencies:
       '@sveltejs/vite-plugin-svelte': 5.1.1(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1))
@@ -6150,6 +6203,14 @@ snapshots:
 
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
+
+  '@vercel/analytics@2.0.1(@sveltejs/kit@2.53.4(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)))(svelte@5.53.7)(typescript@5.9.3)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)))(next@16.1.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.93.0))(react@19.2.3)(svelte@5.53.7)(vue@3.5.24(typescript@5.9.3))':
+    optionalDependencies:
+      '@sveltejs/kit': 2.53.4(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.53.7)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1)))(svelte@5.53.7)(typescript@5.9.3)(vite@6.4.1(@types/node@20.5.1)(sass@1.93.0)(yaml@2.8.1))
+      next: 16.1.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.93.0)
+      react: 19.2.3
+      svelte: 5.53.7
+      vue: 3.5.24(typescript@5.9.3)
 
   '@vitejs/plugin-react@4.7.0(vite@5.4.21(@types/node@20.5.1)(sass@1.93.0))':
     dependencies:

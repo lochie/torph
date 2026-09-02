@@ -1,4 +1,10 @@
-import { ATTR_ROOT, ATTR_ITEM, ATTR_DEBUG, ATTR_SLOT } from "./constants";
+import {
+  ATTR_ROOT,
+  ATTR_ITEM,
+  ATTR_DEBUG,
+  ATTR_SLOT,
+  ATTR_SR,
+} from "./constants";
 
 const TORPH_CSS = `
 [${ATTR_ROOT}] {
@@ -16,6 +22,38 @@ const TORPH_CSS = `
   will-change: opacity, transform;
   transform: none;
   opacity: 1;
+}
+
+/*
+ * The value, once, as ordinary text — the only part of the root a screen reader
+ * is allowed to see. Everything else in here is a fragment: a word split to the
+ * character so its halves can travel apart, or a character on its way out that
+ * still has to be in the DOM to animate. Read as text that is a value spelled
+ * one letter per box, interleaved with whatever the previous value has not
+ * finished leaving behind, so aria-hidden covers the lot and this stands in
+ * for it.
+ *
+ * Out of flow, because the engine measures every child of the root and this one
+ * must not be among the things that have a position. Clipped rather than
+ * display: none or visibility: hidden, either of which would take it out of
+ * the accessibility tree along with everything else.
+ *
+ * user-select: none keeps it out of a copied selection. It is inside the root
+ * and would otherwise be dragged over with the text it duplicates, and paste a
+ * second copy of the value.
+ */
+[${ATTR_SR}] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: pre;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /*

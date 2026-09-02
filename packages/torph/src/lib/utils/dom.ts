@@ -7,6 +7,20 @@ import {
   ATTR_SLOT,
 } from "./constants";
 
+/**
+ * Every element the engine puts in the root is a fragment of the value rather
+ * than the value: a word split to the character, a character mid-exit, a `br`
+ * standing in for a newline. None of it reads as the text it draws, so all of
+ * it is hidden and the root's `[torph-sr]` node speaks for the whole.
+ */
+function createItem(tagName: "span" | "br", id: string): HTMLElement {
+  const element = document.createElement(tagName);
+  element.setAttribute(ATTR_ITEM, "");
+  element.setAttribute(ATTR_ID, id);
+  element.setAttribute("aria-hidden", "true");
+  return element;
+}
+
 export function detachFromFlow(
   container: HTMLElement,
   elements: HTMLElement[],
@@ -76,9 +90,7 @@ export function splitWordSpans(
     split.add(id);
 
     for (const seg of charSegs) {
-      const span = document.createElement("span");
-      span.setAttribute(ATTR_ITEM, "");
-      span.setAttribute(ATTR_ID, seg.id);
+      const span = createItem("span", seg.id);
       syncSlot(span, seg);
       child.before(span);
     }
@@ -161,21 +173,20 @@ export function reconcileChildren(
       if (existing && existing.tagName === "BR") {
         element.appendChild(existing);
       } else {
-        const br = document.createElement("br");
-        br.setAttribute(ATTR_ITEM, "");
-        br.setAttribute(ATTR_ID, segment.id);
-        element.appendChild(br);
+        element.appendChild(createItem("br", segment.id));
       }
       return;
     }
 
     if (existing && existing.tagName !== "BR") {
+      // A group replacement leaves a shared origin behind on its members. Left
+      // there, the next morph would scale this element about a point somewhere
+      // else entirely.
+      existing.style.transformOrigin = "";
       syncSlot(existing, segment);
       element.appendChild(existing);
     } else {
-      const span = document.createElement("span");
-      span.setAttribute(ATTR_ITEM, "");
-      span.setAttribute(ATTR_ID, segment.id);
+      const span = createItem("span", segment.id);
       syncSlot(span, segment);
       element.appendChild(span);
     }

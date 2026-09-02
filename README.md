@@ -16,6 +16,26 @@ import { TextMorph } from "torph/react";
 <TextMorph>Hello world</TextMorph>;
 ```
 
+### Numbers
+
+Numeric words morph by place value: digits slide along the block axis and the
+symbols around them travel with the places they belong to. It is on by default,
+so any value containing a number already animates this way.
+
+```tsx
+import { TextMorph } from "torph/react";
+
+// 1,204 → 1,318 rolls the hundreds and tens, leaves the thousands alone
+<TextMorph>{`$${total.toLocaleString("en")}`}</TextMorph>;
+```
+
+For a field somebody is typing in, pass the caret position so the update matches
+by position rather than by place value:
+
+```tsx
+<TextMorph cursorIndex={caret}>{value}</TextMorph>;
+```
+
 ### Spring Animations
 
 Use physics-based spring easing by passing spring parameters to `ease`:

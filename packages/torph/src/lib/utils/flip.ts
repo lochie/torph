@@ -1,4 +1,4 @@
-import { ATTR_EXITING, ATTR_ID } from "./constants";
+import { ATTR_EXITING, ATTR_ID, ATTR_SR } from "./constants";
 import { parseTranslate } from "./animate";
 
 export type Measures = {
@@ -12,6 +12,7 @@ export function measure(element: HTMLElement): Measures {
 
   children.forEach((child, index) => {
     if (child.hasAttribute(ATTR_EXITING)) return;
+    if (child.hasAttribute(ATTR_SR)) return;
     if (child.tagName === "BR") return;
     const key = child.getAttribute(ATTR_ID) || `child-${index}`;
     const rect = child.getBoundingClientRect();
