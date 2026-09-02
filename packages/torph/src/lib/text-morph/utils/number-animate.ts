@@ -1,25 +1,15 @@
 import { parseTranslate, cancelAnimations } from "../../utils/animate";
 import { moverOf } from "../../utils/dom";
 
-/**
- * Fades are a share of the morph rather than a fixed length, and the outgoing
- * share is the larger one: a digit that has already left is a hole in the
- * number, so it stays legible well into the slide, while the incoming digit
- * asserts itself early instead of ghosting in behind it.
- *
- * The slot's mask is doing most of the work here — both sets of characters are
- * also being clipped as they cross their line box — so these only have to
- * soften the edges of that.
- */
+// Shares of the morph, not fixed lengths. The outgoing share is larger because a
+// digit that has already left is a hole in the number.
 const EXIT_FADE = 0.45;
 const ENTER_FADE = 0.25;
 
 /**
- * Every one of these splits the same way. The slot takes the FLIP correction,
- * because that is what layout moved and what the next morph will measure; the
- * character inside it takes the slide and the fade, because that is what has to
- * happen behind a clip. Keeping the slide off the slot is what lets a digit
- * travel a whole line box without the diff ever seeing it move.
+ * The slot takes the FLIP correction, the character inside it takes the slide and
+ * fade. Keeping the slide off the slot is what lets a digit cross a whole line box
+ * without the next morph measuring it as moved.
  */
 export function animateNumberExit(
   slot: HTMLElement,
@@ -49,8 +39,7 @@ export function animateNumberExit(
     { duration: duration * EXIT_FADE, easing: "linear", fill: "both" },
   );
 
-  // Removal is the fade finishing, so the share above is also how long an
-  // exiting character stays in the DOM. The slot goes, not just its contents.
+  // The slot goes, not just its contents.
   fadeAnimation.onfinish = () => slot.remove();
 }
 
@@ -72,9 +61,7 @@ export function animateNumberEnter(
   const mover = moverOf(slot);
   const prev = cancelAnimations(mover);
 
-  // Digits arrive from above and the symbols between them from below, so a
-  // separator appearing mid-number reads as its own event rather than as one
-  // more digit.
+  // Digits arrive from above, separators from below, so each reads as its own event.
   const from = kind === "digit" ? -slideDistance : slideDistance;
 
   mover.animate(

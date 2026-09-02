@@ -1,36 +1,16 @@
 import { cancelAnimations } from "../../utils/animate";
 
-/**
- * How much of a run has to be replaced before it stops being characters moving
- * and starts being one thing swapped for another.
- *
- * Under it, the individual characters still read as themselves and their
- * entrances carry meaning. Over it, nothing that survived is nearby, so every
- * character animates from a position the value never held — which is the smear
- * you get pushing a currency figure up to millions, or the middle nine letters
- * of a word being replaced by eight different ones. Once that many characters
- * are going at once, the honest gesture is one gesture.
- */
+// Where characters moving becomes one thing swapped for another. Past this, nothing
+// that survived is near enough to animate from, and the run smears.
 export const GROUP_MIN = 6;
 
-/**
- * How far a replaced run collapses towards its own centre.
- *
- * Deeper than the 0.95 an individual character uses, because this has to read
- * as the run receding rather than as a glyph settling.
- */
+// Deeper than a character's 0.95, so the run reads as receding, not as a glyph settling.
 const GROUP_SCALE = 0.8;
 
 const EXIT_FADE = 0.45;
 const ENTER_FADE = 0.35;
 
-/**
- * The centre of a run, in the coordinate space of each of its members.
- *
- * Scaling a group as one shape means every member scaling about the same point,
- * and `transform-origin` is per element — so the shared point has to be
- * restated relative to each of their boxes.
- */
+/** A run's centre, restated per member — `transform-origin` is relative to each box. */
 function originsFor(elements: HTMLElement[]): string[] {
   const rects = elements.map((element) => element.getBoundingClientRect());
   const left = Math.min(...rects.map((r) => r.left));
@@ -95,9 +75,8 @@ export function animateGroupEnter(
 }
 
 /**
- * Maximal stretches of `members` that are adjacent in `all`, long enough to be
- * worth replacing as a unit. A run broken by anything that survived is not a
- * replacement — the survivor is right there to move relative to.
+ * Maximal stretches of `members` adjacent in `all`. A run broken by a survivor is no
+ * replacement — that survivor is right there to move relative to.
  */
 export function replacedRuns(
   all: HTMLElement[],

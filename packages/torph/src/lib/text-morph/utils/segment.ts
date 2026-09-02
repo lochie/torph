@@ -2,9 +2,8 @@ export type { Segment } from "../../utils/types";
 import type { Segment } from "../../utils/types";
 import { isNumericWord, segmentNumber } from "./number";
 
-// IDs are the identity used for FLIP tracking and DOM reconciliation, so a
-// collision makes two segments fight over one element and one of them silently
-// loses its text. Uniqueness has to hold across the whole value, not per line.
+// A collision makes two segments fight over one element and one silently loses its
+// text, so uniqueness has to hold across the whole value, not per line.
 export function createIdAllocator() {
   const used = new Set<string>();
 
@@ -31,11 +30,7 @@ export function createIdAllocator() {
 
 export type IdAllocator = ReturnType<typeof createIdAllocator>;
 
-/**
- * Splits segments into whitespace-delimited words, the unit the word-level diff
- * aligns on. A number is whatever one of those words turns out to be, so this is
- * also what decides where a number starts and ends.
- */
+/** Whitespace-delimited words — the unit the diff aligns on, and so a number's bounds. */
 export function groupIntoWords(segments: Segment[]): {
   word: string;
   segments: Segment[];
@@ -62,17 +57,9 @@ export function groupIntoWords(segments: Segment[]): {
 }
 
 /**
- * Re-cuts every numeric word into per-character segments carrying a kind.
- *
- * Run as a pass over the finished segmentation rather than inside it: word
- * segmentation is `Intl.Segmenter`'s job and it splits a token like "$1,234"
- * on its own terms, which is the wrong shape for place matching. Regrouping
- * afterwards on whitespace is what keeps this pass and the diff agreeing on
- * where a number begins.
- *
- * The IDs abandoned here stay reserved in the allocator. That costs nothing —
- * they are only ever checked for collisions — and the alternative is deciding
- * what is a number before knowing where the words are.
+ * Re-cuts every numeric word into per-character segments carrying a kind. A pass over
+ * the finished segmentation, not part of it: `Intl.Segmenter` splits "$1,234" on its
+ * own terms, and regrouping on whitespace is what keeps this and the diff agreeing.
  */
 function expandNumbers(segments: Segment[]): Segment[] {
   const out: Segment[] = [];
@@ -109,8 +96,7 @@ export function segmentText(
   const alloc = createIdAllocator();
 
   if (hasNewlines) {
-    // `offset` is the character index into the full value, so IDs derived from
-    // it stay unique across lines.
+    // `offset` indexes the full value, so IDs derived from it stay unique across lines.
     const lines = value.split("\n");
     const allSegments: Segment[] = [];
     let offset = 0;

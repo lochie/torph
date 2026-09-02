@@ -94,12 +94,7 @@ export class TextMorph {
     if (!this.isDisabled()) this.setup();
   }
 
-  /**
-   * Deferred rather than done once in the constructor, because whether it is
-   * wanted can change after it: `prefers-reduced-motion` is live, and an
-   * instance built while it was on has no root attribute and no stylesheet. The
-   * first morph after it goes off would otherwise animate against neither.
-   */
+  /** Deferred, not done in the constructor: `prefers-reduced-motion` can change after it. */
   private setup() {
     if (this.hasSetup) return;
     this.hasSetup = true;
@@ -113,14 +108,12 @@ export class TextMorph {
     this.reducedMotion?.destroy();
     clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
-    // Its own rules are what keep it out of sight, and those go with the last
-    // instance — left behind, it would render as a second copy of the value.
+    // Its own rules keep it out of sight, and those go with the last instance.
     this.srNode?.remove();
     this.srNode = null;
     this.element.removeAttribute(ATTR_ROOT);
     this.element.removeAttribute(ATTR_DEBUG);
-    // Only ever added by `setup`, so an instance that never ran one must not
-    // decrement the count and pull the stylesheet out from under the others.
+    // An instance that never ran setup must not decrement the stylesheet refcount.
     if (this.hasSetup) {
       this.hasSetup = false;
       removeStyles();
@@ -133,11 +126,7 @@ export class TextMorph {
     );
   }
 
-  /**
-   * `cursorIndex` switches a value that is a single number from place matching
-   * to caret matching — what an editable field wants, where the character the
-   * user just typed is known and place value is not the point.
-   */
+  /** `cursorIndex` switches a single-number value from place matching to caret matching. */
   update(value: HTMLElement | string | number, cursorIndex?: number) {
     const formatted =
       typeof value === "number"
@@ -152,13 +141,10 @@ export class TextMorph {
 
     if (this.isDisabled()) {
       if (typeof formatted === "string") {
-        // Plain text is already the whole accessible value, so the stand-in
-        // goes with the segments this wipes.
+        // Plain text is already the whole accessible value.
         this.srNode = null;
         this.element.textContent = formatted;
-        // Nothing of what those segments described is in the DOM any more. Were
-        // reduced motion to go off again, a diff against them would animate
-        // from elements that no longer exist.
+        // A later diff against these would animate from elements no longer in the DOM.
         this.previousSegments = [];
         this.isInitialRender = true;
       }
@@ -183,8 +169,7 @@ export class TextMorph {
     element: HTMLElement,
     cursorIndex?: number,
   ) {
-    // Measured before a running transition is aborted below, so an interrupted
-    // morph carries on from the size on screen rather than snapping.
+    // Before the running transition is aborted below, so an interrupt carries on from screen.
     const oldRect = element.getBoundingClientRect();
     const oldWidth = oldRect.width;
     const oldHeight = oldRect.height;
@@ -209,8 +194,7 @@ export class TextMorph {
       splits = new Map();
     }
 
-    // Keep a zero-width space segment so the container always has in-flow
-    // content, preserving the line box height during exit animations.
+    // A zero-width space keeps in-flow content, preserving line box height during exits.
     const isEmptyTransition = segments.length === 0;
     if (isEmptyTransition) {
       segments = [{ id: EMPTY_ID, string: "\u200B" }];
@@ -219,9 +203,7 @@ export class TextMorph {
     splitWordSpans(element, splits);
 
     this.prevMeasures = measure(this.element);
-    // The accessible stand-in is not a segment and has no ID, so it would read
-    // as an old child with no counterpart in the new value — detached from the
-    // flow and animated away on the first morph.
+    // The stand-in has no ID, so the exit path would claim it and animate it away.
     const oldChildren = (Array.from(element.children) as HTMLElement[]).filter(
       (child) => !child.hasAttribute(ATTR_SR),
     );
@@ -247,17 +229,14 @@ export class TextMorph {
 
     this.currentMeasures = measure(this.element);
 
-    // One line's worth, not the whole block. Every line box is the same height
-    // here — the root is `white-space: nowrap`, so a line exists only where the
-    // value put a newline — which makes counting them exact.
+    // One line's worth. The root is nowrap, so a line exists only where the value put one.
     const lineCount = segments.reduce(
       (lines, segment) => (segment.string === "\n" ? lines + 1 : lines),
       1,
     );
     const slideDistance = (element.offsetHeight || 20 * lineCount) / lineCount;
 
-    // First-frame positions have to be measured at the old width, not derived
-    // from it — text-align has no effect on content that overflows.
+    // Measured at the old width, not derived — text-align does nothing to overflowing content.
     element.style.width = `${oldWidth}px`;
     void element.offsetWidth;
     const firstFrameMeasures = measure(this.element);
@@ -265,9 +244,7 @@ export class TextMorph {
 
     this.updateStyles(segments, firstFrameMeasures, slideDistance);
 
-    // A stretch of the old value with nothing surviving inside it recedes as
-    // one shape. Anything shorter still has a survivor close enough to move
-    // relative to, so it keeps its own exit.
+    // A run with no survivors inside it recedes as one shape.
     const leavingRuns = this.isInitialRender
       ? []
       : replacedRuns(oldChildren, new Set(exiting));
@@ -430,18 +407,7 @@ export class TextMorph {
     });
   }
 
-  /**
-   * Holds the value as ordinary text for anything reading the root rather than
-   * looking at it. The segments cannot serve: a morph splits words to the
-   * character to move their halves apart, and leaves the previous value's
-   * characters in the DOM until they have finished animating out, so what is
-   * actually in there is one letter per box with the last value's leftovers
-   * still interleaved. Every one of those carries `aria-hidden`, and this is
-   * what is left to read.
-   *
-   * Kept first so it is reached before them, and re-found whenever it is gone —
-   * a disabled-mode write replaces the root's contents wholesale.
-   */
+  /** Holds the value as plain text — the segments are split and aria-hidden, so unreadable. */
   private syncAccessibleText(value: string) {
     if (!this.srNode || this.srNode.parentNode !== this.element) {
       const node = document.createElement("span");

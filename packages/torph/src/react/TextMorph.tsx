@@ -7,20 +7,14 @@ import type { TextMorphOptions } from "../lib/text-morph/types";
 
 export type TextMorphProps = Omit<TextMorphOptions, "element"> & {
   children: React.ReactNode;
-  /**
-   * Caret position, for a value that is a single number. Switches that step
-   * from place matching to caret matching — what an editable field wants.
-   */
+  /** Caret position for a single-number value: place matching becomes caret matching. */
   cursorIndex?: number;
   className?: string;
   style?: React.CSSProperties;
   as?: React.ElementType;
 };
 
-/**
- * A lone number is handed over as a number so `locale` and `decimals` can
- * format it. Anything else is already text by the time it gets here.
- */
+/** A lone number stays a number, so `locale` and `decimals` can format it. */
 function childrenToValue(node: React.ReactNode): string | number {
   if (typeof node === "number") return node;
   return childrenToString(node);
@@ -88,11 +82,8 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
 
   const configKey = MorphController.serializeConfig(props);
 
-  // Callbacks are deliberately absent from the config key — changing one should
-  // not tear the morph down. That leaves them captured at attach time, so they
-  // are called through a ref instead: a handler closing over component state is
-  // the normal case, and a frozen one would silently keep reading the state it
-  // saw on mount.
+  // Callbacks are kept out of the config key so changing one does not tear the morph
+  // down, and read through a ref so they don't freeze on the state they saw at mount.
   const handlers = React.useRef(props);
   handlers.current = props;
 
@@ -109,8 +100,7 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
     return () => {
       controller.destroy();
     };
-    // Keyed on the serialized config: re-attaching on every `props` identity
-    // would tear the controller down on each render.
+    // Keyed on the serialized config; `props` identity would re-attach every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configKey]);
 

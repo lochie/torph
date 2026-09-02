@@ -18,8 +18,7 @@ export function measure(element: HTMLElement): Measures {
     const rect = child.getBoundingClientRect();
     const { tx, ty } = parseTranslate(child);
     measures[key] = {
-      // Keep layout-space measurement in subpixels by removing the current
-      // transform from the visual rect instead of relying on rounded offsets.
+      // Subtracting the transform keeps this subpixel, where offsets would round.
       x: rect.left - rootRect.left - tx,
       y: rect.top - rootRect.top - ty,
     };
@@ -39,10 +38,7 @@ export function computeDelta(
   return { dx: p.x - c.x, dy: p.y - c.y };
 }
 
-/**
- * Finds the nearest persistent neighbor in a list of IDs.
- * Searches backward first by default, then forward.
- */
+/** Nearest persisting neighbour by ID, searching backward first, then forward. */
 export function findNearestAnchor(
   targetIndex: number,
   ids: string[],

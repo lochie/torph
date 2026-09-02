@@ -3,14 +3,8 @@ import { lcsIndices } from "../../utils/lcs";
 
 export type NumberSegment = Segment & { kind: SegmentKind };
 
-/**
- * Numeric IDs share one namespace with the text segments around them, and a
- * collision between the two would hand one DOM node to two characters. Text IDs
- * are derived from the text itself, so a prefix that cannot occur in content
- * keeps the two sets disjoint by construction, and a counter that only ever
- * climbs keeps every minted ID unique for the life of the page — including
- * against an ID a number is still carrying from several morphs ago.
- */
+// Numeric and text IDs share a namespace. A NULL prefix cannot occur in a text-derived
+// ID, and the counter only climbs, so neither can collide with the other.
 const MINTED_PREFIX = "\u0000n";
 let nextNewId = 0;
 
@@ -29,14 +23,7 @@ export function hasDigit(value: string): boolean {
   return false;
 }
 
-/**
- * What is left of a token once the volatile part of a quantity is removed.
- *
- * Digits and the separators between them are exactly what a number is expected
- * to churn through, so they say nothing about whether two tokens are the same
- * thing. What is left — "$", "%", "()" — is the part that holds still, and two
- * tokens sharing it are the same figure at different magnitudes.
- */
+/** What is left of a token once its digits and separators go — "$", "%", "()". */
 export function numericSkeleton(word: string): string {
   let out = "";
   for (const char of word) {
@@ -56,17 +43,8 @@ function isAffix(char: string, set: string): boolean {
 }
 
 /**
- * Whether a whitespace-delimited token is a quantity, and so should morph by
- * place value rather than by character.
- *
- * The test is deliberately strict — the whole token has to be a number, give or
- * take a currency symbol on the front and punctuation on the back. Merely
- * *containing* a digit is not enough: "COVID-19", "GPT-4" and "2024-01-01" all
- * do, and none of them has a units column. Reading them as numbers would slide
- * their letters around on a rule no one asked for, and this is on by default.
- *
- * Trailing sentence punctuation is stripped first, so the figure in "it cost
- * $1,234." is still a figure.
+ * Whether a token is a quantity. Strict on purpose, and on by default: merely
+ * containing a digit is not enough, or "COVID-19" and "2024-01-01" morph by place.
  */
 export function isNumericWord(word: string): boolean {
   let start = 0;
@@ -112,16 +90,7 @@ export function decimalSeparator(locale: Intl.LocalesArgument): string {
   return separator;
 }
 
-/**
- * Segments a string into per-character NumberSegments.
- *
- * When `cursorIndex` is provided, uses position-based matching:
- * characters before the edit keep their old IDs by position,
- * characters after the edit keep theirs offset by the length change.
- *
- * When `cursorIndex` is not provided, characters are matched by place
- * value \u2014 see `placeMatch`.
- */
+/** Per-character segments, matched by caret where `cursorIndex` is given, else by place. */
 export function segmentNumber(
   value: string,
   prevSegments?: NumberSegment[],
@@ -184,14 +153,7 @@ function simpleSegment(chars: string[]): NumberSegment[] {
   }));
 }
 
-/**
- * Position-based matching using cursor position.
- * The cursor in the NEW string tells us where the edit happened:
- * - Insertion: chars were added just before cursor. Prefix [0, cursor-inserted)
- *   maps 1:1, suffix [cursor, end) maps to old [cursor-inserted, end).
- * - Deletion: chars were removed. Prefix [0, cursor) maps 1:1,
- *   suffix [cursor, end) maps to old [cursor+deleted, end).
- */
+/** The caret in the new string says where the edit was; both sides of it map across. */
 function cursorMatch(
   oldChars: string[],
   newChars: string[],
@@ -233,22 +195,8 @@ function cursorMatch(
 }
 
 /**
- * Matches characters by place value rather than by scanning left to right.
- *
- * A digit's identity is its significance: the units digit stays the units digit
- * however many digits appear in front of it. So the integer side is walked
- * outward from the decimal separator towards the left and the fraction side
- * towards the right, pairing whatever sits at the same distance from the pivot.
- * Group separators fall into place as a side effect — 999,999 → 1,000,000 slides
- * its comma along by one group, where a left-to-right scan would snap it to the
- * front and break the cadence.
- *
- * Fixed affixes ($, %, " MB") aren't part of the number, so they are paired from
- * the outside in first and excluded from the place alignment.
- *
- * Returns a Map of newIndex → oldIndex for matched characters. Both walks skip
- * over mismatches instead of stopping: one digit changing says nothing about the
- * alignment of the digits either side of it.
+ * Pairs characters by distance from the decimal separator, not left to right — a
+ * digit's identity is its column. Both walks skip mismatches rather than stopping.
  */
 function placeMatch(
   oldChars: string[],
@@ -287,11 +235,7 @@ function placeMatch(
   const oldDigits = integerDigits(oldChars, start, oldPivot);
   const newDigits = integerDigits(newChars, start, newPivot);
 
-  // Affixes still hold: the currency a figure is denominated in did not change
-  // just because the figure did, and `matches` already holds them.
-  //
-  // A side with no digits at all is not a magnitude — it is a field being typed
-  // into or emptied out, where every character that survives should be seen to.
+  // A side with no digits is a field being typed into or emptied, not a magnitude.
   if (
     oldDigits > 0 &&
     newDigits > 0 &&
@@ -300,16 +244,9 @@ function placeMatch(
     return matches;
   }
 
-  // A group separator holds its distance from the pivot — that is what slides
-  // it one group along on 999,999 → 1,000,000 instead of snapping it to the
-  // front — but only while the digits have not been re-shaped underneath it.
-  //
-  // Once a run of digits carries across, the separator would have to cross
-  // through that run to reach its new distance, the two passing in opposite
-  // directions. It is a boundary between groups, and after a reshape it is not
-  // the same boundary, so it leaves and a new one arrives. Where no digit
-  // persisted, nothing contradicts it and the slide is the only continuity the
-  // number has.
+  // A separator holds its distance from the pivot — what slides the comma one group
+  // along on 999,999 → 1,000,000. After a reshape it would have to cross the digits
+  // that carried, the two passing in opposite directions, so it leaves instead.
   const reshaped = matchDigits(start, oldPivot, start, newPivot, true);
   if (!reshaped) {
     for (let k = 1; oldPivot - k >= start && newPivot - k >= start; k++) {
@@ -317,8 +254,7 @@ function placeMatch(
     }
   }
 
-  // Absent from either value, the pivot is that value's end and there is no
-  // fraction to walk.
+  // Absent from either value, the pivot is that value's end.
   if (oldPivot < oldEnd && newPivot < newEnd) {
     matches.set(newPivot, oldPivot);
 
@@ -335,29 +271,12 @@ function placeMatch(
   }
 
   /**
-   * Pairs the digits on one side of the pivot.
-   *
-   * Same count of them and a digit's column is its identity: the units digit is
-   * still the units digit, so they pair off by position and a changed digit
-   * simply rolls in place.
-   *
-   * A different count, on the integer side only, means the number changed shape
-   * rather than just value — it grew a column, or had a digit pushed into it —
-   * and the reading that matches is which digits are *the same digits*. They
-   * pair by longest common subsequence, so the run they share slides across to
-   * its new magnitude instead of every column being rebuilt around it.
-   *
-   * The fraction side never does this. Its columns are fixed by their distance
-   * from the decimal point, so lengthening or shortening it adds and removes
-   * digits at the far end without disturbing the ones already there: 1.5 → 1.25
-   * is the tenths changing and a hundredths arriving, not the 5 sliding over.
-   *
-   * `towardsPivot` is the tie-break, and only repeated digits notice it. Four 1s
-   * becoming three has no single answer from the subsequence alone, and the one
-   * that reads correctly is the number losing its *leading* digit — so ties go
-   * to the end nearest the pivot, which is where a number is anchored.
+   * Pairs the digits on one side of the pivot, by column where the count matches and by
+   * subsequence where it changed. Reshaping is integer-side only — a fraction's columns
+   * are fixed by the decimal point, so 1.5 → 1.25 gains a hundredths rather than sliding
+   * the 5. `towardsPivot` breaks ties on repeated digits towards the units column.
+   * Returns whether digits survived a reshape.
    */
-  /** Returns whether digits carried across a change of shape. */
   function matchDigits(
     oldFrom: number,
     oldTo: number,
@@ -401,20 +320,8 @@ function digitIndices(chars: string[], from: number, to: number): number[] {
   return indices;
 }
 
-/**
- * How many orders of magnitude apart two values have to be before the morph
- * stops being a morph.
- *
- * Under it, a number is the same quantity moving and every column that survived
- * should be seen to survive. Over it, the two are barely the same figure: their
- * widths differ so much that the outgoing and incoming digits overlap into an
- * unreadable smear, each one fading in or out at a position the other value
- * never occupied. Nothing carrying across is the honest description of that, and
- * it lets the whole run be replaced as one gesture instead of column by column.
- *
- * Three is where the corpus divides. Every case that has to keep its slide sits
- * at one or zero; every case that reads as a replacement sits at three or more.
- */
+// Past this the digits overlap into a smear and nothing should carry across. Three is
+// where the corpus divides: cases needing their slide sit at 0-1, replacements at 3+.
 const MAGNITUDE_JUMP = 3;
 
 function integerDigits(chars: string[], start: number, pivot: number): number {

@@ -7,12 +7,7 @@ import {
   ATTR_SLOT,
 } from "./constants";
 
-/**
- * Every element the engine puts in the root is a fragment of the value rather
- * than the value: a word split to the character, a character mid-exit, a `br`
- * standing in for a newline. None of it reads as the text it draws, so all of
- * it is hidden and the root's `[torph-sr]` node speaks for the whole.
- */
+/** Every element here is a fragment of the value, so all of it is aria-hidden. */
 function createItem(tagName: "span" | "br", id: string): HTMLElement {
   const element = document.createElement(tagName);
   element.setAttribute(ATTR_ITEM, "");
@@ -50,8 +45,7 @@ export function detachFromFlow(
     });
   }
 
-  // Remove BR elements — they can't be animated and must leave the flow
-  // before reconciliation to prevent layout jumps.
+  // BRs can't be animated, so they leave the flow before reconciliation.
   for (let i = elements.length - 1; i >= 0; i--) {
     if (elements[i]!.tagName === "BR") {
       elements[i]!.remove();
@@ -99,15 +93,9 @@ export function splitWordSpans(
 }
 
 /**
- * Gives a numeric character the nested box its slide needs, and takes it away
- * again when the same character stops being one.
- *
- * The kind is written to the element because an exit outlives the segment that
- * described it — by the time it animates, the element is all that is left.
- *
- * Both directions have to work on an element being reused: a figure that gains
- * a second line becomes text and has to shed its slot, and gets it back when
- * the value returns to one line.
+ * Gives a numeric character the nested box its slide needs, and takes it away when
+ * it stops being one — both directions have to work on a reused element. The kind
+ * goes on the element because an exit outlives the segment that described it.
  */
 function syncSlot(element: HTMLElement, segment: Segment) {
   if (!segment.kind) {
@@ -130,11 +118,7 @@ function syncSlot(element: HTMLElement, segment: Segment) {
   inner.textContent = segment.string;
 }
 
-/**
- * The box the slide is applied to. For a slot that is the nested span, so the
- * movement is clipped by the slot around it; for anything else the element is
- * its own mover.
- */
+/** The box the slide is applied to — the nested span for a slot, else the element. */
 export function moverOf(element: HTMLElement): HTMLElement {
   return element.hasAttribute(ATTR_SLOT)
     ? ((element.firstElementChild as HTMLElement | null) ?? element)
@@ -164,8 +148,7 @@ export function reconcileChildren(
   });
 
   segments.forEach((segment) => {
-    // Claimed once only: two segments sharing an ID would both append the same
-    // node, leaving the earlier position empty.
+    // Claimed once only: a shared ID would leave the earlier position empty.
     const existing = reusable.get(segment.id);
     if (existing) reusable.delete(segment.id);
 
@@ -179,9 +162,7 @@ export function reconcileChildren(
     }
 
     if (existing && existing.tagName !== "BR") {
-      // A group replacement leaves a shared origin behind on its members. Left
-      // there, the next morph would scale this element about a point somewhere
-      // else entirely.
+      // A group replacement leaves a shared origin behind; the next morph would use it.
       existing.style.transformOrigin = "";
       syncSlot(existing, segment);
       element.appendChild(existing);

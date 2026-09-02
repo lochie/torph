@@ -1,9 +1,6 @@
 /**
- * Longest common subsequence, reported as paired indices into `a` and `b`.
- *
- * Built over suffixes and walked *forwards* so ties resolve to the earliest
- * match — a repeated word keeps its element on the first occurrence. Walking
- * backwards resolves them the other way, and the text flies across the block.
+ * Longest common subsequence as paired indices. Walked forwards so ties go to the
+ * earliest match — backwards, a repeated word flies across the block.
  */
 export function lcsIndices(a: string[], b: string[]): [number[], number[]] {
   const m = a.length;

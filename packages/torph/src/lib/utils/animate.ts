@@ -1,12 +1,5 @@
-/**
- * A fade is a share of the morph, never a fixed length.
- *
- * This used to cap at 150ms, which silently decoupled the two from each other:
- * at a 3000ms duration a character finished fading a tenth of the way through a
- * transform that still had 2850ms to run, so it sat there fully opaque and
- * motionless for the rest of it. The number animations never had the cap, so
- * the two families also disagreed at every speed.
- */
+// A share of the morph, never a fixed length — a cap here leaves a character opaque
+// and motionless for the rest of a long duration.
 export function fadeDuration(duration: number, fraction: number): number {
   return duration * fraction;
 }
@@ -42,14 +35,9 @@ type PendingTransition = {
 const pending = new WeakMap<HTMLElement, PendingTransition>();
 
 /**
- * Releases the size back to whatever the author's CSS says, rather than pinning
- * it to `auto`.
- *
- * An inline style outranks any stylesheet rule, so writing `auto` here does not
- * restore anything — it overrides the page for good. A root told to be
- * `width: 100%` by its own CSS would shrink to its content on the first morph
- * and stay there, taking any `text-align` on it with it, because there is no
- * longer any spare width to align within.
+ * Releases the size to the author's CSS rather than pinning it to `auto` — an inline
+ * style outranks a stylesheet, so `auto` would override the page for good and a root
+ * set to `width: 100%` would shrink to its content on the first morph.
  */
 function restoreSize(element: HTMLElement) {
   element.style.width = "";
@@ -57,8 +45,7 @@ function restoreSize(element: HTMLElement) {
   element.style.transitionProperty = "";
 }
 
-// A running transition uses `fill: "both"`, which outranks inline styles, so
-// anything setting width/height directly has to stop it first.
+// A running transition's `fill: "both"` outranks inline styles, so stop it first.
 export function abortContainerTransition(element: HTMLElement) {
   const entry = pending.get(element);
   if (!entry) return;
@@ -94,10 +81,8 @@ export function transitionContainerSize(
     return;
   }
 
-  // WAAPI drives the size instead, so it shares a start time with the items.
-  // Cleared rather than set to `auto`, so the target measured here is the size
-  // the author's CSS actually asks for — a root pinned to `width: 100%` should
-  // animate to that, which is to say not at all.
+  // WAAPI drives the size instead, sharing a start time with the items. Cleared, not
+  // set to `auto`, so what gets measured is the size the author's CSS asks for.
   element.style.transitionProperty = "none";
   element.style.width = "";
   element.style.height = "";
@@ -125,8 +110,8 @@ export function transitionContainerSize(
   pending.set(element, { stop: () => anim.cancel(), onCancel });
 }
 
-// For an emptied value: nothing is left to size the container to, so without
-// this it collapses and drags the exiting text with it when centred.
+// An emptied value has nothing left to size to, so the container would collapse and
+// drag the exiting text with it when centred.
 export function holdContainerSize(
   element: HTMLElement,
   width: number,
