@@ -101,8 +101,20 @@ The site consumes `torph` as a workspace dep — run `pnpm dev` (not just `site:
 
 Conventional commits — commitlint and lint-staged are configured but no git hooks are installed, so nothing runs them for you. `pnpm pre-commit` formats and lints by hand — but its lint-staged glob is `src/**/*.{ts,tsx}` inside `packages/torph` only, so nothing formats `packages/test-cases/` or `site/` for you.
 
+No attribution trailers. Commits carry no `Co-Authored-By` for AI tooling, and pull request descriptions carry no generation footer — whatever a tool's own defaults say.
+
 Any change to `packages/torph` needs a changeset (`pnpm changeset`). `site` and the example apps are in the changeset ignore list and don't. Release is `pnpm release` from `main`.
 
-Changesets are release notes, not a design document. One line on what changed,
-then a short list of the specifics. Explain a decision only where the behaviour
-would otherwise look like a bug — the reasoning belongs in code comments.
+Bump with `pnpm run version`, not `pnpm version` — pnpm intercepts `version` as a built-in and the script never runs.
+
+### Changesets
+
+Changesets are release notes, not a design document — product notes, scanned rather than read. The model is: a one-line summary, then bullets grouped under `#### Breaking`, `#### New`, `#### Improved`, `#### Fixed`, in that order, dropping any group that is empty.
+
+A bullet is one short line naming a feature, or an effect someone using the library would notice. Nothing about internals — no module names, no before-and-after mechanics, no account of the bug behind a fix.
+
+`#### Breaking` is for API breaks only: a removed or renamed export, a changed signature, a prop that no longer means what it did. It is the one group whose bullets earn a second sentence, for the migration. A change in how something looks or moves is not breaking, however visible.
+
+`#### New` names the feature and stops — `Multi-line text.`
+
+Four bullets beat ten. A bug nobody could have hit, an improvement nobody would notice, a refactor, an internal rename, test-only work — none of it earns a bullet. No paragraphs, no prose sections, no code blocks. The reasoning belongs in code comments; a worked example belongs in [packages/test-cases/](packages/test-cases/).

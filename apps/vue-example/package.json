@@ -13,8 +13,8 @@
     "torph": "workspace:*"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.2.3",
+    "@vitejs/plugin-vue": "^6.0.8",
     "typescript": "^5.0.2",
-    "vite": "^5.0.0"
+    "vite": "^8.2.2"
   }
 }
