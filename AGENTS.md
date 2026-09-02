@@ -44,7 +44,7 @@ What earns a comment is the thing someone would otherwise "fix" — a constant t
 const SLIDE = 20; // `offsetHeight || 20` — happy-dom has no layout
 ```
 
-A worked example that proves a rule belongs in [packages/test-cases/](packages/test-cases/) and not in prose — the corpus runs, a comment's copy of it rots quietly. A rule enforced in several places is explained once, on the thing all of them import, rather than restated at each site.
+A worked example that proves a rule belongs in [packages/test-cases/](packages/test-cases/) and not in prose — the corpus runs, a comment's copy of it rots quietly. A rule enforced in several places is stated once, as a trailing comment on the declaration they all import — not repeated at each site, and not as a list of the sites, which goes stale on the next one added.
 
 The exception is a file-level block explaining a whole subsystem's contract, where one already exists.
 
