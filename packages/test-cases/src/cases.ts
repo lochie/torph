@@ -220,14 +220,14 @@ export const CASES: TestCase[] = [
   {
     label: "Numbers morph by place",
     description:
-      "A numeric word goes to the number matcher, not to character matching. The affix holds and the run of digits the two values share carries across; the separator does not, because after a reshape of that size it is no longer the same boundary.",
+      "A numeric word goes to the number matcher, not to character matching. Four orders of magnitude is past the point where the two are the same figure moving, so only the affix holds and the number itself is replaced.",
     tags: ["number", "place"],
     values: ["$1,234", "$12,345,678", "$99"],
     align: "right",
     verify: (t) =>
       verifyTextPlaces(t, "$1,234", "$12,345,678", [
         [0, 0],
-        [1, 1],
+        [1, null],
         [7, null],
       ]),
   },

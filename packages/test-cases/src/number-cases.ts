@@ -92,13 +92,13 @@ export const NUMBER_CASES: NumberCase[] = [
   {
     label: "Currency to millions",
     description:
-      "The $ is fixed and never moves. The decimal point persists across six new digits; the new group separators enter.",
-    tags: ["currency", "separator", "place"],
+      "Four orders of magnitude apart. The $ is fixed and never moves, but the figure it denominates is not the same figure moving — hundreds and millions overlap so little that carrying anything across reads as a smear rather than as continuity. Nothing inside the number survives, so it can be replaced whole.",
+    tags: ["currency", "magnitude"],
     values: ["$999.50", "$1,000,000.00"],
     verify: (t) =>
       verifyPlaces(t, "$999.50", "$1,000,000.00", [
         [0, 0],
-        [10, 4],
+        [10, null],
         [6, null],
       ]),
   },

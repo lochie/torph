@@ -447,6 +447,44 @@ describe("invariants across a chained morph", () => {
   });
 });
 
+describe("timing", () => {
+  it("keeps every fade a share of the duration at any speed", () => {
+    for (const duration of [150, 400, 3000]) {
+      const { morph } = mount({ duration });
+      morph.update("hello 1");
+
+      const { calls, restore } = recordAnimations();
+      morph.update("world 2");
+      restore();
+
+      const fades = calls.filter((call) => {
+        const frames = (
+          Array.isArray(call.keyframes) ? call.keyframes : [call.keyframes]
+        ) as Frame[];
+        return frames.some((frame) => frame.opacity !== undefined);
+      });
+
+      expect(fades.length, `${duration}ms produced no fades`).toBeGreaterThan(0);
+
+      // A fixed ceiling here would decouple the fade from the transform: at
+      // 3000ms a capped fade finishes a tenth of the way in and the character
+      // sits opaque and still for the rest of it.
+      for (const fade of fades) {
+        const { duration: d, delay = 0 } = fade.options as {
+          duration: number;
+          delay?: number;
+        };
+        expect(d, `${duration}ms fade`).toBeLessThanOrEqual(duration);
+        expect(d / duration, `${duration}ms fade share`).toBeGreaterThan(0.1);
+        expect(delay / duration, `${duration}ms delay share`).toBeLessThan(0.5);
+      }
+
+      morph.destroy();
+      mounted.pop();
+    }
+  });
+});
+
 describe("author sizing", () => {
   it("leaves no inline width or height behind for CSS to fight", () => {
     const { element, morph } = mount();

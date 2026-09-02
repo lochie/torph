@@ -12,10 +12,13 @@ export const InputPlayground = () => {
 
   return (
     <div className={styles.container}>
-      <div className={styles.output}>
+      <div
+        className={styles.output}
+        style={{
+          opacity: query === undefined ? 0.5 : 1,
+        }}
+      >
         <TextMorph cursorIndex={cursor}>{query || 0}</TextMorph>
-        <br />
-        <TextMorph cursorIndex={cursor}>{`${query}`}</TextMorph>
       </div>
       <div className={styles.input}>
         <input
@@ -25,7 +28,8 @@ export const InputPlayground = () => {
           type="number"
           onChange={(e) => {
             setCursor(inputRef.current?.selectionStart ?? undefined);
-            setQuery(e.target.valueAsNumber);
+
+            setQuery(e.target.valueAsNumber || undefined);
           }}
         />
       </div>

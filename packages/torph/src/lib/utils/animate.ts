@@ -1,7 +1,14 @@
-const MAX_FADE_DURATION = 150;
-
+/**
+ * A fade is a share of the morph, never a fixed length.
+ *
+ * This used to cap at 150ms, which silently decoupled the two from each other:
+ * at a 3000ms duration a character finished fading a tenth of the way through a
+ * transform that still had 2850ms to run, so it sat there fully opaque and
+ * motionless for the rest of it. The number animations never had the cap, so
+ * the two families also disagreed at every speed.
+ */
 export function fadeDuration(duration: number, fraction: number): number {
-  return Math.min(duration * fraction, MAX_FADE_DURATION);
+  return duration * fraction;
 }
 
 export function parseTranslate(element: HTMLElement): {

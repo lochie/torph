@@ -38,12 +38,14 @@ describe("segmentNumber place matching", () => {
     expect(alignment("12,345", "1,234")).toEqual([0, null, 1, 3, 4]);
   });
 
-  it("pins a currency prefix and the decimal point", () => {
+  it("pins a currency prefix across a magnitude jump", () => {
     const places = alignment("$999.50", "$1,000,000.00");
 
     expect(places[0]).toBe(0); // $ never moves
-    expect(places[10]).toBe(4); // decimal point persists
-    expect(places[6]).toBeNull(); // new separators are new
+    // Four orders apart: the figure is replaced rather than morphed, so not
+    // even the decimal point carries.
+    expect(places[10]).toBeNull();
+    expect(places[6]).toBeNull();
   });
 
   it("grows the fraction to the right", () => {

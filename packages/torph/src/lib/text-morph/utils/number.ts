@@ -284,6 +284,22 @@ function placeMatch(
   const oldPivot = findPivot(oldChars, start, oldEnd, decimalChar);
   const newPivot = findPivot(newChars, start, newEnd, decimalChar);
 
+  const oldDigits = integerDigits(oldChars, start, oldPivot);
+  const newDigits = integerDigits(newChars, start, newPivot);
+
+  // Affixes still hold: the currency a figure is denominated in did not change
+  // just because the figure did, and `matches` already holds them.
+  //
+  // A side with no digits at all is not a magnitude — it is a field being typed
+  // into or emptied out, where every character that survives should be seen to.
+  if (
+    oldDigits > 0 &&
+    newDigits > 0 &&
+    Math.abs(oldDigits - newDigits) >= MAGNITUDE_JUMP
+  ) {
+    return matches;
+  }
+
   // A group separator holds its distance from the pivot — that is what slides
   // it one group along on 999,999 → 1,000,000 instead of snapping it to the
   // front — but only while the digits have not been re-shaped underneath it.
@@ -383,6 +399,28 @@ function digitIndices(chars: string[], from: number, to: number): number[] {
   const indices: number[] = [];
   for (let i = from; i < to; i++) if (isDigit(chars[i]!)) indices.push(i);
   return indices;
+}
+
+/**
+ * How many orders of magnitude apart two values have to be before the morph
+ * stops being a morph.
+ *
+ * Under it, a number is the same quantity moving and every column that survived
+ * should be seen to survive. Over it, the two are barely the same figure: their
+ * widths differ so much that the outgoing and incoming digits overlap into an
+ * unreadable smear, each one fading in or out at a position the other value
+ * never occupied. Nothing carrying across is the honest description of that, and
+ * it lets the whole run be replaced as one gesture instead of column by column.
+ *
+ * Three is where the corpus divides. Every case that has to keep its slide sits
+ * at one or zero; every case that reads as a replacement sits at three or more.
+ */
+const MAGNITUDE_JUMP = 3;
+
+function integerDigits(chars: string[], start: number, pivot: number): number {
+  let count = 0;
+  for (let i = start; i < pivot; i++) if (isDigit(chars[i]!)) count++;
+  return count;
 }
 
 /** Last decimal separator within the affix-trimmed range, else the range end. */
