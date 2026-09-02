@@ -3,7 +3,6 @@
 import styles from "./styles.module.scss";
 
 import { CSSProperties, Fragment, useEffect, useRef } from "react";
-import Link from "next/link";
 
 import { Footer } from "@/components/footer";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -127,11 +126,7 @@ const Card = ({ entry }: { entry: Entry }) => {
           />
           <span className={styles.identity}>
             <span className={styles.name}>{entry.author}</span>
-            <span className={styles.byline}>
-              @{entry.handle}
-              <span aria-hidden="true"> · </span>
-              <time dateTime={entry.date}>{formatDate(entry.date)}</time>
-            </span>
+            <span className={styles.byline}>@{entry.handle}</span>
           </span>
         </a>
 
@@ -148,24 +143,31 @@ const Card = ({ entry }: { entry: Entry }) => {
 
       <p className={styles.text}>{renderText(entry.text)}</p>
 
-      <div
-        className={styles.frame}
-        style={{ "--aspect": entry.aspect } as CSSProperties}
+      <a
+        className={styles.author}
+        href={`https://x.com/${entry.handle}`}
+        target="_blank"
+        rel="noopener noreferrer"
       >
-        <video
-          ref={ref}
-          src={`/showcase/${entry.slug}.mp4`}
-          poster={`/showcase/${entry.slug}.jpg`}
-          // Muted and inline are the conditions under which a browser will
-          // autoplay at all, on iOS especially.
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          controls={reducedMotion}
-          aria-label={`Screen recording attached to ${entry.author}'s post`}
-        />
-      </div>
+        <div
+          className={styles.frame}
+          style={{ "--aspect": entry.aspect } as CSSProperties}
+        >
+          <video
+            ref={ref}
+            src={`/showcase/${entry.slug}.mp4`}
+            poster={`/showcase/${entry.slug}.jpg`}
+            // Muted and inline are the conditions under which a browser will
+            // autoplay at all, on iOS especially.
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            controls={reducedMotion}
+            aria-label={`Screen recording attached to ${entry.author}'s post`}
+          />
+        </div>
+      </a>
     </article>
   );
 };
@@ -176,9 +178,16 @@ export const Showcase = () => {
       <div className={styles.container}>
         <div className={styles.header}>
           <h1>Showcase</h1>
+          <p>Interfaces people have built with Torph.</p>
+        </div>
+        <div className={styles.grid}>
+          {ENTRIES.map((entry) => (
+            <Card key={entry.slug} entry={entry} />
+          ))}
+        </div>
+        <div className={styles.callout}>
           <p>
-            Interfaces other people have built with torph. Made something with
-            it? Tag{" "}
+            Made something cool with Torph? Tag{" "}
             <a
               href="https://x.com/lochieaxon"
               target="_blank"
@@ -186,23 +195,9 @@ export const Showcase = () => {
             >
               @lochieaxon
             </a>
-            {" on 𝕏 and it can make its way here."}
-          </p>
-          <p>
-            <small>
-              Start from <Link href="/">the overview</Link> if you have not
-              installed it yet, or <Link href="/examples">the examples</Link>{" "}
-              for the code.
-            </small>
+            {" and it might make its way here."}
           </p>
         </div>
-
-        <div className={styles.grid}>
-          {ENTRIES.map((entry) => (
-            <Card key={entry.slug} entry={entry} />
-          ))}
-        </div>
-
         <Footer />
       </div>
     </div>

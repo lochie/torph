@@ -11,7 +11,7 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: 3.5rem;
+  gap: 2rem;
   width: 100%;
 }
 
@@ -32,7 +32,13 @@
   }
 }
 
-// ── Posts ───────────────────────────────────────────────────────────────────
+.callout {
+  text-align: center;
+  padding: 2rem 1rem;
+  border-radius: 0.75rem;
+  corner-shape: superellipse(1.25);
+  border: 1px dashed var(--border);
+}
 
 .grid {
   display: flex;
@@ -49,18 +55,19 @@
   border-radius: 0.75rem;
   corner-shape: superellipse(1.25);
 
-  &:hover:before {
-    box-shadow: inset 0 0 0 1px #262626;
-  }
-
   &:before {
     content: "";
+    pointer-events: none;
     position: absolute;
     inset: 0;
     border-radius: inherit;
     corner-shape: inherit;
     box-shadow: inset 0 0 0 1px var(--border);
     transition: box-shadow 200ms ease;
+  }
+
+  &:hover:before {
+    box-shadow: inset 0 0 0 1px #262626;
   }
 }
 
