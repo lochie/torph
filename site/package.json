@@ -13,18 +13,18 @@
     "@torph/test-cases": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "motion": "^12.23.16",
-    "next": "16.1.6",
+    "next": "16.3.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "torph": "workspace:*",
     "web-haptics": "^0.0.6"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "16.3.4",
     "typescript": "^5"
   }
 }
