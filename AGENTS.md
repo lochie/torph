@@ -52,11 +52,17 @@ Prettier + eslint flat config, both in `packages/torph/`. Formatting is prettier
 
 `no-console` is a warning — the debug path is the `debug` option, not a stray log. Unused args need a `_` prefix.
 
+**Reach for prettier by path** — `packages/torph/node_modules/.bin/prettier` — never `npx prettier` or `node_modules/.bin/prettier`. The root resolves 2.8.8, hoisted out of `@changesets/cli`, and its `trailingComma` default of `es5` strips a comma off every multi-line call in the repo. (`pnpm --filter=torph exec prettier` finds the right binary but runs in `packages/torph/`, so paths from the root miss.)
+
+`.prettierrc.cjs` lives in `packages/torph/`, so `packages/test-cases/` and `site/` format on prettier 3 defaults instead. The two agree on everything the repo uses.
+
 ## The library
 
 One engine. `TextMorph` handles text and numbers both; numbers are a `kind` (`"digit" | "symbol"`) on `Segment`, on by default, opt out with the `numbers` prop.
 
-**Segment IDs are the only identity** used for FLIP tracking and DOM reconciliation. A duplicate ID means visible text loss, because reconciliation hands one element to two segments. `createIdAllocator()` in [segment.ts](packages/torph/src/lib/text-morph/utils/segment.ts) is the single source of uniqueness; `unique-ids.test.ts` asserts the invariant. Don't mint IDs outside it.
+**Segment IDs are the only identity** used for FLIP tracking and DOM reconciliation. A duplicate ID means visible text loss, because reconciliation hands one element to two segments. `createIdAllocator()` in [segment.ts](packages/torph/src/lib/text-morph/utils/segment.ts) is the single source of uniqueness for text; `unique-ids.test.ts` asserts the invariant. Don't mint text IDs outside it.
+
+Numbers are the one exception. `mintId()` in [number.ts](packages/torph/src/lib/text-morph/utils/number.ts) issues `\u0000n<counter>`: text IDs are derived from the text, so a NULL prefix cannot collide with one, and a counter that only climbs cannot collide with an ID a number is still carrying from an earlier morph. Any third ID source has to argue for its own disjointness the same way.
 
 **Adding a file under `src/lib/`** — `tsup.config.ts`'s `aliasCorePlugin` externalises only paths matching `../lib/text-morph`. Anything else imported from a framework wrapper gets inlined into that wrapper's bundle. This once cost the React entry 4.6 kB gzip.
 
@@ -79,17 +85,19 @@ happy-dom has **no layout** — every rect is zero. Assert intent (a transform w
 ## Site
 
 - `app/` — routes only. Thin; a page composes a surface.
-- `surfaces/` — one folder per page, plus `surfaces/demos/` which every page draws from via its barrel. A demo lives in `demos/`, not in the page that happens to show it first.
+- `surfaces/` — one folder per page (`homepage/`, `playground/`). A demo lives in a subfolder of the surface that shows it — `homepage/examples/`, `playground/input-demo/`. There is no shared demo folder; the second page to want a demo is what earns one.
 - `components/` — reusable UI, `index.tsx` + `styles.module.scss` per folder.
 - SCSS modules. The shared palette and fonts are CSS custom properties in [styles/modules/variables.scss](site/src/styles/modules/variables.scss) — use `var(--border)` etc. rather than re-picking a theme colour; one-off literals inline are fine.
 - `@/` aliases `site/src/`.
-- Demos animate on a timer, so they need `"use client"` and must respect `usePrefersReducedMotion()`.
+- `hooks/` — shared React hooks. One per file, named for the hook.
+- `"use client"` goes on the surface root (`surfaces/homepage/index.tsx`), and the demos under it inherit the boundary. Don't repeat it per file.
+- Reduced motion is the library's own affair — `TextMorph` reads the query live and swaps text without animating. The site adds no hook of its own.
 
 The site consumes `torph` as a workspace dep — run `pnpm dev` (not just `site:dev`) so library edits rebuild.
 
 ## Commits and releases
 
-Conventional commits — commitlint and lint-staged are configured but no git hooks are installed, so nothing runs them for you. `pnpm pre-commit` formats and lints `packages/torph/src` by hand.
+Conventional commits — commitlint and lint-staged are configured but no git hooks are installed, so nothing runs them for you. `pnpm pre-commit` formats and lints by hand — but its lint-staged glob is `src/**/*.{ts,tsx}` inside `packages/torph` only, so nothing formats `packages/test-cases/` or `site/` for you.
 
 Any change to `packages/torph` needs a changeset (`pnpm changeset`). `site` and the example apps are in the changeset ignore list and don't. Release is `pnpm release` from `main`.
 
