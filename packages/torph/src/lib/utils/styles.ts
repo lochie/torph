@@ -28,10 +28,21 @@ const TORPH_CSS = `
  * The slot's height is the line box, and the transform lives on the child, so
  * the slide never touches the slot's own rect. The FLIP pass measures slots and
  * is oblivious to where the character inside one has got to.
+ *
+ * clip-path rather than overflow, because overflow would move the slot's
+ * baseline. An inline-block whose overflow computes to anything but visible has
+ * its baseline synthesized to the bottom margin edge (CSS 2.1 10.8.1), so every
+ * digit would hang from its own bottom edge while the words beside it sat on
+ * the text baseline, and the taller line box would drag anything measuring the
+ * root's height along with it. Whether overflow: clip triggers that rule is
+ * read differently by different engines, which is the worst version of it.
+ *
+ * The inline axis is left open. A digit does not move horizontally inside its
+ * slot, so the only thing out there is glyph overhang, and clipping it would
+ * shave italics and accents for nothing.
  */
 [${ATTR_SLOT}] {
-  overflow-x: visible;
-  overflow-y: clip;
+  clip-path: inset(0 -100vw);
 }
 
 [${ATTR_SLOT}] > span {

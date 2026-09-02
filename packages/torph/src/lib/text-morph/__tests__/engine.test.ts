@@ -310,8 +310,12 @@ describe("the clip a slide happens behind", () => {
 
     const css = document.querySelector("style[data-torph]")!.textContent!;
     expect(css).toContain(`[${ATTR_SLOT}]`);
-    expect(css).toContain("overflow-y: clip");
     expect(css).toContain("--torph-fade");
+
+    // clip-path, not overflow: overflow would synthesize the slot's baseline to
+    // its bottom margin edge and lift every digit off the line the words sit on.
+    expect(css).toContain("clip-path: inset(");
+    expect(css).not.toContain("overflow-y: clip");
   });
 });
 
