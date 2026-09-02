@@ -156,7 +156,10 @@ export function TestDetail({
     if (!el) return;
     setDom(
       test.minLines
-        ? combineResults(verifyDomStandard(el), verifyMultiline(el, test.minLines))
+        ? combineResults(
+            verifyDomStandard(el),
+            verifyMultiline(el, test.minLines),
+          )
         : verifyDomStandard(el),
     );
   };
@@ -299,7 +302,11 @@ export function TestDetail({
             ] as const
           ).map(([name, r]) => (
             <div key={name} className={styles.checkRow}>
-              <span className={r ? (r.pass ? styles.pass : styles.fail) : styles.pending}>
+              <span
+                className={
+                  r ? (r.pass ? styles.pass : styles.fail) : styles.pending
+                }
+              >
                 {r ? (r.pass ? "PASS" : "FAIL") : "…"}
               </span>
               <span className={styles.checkName}>{name}</span>
@@ -310,7 +317,6 @@ export function TestDetail({
           ))}
         </div>
       )}
-
 
       {showInspector && (
         <SegmentInspector from={test.values[prev]!} to={test.values[index]!} />

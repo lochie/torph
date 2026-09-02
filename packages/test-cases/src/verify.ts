@@ -43,7 +43,9 @@ export function verifyWordAbsent(
   const found = segOf(segments, word);
   return {
     pass: !found,
-    detail: found ? `"${word}" unexpectedly present` : `"${word}" correctly absent`,
+    detail: found
+      ? `"${word}" unexpectedly present`
+      : `"${word}" correctly absent`,
   };
 }
 
@@ -101,7 +103,8 @@ export function verifyCycleStability(
 ): Result {
   let prev = t.segmentText(a, L);
   const originalId = segOf(prev, word)?.id;
-  if (!originalId) return { pass: false, detail: `"${word}" not found in "${a}"` };
+  if (!originalId)
+    return { pass: false, detail: `"${word}" not found in "${a}"` };
 
   for (let i = 0; i < 4; i++) {
     const { segments } = t.diffSegments(prev, i % 2 === 0 ? b : a, L);
@@ -158,7 +161,9 @@ export function verifyTextPlaces(
   pairs: [newIndex: number, oldIndex: number | null][],
 ): Result {
   const places = textAlignment(t, from, to);
-  const wrong = pairs.filter(([newIndex, oldIndex]) => places[newIndex] !== oldIndex);
+  const wrong = pairs.filter(
+    ([newIndex, oldIndex]) => places[newIndex] !== oldIndex,
+  );
 
   return {
     pass: wrong.length === 0,

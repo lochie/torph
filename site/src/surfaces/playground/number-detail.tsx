@@ -145,8 +145,7 @@ export function NumberDetail({
   }, [advance]);
 
   const prev = (index - 1 + test.values.length) % test.values.length;
-  const cursor =
-    useCursors && test.cursors ? test.cursors[index] : undefined;
+  const cursor = useCursors && test.cursors ? test.cursors[index] : undefined;
 
   const handleCopy = async () => {
     const ok = await copyText(
@@ -239,7 +238,10 @@ export function NumberDetail({
           </button>
         )}
         {test.tabular && (
-          <span className={styles.step} title="This case renders with tabular figures">
+          <span
+            className={styles.step}
+            title="This case renders with tabular figures"
+          >
             tabular
           </span>
         )}

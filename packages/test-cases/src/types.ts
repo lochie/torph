@@ -12,10 +12,7 @@ export type DiffResult = {
 // Injected rather than imported so one definition can run against both builds:
 // vitest resolves torph from source, the playground from the bundle.
 export type TorphApi = {
-  segmentText: (
-    value: string,
-    locale: Intl.LocalesArgument,
-  ) => Segment[];
+  segmentText: (value: string, locale: Intl.LocalesArgument) => Segment[];
   diffSegments: (
     oldSegments: Segment[],
     newText: string,

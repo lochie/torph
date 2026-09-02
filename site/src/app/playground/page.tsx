@@ -6,7 +6,10 @@ import { Playground } from "@/surfaces/playground";
 // cwd is the site through the workspace, the repo root when next runs directly.
 function readBundleSizes() {
   const root = fs.existsSync("packages") ? "." : "..";
-  const file = path.join(root, "site/src/surfaces/playground/bundle-sizes.json");
+  const file = path.join(
+    root,
+    "site/src/surfaces/playground/bundle-sizes.json",
+  );
 
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : [];
 }

@@ -76,7 +76,10 @@ export const Playground = ({
     setSelection((s) => ({ ...s, [mode]: index }));
 
   const [results, setResults] = React.useState<Record<Mode, (Result | null)[]>>(
-    () => ({ text: TESTS.map(() => null), numbers: NUMBER_TESTS.map(() => null) }),
+    () => ({
+      text: TESTS.map(() => null),
+      numbers: NUMBER_TESTS.map(() => null),
+    }),
   );
   React.useEffect(() => {
     setResults({

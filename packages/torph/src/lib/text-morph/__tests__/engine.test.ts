@@ -93,7 +93,9 @@ function transformCall(
 ): Recorded | undefined {
   return calls.find((c) => {
     if (c.id !== id || c.onMover !== onMover) return false;
-    const frames = (Array.isArray(c.keyframes) ? c.keyframes : [c.keyframes]) as Frame[];
+    const frames = (
+      Array.isArray(c.keyframes) ? c.keyframes : [c.keyframes]
+    ) as Frame[];
     return frames.some((frame) => frame.transform !== undefined);
   });
 }
@@ -125,7 +127,12 @@ const textEnter = "translate(0px, 0px) scale(0.95) → none";
 const textPersist = "translate(0px, 0px) scale(1) → none";
 const textExit = "translate(0px, 0px) scale(0.95) @1";
 
-type Child = { id: string; text: string; kind: string | null; exiting: boolean };
+type Child = {
+  id: string;
+  text: string;
+  kind: string | null;
+  exiting: boolean;
+};
 
 function children(element: HTMLElement): Child[] {
   // The root also holds the accessible copy of the value, which is not a
@@ -140,8 +147,10 @@ function children(element: HTMLElement): Child[] {
     }));
 }
 
-const live = (element: HTMLElement) => children(element).filter((c) => !c.exiting);
-const leaving = (element: HTMLElement) => children(element).filter((c) => c.exiting);
+const live = (element: HTMLElement) =>
+  children(element).filter((c) => !c.exiting);
+const leaving = (element: HTMLElement) =>
+  children(element).filter((c) => c.exiting);
 
 /** What the root reads as, ignoring the characters on their way out. */
 const rendered = (element: HTMLElement) =>
@@ -227,7 +236,9 @@ describe("animation dispatch", () => {
   it("leaves a digit that held its place untouched", () => {
     const { element, morph } = mount();
     morph.update("1234");
-    const held = live(element).map((c) => c.id).slice(1);
+    const held = live(element)
+      .map((c) => c.id)
+      .slice(1);
 
     const { calls, restore } = recordAnimations();
     morph.update("1,234");
@@ -364,7 +375,10 @@ describe("numbers across line changes", () => {
 
       const ids = live(element).map((c) => c.id);
       const duplicate = ids.find((id, i) => ids.indexOf(id) !== i);
-      expect(duplicate, `${JSON.stringify(value)} repeats an ID`).toBeUndefined();
+      expect(
+        duplicate,
+        `${JSON.stringify(value)} repeats an ID`,
+      ).toBeUndefined();
 
       // `<br>` carries the line break and holds no text of its own.
       expect(rendered(element)).toBe(value.replace(/\n/g, ""));
@@ -449,7 +463,9 @@ describe("invariants across a chained morph", () => {
       // An empty value keeps a zero-width space so the line box survives the
       // exits, so it is the one step that does not render its own text.
       if (value !== "") {
-        expect(rendered(element).replace(/\n/g, "")).toBe(value.replace(/\n/g, ""));
+        expect(rendered(element).replace(/\n/g, "")).toBe(
+          value.replace(/\n/g, ""),
+        );
       }
     }
   });
@@ -554,7 +570,9 @@ describe("timing", () => {
         return frames.some((frame) => frame.opacity !== undefined);
       });
 
-      expect(fades.length, `${duration}ms produced no fades`).toBeGreaterThan(0);
+      expect(fades.length, `${duration}ms produced no fades`).toBeGreaterThan(
+        0,
+      );
 
       // A fixed ceiling here would decouple the fade from the transform: at
       // 3000ms a capped fade finishes a tenth of the way in and the character

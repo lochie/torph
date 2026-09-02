@@ -108,7 +108,8 @@ export const NUMBER_CASES: NumberCase[] = [
       'The " MB" is not part of the number. It should stay put while the fraction changes length underneath it.',
     tags: ["unit", "place"],
     values: ["1.25 MB", "1.5 MB", "999 MB"],
-    verify: (t) => verifyAlignment(t, "1.25 MB", "1.5 MB", [0, 1, null, 4, 5, 6]),
+    verify: (t) =>
+      verifyAlignment(t, "1.25 MB", "1.5 MB", [0, 1, null, 4, 5, 6]),
   },
   {
     label: "Percent sign held",
@@ -151,7 +152,8 @@ export const NUMBER_CASES: NumberCase[] = [
       "09:59 → 10:00. The colon is the only character that holds; every digit around it changes.",
     tags: ["place", "unit"],
     values: ["09:59", "10:00", "10:01"],
-    verify: (t) => verifyAlignment(t, "09:59", "10:00", [null, null, 2, null, null]),
+    verify: (t) =>
+      verifyAlignment(t, "09:59", "10:00", [null, null, 2, null, null]),
   },
 
   // ── Locale ──
@@ -220,7 +222,8 @@ export const NUMBER_CASES: NumberCase[] = [
     tags: ["cursor", "exit"],
     values: ["$4.20", "$4.2"],
     cursors: [undefined, 4],
-    verify: (t) => verifyAlignment(t, "$4.20", "$4.2", [0, 1, 2, 3], { cursor: 4 }),
+    verify: (t) =>
+      verifyAlignment(t, "$4.20", "$4.2", [0, 1, 2, 3], { cursor: 4 }),
   },
   {
     label: "Typing a currency field",

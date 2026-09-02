@@ -20,7 +20,11 @@ import {
   animateNumberExit,
   animateNumberPersist,
 } from "./utils/number-animate";
-import { detachFromFlow, splitWordSpans, reconcileChildren } from "../utils/dom";
+import {
+  detachFromFlow,
+  splitWordSpans,
+  reconcileChildren,
+} from "../utils/dom";
 import {
   animateGroupEnter,
   animateGroupExit,
@@ -359,7 +363,9 @@ export class TextMorph {
         child.getAttribute(ATTR_ID) !== EMPTY_ID,
     );
     const arriving = new Set(
-      settled.filter((child) => !this.prevMeasures[child.getAttribute(ATTR_ID)!]),
+      settled.filter(
+        (child) => !this.prevMeasures[child.getAttribute(ATTR_ID)!],
+      ),
     );
     const arrivingTogether = new Set<HTMLElement>();
     for (const run of replacedRuns(settled, arriving)) {

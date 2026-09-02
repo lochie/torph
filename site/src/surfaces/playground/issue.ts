@@ -61,14 +61,17 @@ export function buildIssueReport({
   result: Result | null;
   notes?: string;
 }): string {
-  const from = test.values[(index - 1 + test.values.length) % test.values.length]!;
+  const from =
+    test.values[(index - 1 + test.values.length) % test.values.length]!;
   const to = test.values[index]!;
   const ease = EASINGS[easing];
 
   return [
     `# torph issue — ${test.label}`,
     "",
-    notes ? `**What looks wrong:** ${notes}` : "**What looks wrong:** _(describe it)_",
+    notes
+      ? `**What looks wrong:** ${notes}`
+      : "**What looks wrong:** _(describe it)_",
     "",
     `- **torph**: v${pkg.version}`,
     `- **case**: \`${test.label}\` (${test.tags.join(", ")})`,
@@ -82,9 +85,7 @@ export function buildIssueReport({
     `- **debug**: ${debug}`,
     "",
     `## Assertion`,
-    result
-      ? `${result.pass ? "PASS" : "FAIL"} — ${result.detail}`
-      : "not run",
+    result ? `${result.pass ? "PASS" : "FAIL"} — ${result.detail}` : "not run",
     "",
     `## Segments`,
     segmentTable(from, to),

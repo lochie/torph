@@ -68,7 +68,9 @@ export function verifyPlaces(
   options: AlignOptions = {},
 ): Result {
   const places = alignment(t, from, to, options);
-  const wrong = pairs.filter(([newIndex, oldIndex]) => places[newIndex] !== oldIndex);
+  const wrong = pairs.filter(
+    ([newIndex, oldIndex]) => places[newIndex] !== oldIndex,
+  );
 
   return {
     pass: wrong.length === 0,
@@ -151,7 +153,10 @@ export function verifyNumberCycleStability(
   const anchor = segments[anchorIndex];
 
   if (!anchor) {
-    return { pass: false, detail: `no character at index ${anchorIndex} of "${a}"` };
+    return {
+      pass: false,
+      detail: `no character at index ${anchorIndex} of "${a}"`,
+    };
   }
 
   for (let i = 0; i < 4; i++) {

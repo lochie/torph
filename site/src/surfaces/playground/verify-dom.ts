@@ -96,7 +96,9 @@ export function verifyAlignment(
     const lineRight = Math.max(...line.map(({ rect }) => rect.right));
     const lineW = (lineRight - lineLeft).toFixed(1);
     const rootW = rootRect.width.toFixed(1);
-    const texts = line.map(({ el }) => `"${el.textContent?.trim() || "?"}"`).join(" ");
+    const texts = line
+      .map(({ el }) => `"${el.textContent?.trim() || "?"}"`)
+      .join(" ");
 
     if (align === "left") {
       if (Math.abs(lineLeft - rootRect.left) > tolerance) {
@@ -125,7 +127,9 @@ export function verifyAlignment(
   return { pass: true, detail: `${align}-aligned ok (${lines.length} lines)` };
 }
 
-export function getVisualLines(root: HTMLElement): { rect: DOMRect; el: HTMLElement }[][] {
+export function getVisualLines(
+  root: HTMLElement,
+): { rect: DOMRect; el: HTMLElement }[][] {
   const items = root.querySelectorAll<HTMLElement>(
     "[torph-item]:not([torph-exiting]):not(br)",
   );
@@ -357,10 +361,12 @@ export function verifyDomStandard(root: HTMLElement): {
 
 export function takeJumpSnapshot(root: HTMLElement): JumpSnapshot {
   const items = new Map<string, DOMRect>();
-  root.querySelectorAll<HTMLElement>("[torph-item]:not(br):not([torph-exiting])").forEach((item) => {
-    const id = item.getAttribute("torph-id");
-    if (id) items.set(id, item.getBoundingClientRect());
-  });
+  root
+    .querySelectorAll<HTMLElement>("[torph-item]:not(br):not([torph-exiting])")
+    .forEach((item) => {
+      const id = item.getAttribute("torph-id");
+      if (id) items.set(id, item.getBoundingClientRect());
+    });
   return {
     items,
     rootRect: root.getBoundingClientRect(),
@@ -406,13 +412,15 @@ export function verifyNoJump(
     const transform = cs.transform;
     const opacity = parseFloat(cs.opacity);
     const anims = el.getAnimations();
-    const animNames = anims.map((a) => (a as CSSAnimation).animationName ?? "?").join(",") || "none";
+    const animNames =
+      anims.map((a) => (a as CSSAnimation).animationName ?? "?").join(",") ||
+      "none";
 
     if (Math.abs(dx) > tolerance || Math.abs(dy) > tolerance) {
       jumps.push(
         `"${text}"${isExiting ? "(exit)" : ""} Δ${dx > 0 ? "+" : ""}${dx.toFixed(1)},${dy > 0 ? "+" : ""}${dy.toFixed(1)}` +
-        ` opacity=${opacity.toFixed(2)} tf=${transform} anims=${anims.length}(${animNames})` +
-        ` w=${cur.width.toFixed(1)} was=${old.width.toFixed(1)}`,
+          ` opacity=${opacity.toFixed(2)} tf=${transform} anims=${anims.length}(${animNames})` +
+          ` w=${cur.width.toFixed(1)} was=${old.width.toFixed(1)}`,
       );
     }
   });
@@ -552,7 +560,10 @@ export function verifyTabularDigits(root: HTMLElement): {
   ).filter((item) => /^\d$/.test(item.textContent ?? ""));
 
   if (digits.length < 2) {
-    return { pass: true, detail: `${digits.length} digits — nothing to compare` };
+    return {
+      pass: true,
+      detail: `${digits.length} digits — nothing to compare`,
+    };
   }
 
   const tolerance = 0.5;

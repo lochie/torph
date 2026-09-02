@@ -32,7 +32,9 @@ export function AlignmentInspector({
             <span
               key={i}
               className={`${styles.chip} ${held.has(i) ? styles.chipPersisted : ""}`}
-              title={held.has(i) ? `index ${i} — persists` : `index ${i} — exits`}
+              title={
+                held.has(i) ? `index ${i} — persists` : `index ${i} — exits`
+              }
             >
               {show(char)}
               <em>{i}</em>
