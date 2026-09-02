@@ -13,7 +13,9 @@ export const InputPlayground = () => {
   return (
     <div className={styles.container}>
       <div className={styles.output}>
-        <TextMorph cursorIndex={cursor}>{query}</TextMorph>
+        <TextMorph cursorIndex={cursor}>{query || 0}</TextMorph>
+        <br />
+        <TextMorph cursorIndex={cursor}>{`${query}`}</TextMorph>
       </div>
       <div className={styles.input}>
         <input

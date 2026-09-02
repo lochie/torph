@@ -73,10 +73,11 @@ export const NUMBER_CASES: NumberCase[] = [
   },
   {
     label: "Separator slides back down",
-    description: "The same walk in reverse as the value shrinks a magnitude.",
+    description:
+      "The value loses a magnitude and keeps all four of the digits it still has, so they travel down together. The comma cannot travel with them — it would have to cross the run to reach its new group, the two passing in opposite directions — so it leaves and the new boundary arrives.",
     tags: ["separator", "exit"],
     values: ["12,345", "1,234"],
-    verify: (t) => verifyAlignment(t, "12,345", "1,234", [null, 2, null, null, null]),
+    verify: (t) => verifyAlignment(t, "12,345", "1,234", [0, null, 1, 3, 4]),
   },
   {
     label: "Separator survives a round trip",
@@ -157,7 +158,7 @@ export const NUMBER_CASES: NumberCase[] = [
   {
     label: "German separators",
     description:
-      "de-DE groups with dots and pivots on the comma. Both separators should slide right by one place, same as the en case.",
+      "de-DE groups with dots and pivots on the comma. The decimal pivot holds, the integer digits carry across, and the group separator gives way to a new one rather than crossing them.",
     tags: ["locale", "separator"],
     values: ["1.234,56", "12.345,67"],
     locale: "de-DE",
@@ -166,7 +167,7 @@ export const NUMBER_CASES: NumberCase[] = [
         t,
         "1.234,56",
         "12.345,67",
-        [null, null, 1, null, null, null, 5, null, null],
+        [0, 2, null, 3, 4, null, 5, null, null],
         { decimalChar: "," },
       ),
   },
@@ -187,7 +188,7 @@ export const NUMBER_CASES: NumberCase[] = [
   {
     label: "French narrow spaces",
     description:
-      "fr-FR groups with a narrow no-break space (U+202F) rather than a glyph. It should walk out from the decimal comma exactly like any other separator.",
+      "fr-FR groups with a narrow no-break space (U+202F) rather than a glyph. It is treated as the separator it is — including giving way when the digits around it are re-shaped.",
     tags: ["locale", "separator", "space"],
     values: ["1\u202F234,56", "12\u202F345,67", "1\u202F234\u202F567,89"],
     locale: "fr-FR",
@@ -196,7 +197,7 @@ export const NUMBER_CASES: NumberCase[] = [
         t,
         "1\u202F234,56",
         "12\u202F345,67",
-        [null, null, 1, null, null, null, 5, null, null],
+        [0, 2, null, 3, 4, null, 5, null, null],
         { decimalChar: "," },
       ),
   },

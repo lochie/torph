@@ -220,15 +220,15 @@ export const CASES: TestCase[] = [
   {
     label: "Numbers morph by place",
     description:
-      "A numeric word goes to place matching, not character matching. The comma slides one group along and the affix holds; the leading 1 does not stay a leading 1, because it is a different magnitude now.",
+      "A numeric word goes to the number matcher, not to character matching. The affix holds and the run of digits the two values share carries across; the separator does not, because after a reshape of that size it is no longer the same boundary.",
     tags: ["number", "place"],
     values: ["$1,234", "$12,345,678", "$99"],
     align: "right",
     verify: (t) =>
       verifyTextPlaces(t, "$1,234", "$12,345,678", [
         [0, 0],
-        [1, null],
-        [7, 2],
+        [1, 1],
+        [7, null],
       ]),
   },
   {
@@ -322,6 +322,23 @@ export const CASES: TestCase[] = [
         [0, 0],
         [2, 2],
         [6, 6],
+      ]),
+  },
+  {
+    label: "A digit pushed into the middle",
+    description:
+      "1,234 gains a column and 123,456 gains a digit in the middle of itself. Both keep every digit they already had: when a number changes shape rather than just value, what carries is which digits are the same digits, so the run slides to its new magnitude instead of the whole figure being rebuilt around the newcomer.",
+    tags: ["number", "place", "enter"],
+    values: ["123,456", "1,234,576"],
+    verify: (t) =>
+      verifyTextPlaces(t, "123,456", "1,234,576", [
+        [0, 0],
+        [2, 1],
+        [3, 2],
+        [4, 4],
+        [6, 5],
+        [8, 6],
+        [7, null],
       ]),
   },
   {

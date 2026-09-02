@@ -32,7 +32,10 @@ describe("segmentNumber place matching", () => {
   });
 
   it("slides separators the other way when the value shrinks", () => {
-    expect(alignment("12,345", "1,234")).toEqual([null, 2, null, null, null]);
+    // The integer side lost a column, so the four digits it still has are the
+    // four it had — they move down a magnitude rather than being replaced. The
+    // separator does not go with them; it would have to cross the run.
+    expect(alignment("12,345", "1,234")).toEqual([0, null, 1, 3, 4]);
   });
 
   it("pins a currency prefix and the decimal point", () => {
@@ -69,13 +72,16 @@ describe("segmentNumber place matching", () => {
   });
 
   it("uses the locale's decimal separator as the pivot", () => {
-    // de-DE: dots group, the comma is the pivot. Both separators slide right.
+    // de-DE: dots group, the comma is the pivot. The pivot holds and the
+    // integer digits ride along; the group separator gives way rather than
+    // crossing them, and the fraction keeps its columns, so 56 → 67 replaces
+    // both of those.
     expect(alignment("1.234,56", "12.345,67", ",")).toEqual([
+      0,
+      2,
       null,
-      null,
-      1,
-      null,
-      null,
+      3,
+      4,
       null,
       5,
       null,

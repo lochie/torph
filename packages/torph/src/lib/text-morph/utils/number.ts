@@ -1,4 +1,5 @@
 import type { Segment, SegmentKind } from "../../utils/types";
+import { lcsIndices } from "../../utils/lcs";
 
 export type NumberSegment = Segment & { kind: SegmentKind };
 
@@ -283,9 +284,20 @@ function placeMatch(
   const oldPivot = findPivot(oldChars, start, oldEnd, decimalChar);
   const newPivot = findPivot(newChars, start, newEnd, decimalChar);
 
-  for (let k = 1; oldPivot - k >= start && newPivot - k >= start; k++) {
-    if (oldChars[oldPivot - k] === newChars[newPivot - k]) {
-      matches.set(newPivot - k, oldPivot - k);
+  // A group separator holds its distance from the pivot — that is what slides
+  // it one group along on 999,999 → 1,000,000 instead of snapping it to the
+  // front — but only while the digits have not been re-shaped underneath it.
+  //
+  // Once a run of digits carries across, the separator would have to cross
+  // through that run to reach its new distance, the two passing in opposite
+  // directions. It is a boundary between groups, and after a reshape it is not
+  // the same boundary, so it leaves and a new one arrives. Where no digit
+  // persisted, nothing contradicts it and the slide is the only continuity the
+  // number has.
+  const reshaped = matchDigits(start, oldPivot, start, newPivot, true);
+  if (!reshaped) {
+    for (let k = 1; oldPivot - k >= start && newPivot - k >= start; k++) {
+      matchSeparator(oldPivot - k, newPivot - k);
     }
   }
 
@@ -295,13 +307,82 @@ function placeMatch(
     matches.set(newPivot, oldPivot);
 
     for (let k = 1; oldPivot + k < oldEnd && newPivot + k < newEnd; k++) {
-      if (oldChars[oldPivot + k] === newChars[newPivot + k]) {
-        matches.set(newPivot + k, oldPivot + k);
-      }
+      matchSeparator(oldPivot + k, newPivot + k);
     }
+    matchDigits(oldPivot + 1, oldEnd, newPivot + 1, newEnd, false);
+  }
+
+  function matchSeparator(oldIndex: number, newIndex: number) {
+    const char = oldChars[oldIndex]!;
+    if (isDigit(char)) return;
+    if (char === newChars[newIndex]) matches.set(newIndex, oldIndex);
+  }
+
+  /**
+   * Pairs the digits on one side of the pivot.
+   *
+   * Same count of them and a digit's column is its identity: the units digit is
+   * still the units digit, so they pair off by position and a changed digit
+   * simply rolls in place.
+   *
+   * A different count, on the integer side only, means the number changed shape
+   * rather than just value — it grew a column, or had a digit pushed into it —
+   * and the reading that matches is which digits are *the same digits*. They
+   * pair by longest common subsequence, so the run they share slides across to
+   * its new magnitude instead of every column being rebuilt around it.
+   *
+   * The fraction side never does this. Its columns are fixed by their distance
+   * from the decimal point, so lengthening or shortening it adds and removes
+   * digits at the far end without disturbing the ones already there: 1.5 → 1.25
+   * is the tenths changing and a hundredths arriving, not the 5 sliding over.
+   *
+   * `towardsPivot` is the tie-break, and only repeated digits notice it. Four 1s
+   * becoming three has no single answer from the subsequence alone, and the one
+   * that reads correctly is the number losing its *leading* digit — so ties go
+   * to the end nearest the pivot, which is where a number is anchored.
+   */
+  /** Returns whether digits carried across a change of shape. */
+  function matchDigits(
+    oldFrom: number,
+    oldTo: number,
+    newFrom: number,
+    newTo: number,
+    towardsPivot: boolean,
+  ): boolean {
+    const oldIndices = digitIndices(oldChars, oldFrom, oldTo);
+    const newIndices = digitIndices(newChars, newFrom, newTo);
+
+    if (oldIndices.length === newIndices.length || !towardsPivot) {
+      const pairs = Math.min(oldIndices.length, newIndices.length);
+      for (let k = 0; k < pairs; k++) {
+        const oi = oldIndices[k]!;
+        const ni = newIndices[k]!;
+        if (oldChars[oi] === newChars[ni]) matches.set(ni, oi);
+      }
+      return false;
+    }
+
+    // Reversed, so the subsequence walk resolves its ties from the units end.
+    const oldRun = oldIndices.map((i) => oldChars[i]!).reverse();
+    const newRun = newIndices.map((i) => newChars[i]!).reverse();
+    const [ai, bi] = lcsIndices(oldRun, newRun);
+
+    for (let k = 0; k < ai.length; k++) {
+      const oi = oldIndices[oldIndices.length - 1 - ai[k]!]!;
+      const ni = newIndices[newIndices.length - 1 - bi[k]!]!;
+      matches.set(ni, oi);
+    }
+
+    return ai.length > 0;
   }
 
   return matches;
+}
+
+function digitIndices(chars: string[], from: number, to: number): number[] {
+  const indices: number[] = [];
+  for (let i = from; i < to; i++) if (isDigit(chars[i]!)) indices.push(i);
+  return indices;
 }
 
 /** Last decimal separator within the affix-trimmed range, else the range end. */

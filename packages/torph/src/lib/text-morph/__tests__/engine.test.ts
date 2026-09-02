@@ -200,10 +200,10 @@ describe("kinds reach the DOM", () => {
 describe("animation dispatch", () => {
   it("slides a new digit down and a new symbol up", () => {
     const { element, morph } = mount();
-    morph.update("1234");
+    morph.update("999");
 
     const { calls, restore } = recordAnimations();
-    morph.update("1,234");
+    morph.update("1,000");
     restore();
 
     const comma = idOf(element, ",");
