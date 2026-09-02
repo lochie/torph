@@ -9,32 +9,22 @@
   background: var(--body-light);
 }
 
+.output {
+  font-size: 3rem;
+  text-align: center;
+}
+
 .input {
   position: relative;
-  padding: 0.5rem 1rem;
-  font-family: var(--font-secondary);
-  font-size: 2rem;
-  font-weight: 500;
-  color: #ffffff;
-  border-radius: 0.5rem;
-  border: 1px solid #363636;
 
   input {
-    all: unset;
-    position: relative;
-    z-index: 1;
     width: 100%;
-    color: transparent;
-    caret-color: white;
-    font: inherit;
-  }
-
-  .output {
-    position: absolute;
-    inset: 0;
-    padding: inherit;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
+    padding: 0.5rem 1rem;
+    font-family: var(--font-secondary);
+    font-size: 2rem;
+    font-weight: 500;
+    color: #ffffff;
+    border-radius: 0.5rem;
+    border: 1px solid #363636;
   }
 }

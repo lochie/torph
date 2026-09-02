@@ -447,6 +447,23 @@ describe("invariants across a chained morph", () => {
   });
 });
 
+describe("author sizing", () => {
+  it("leaves no inline width or height behind for CSS to fight", () => {
+    const { element, morph } = mount();
+
+    morph.update("hello");
+    morph.update("hello world");
+    morph.update("$1,234");
+
+    // An inline style outranks the page's own rules, so anything left here is
+    // permanent. A root that its CSS puts at `width: 100%` has to still be at
+    // `width: 100%` afterwards, or a `text-align` on it has no width left to
+    // align within — which is exactly how a left/centre/right control dies.
+    expect(element.style.width).toBe("");
+    expect(element.style.height).toBe("");
+  });
+});
+
 describe("disabled", () => {
   it("writes the value straight to the element", () => {
     const { element, morph } = mount({ disabled: true });

@@ -214,7 +214,7 @@ export class TextMorph {
     element.style.width = `${oldWidth}px`;
     void element.offsetWidth;
     const firstFrameMeasures = measure(this.element);
-    element.style.width = "auto";
+    element.style.width = "";
 
     this.updateStyles(segments, firstFrameMeasures, slideDistance);
 
@@ -252,8 +252,8 @@ export class TextMorph {
 
     if (this.isInitialRender) {
       this.isInitialRender = false;
-      element.style.width = "auto";
-      element.style.height = "auto";
+      element.style.width = "";
+      element.style.height = "";
       return;
     }
 

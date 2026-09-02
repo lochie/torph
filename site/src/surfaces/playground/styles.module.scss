@@ -296,7 +296,16 @@ $fail: rgb(248, 113, 113);
   color: #fff;
   user-select: none;
   cursor: pointer;
-  overflow-x: auto;
+
+  // A morph translates every item from where it was to where it lands, and
+  // transformed descendants count toward an ancestor's scrollable overflow — so
+  // `auto` flashed a scrollbar for the length of each transition. Every case is
+  // authored to fit the stage, so there is nothing here worth scrolling to.
+  //
+  // `clip` rather than `hidden` deliberately: `hidden` on one axis forces the
+  // other from `visible` to `auto`, which would make the stage scroll
+  // vertically instead.
+  overflow-x: clip;
 
   > * {
     width: 100%;

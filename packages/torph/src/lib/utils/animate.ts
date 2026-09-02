@@ -34,9 +34,19 @@ type PendingTransition = {
 
 const pending = new WeakMap<HTMLElement, PendingTransition>();
 
+/**
+ * Releases the size back to whatever the author's CSS says, rather than pinning
+ * it to `auto`.
+ *
+ * An inline style outranks any stylesheet rule, so writing `auto` here does not
+ * restore anything — it overrides the page for good. A root told to be
+ * `width: 100%` by its own CSS would shrink to its content on the first morph
+ * and stay there, taking any `text-align` on it with it, because there is no
+ * longer any spare width to align within.
+ */
 function restoreSize(element: HTMLElement) {
-  element.style.width = "auto";
-  element.style.height = "auto";
+  element.style.width = "";
+  element.style.height = "";
   element.style.transitionProperty = "";
 }
 
@@ -77,10 +87,13 @@ export function transitionContainerSize(
     return;
   }
 
-  // WAAPI drives the size instead, so it shares a start time with the items
+  // WAAPI drives the size instead, so it shares a start time with the items.
+  // Cleared rather than set to `auto`, so the target measured here is the size
+  // the author's CSS actually asks for — a root pinned to `width: 100%` should
+  // animate to that, which is to say not at all.
   element.style.transitionProperty = "none";
-  element.style.width = "auto";
-  element.style.height = "auto";
+  element.style.width = "";
+  element.style.height = "";
   void element.offsetWidth;
 
   const newRect = element.getBoundingClientRect();
