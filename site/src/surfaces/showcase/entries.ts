@@ -60,7 +60,7 @@ export const ENTRIES: Entry[] = [
     url: "https://x.com/kalembakonrad/status/2030696773845455188",
     date: "2026-03-08",
     aspect: 1466 / 682,
-    text: "added an \"unsaved changes\" indicator; text morphing animation made with @lochieaxon torph library 🙏\n\nps we just added google search console integration so you can now get daily reports about your search performance!",
+    text: 'added an "unsaved changes" indicator; text morphing animation made with @lochieaxon torph library 🙏\n\nps we just added google search console integration so you can now get daily reports about your search performance!',
   },
   {
     slug: "rxrz",
