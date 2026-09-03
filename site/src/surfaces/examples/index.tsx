@@ -4,6 +4,7 @@ import { Footer } from "@/components/footer";
 import styles from "./styles.module.scss";
 
 import { SECTIONS } from "./entries";
+import { LazyDemo } from "./lazy-demo";
 
 export const Examples = () => {
   return (
@@ -21,9 +22,7 @@ export const Examples = () => {
             <div className={styles.grid}>
               {demos.map(({ label, Component }) => (
                 <div key={label} className={styles.example}>
-                  <div className={styles.preview}>
-                    <Component />
-                  </div>
+                  <LazyDemo Component={Component} />
                   <span className={styles.label}>{label}</span>
                 </div>
               ))}
