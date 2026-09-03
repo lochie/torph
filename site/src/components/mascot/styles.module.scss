@@ -1,0 +1,109 @@
+.mascot {
+  position: fixed;
+  inset: 0;
+  z-index: 200; // Over the page — the codeblock sits at 99 — under the dropdowns and tooltips
+  opacity: 0; // Until the first frame has found him a spot to sit at
+  pointer-events: none;
+  transition: opacity 260ms ease;
+}
+
+.defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.blob {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.body,
+.tail,
+.face,
+.hit {
+  position: absolute;
+  top: 0;
+  left: 0; // Every transform starts by translating to viewport coordinates
+}
+
+.body {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+// Sized inline, off the same constant that drives the physics.
+.tail {
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.face {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+}
+
+.eye {
+  width: 5px;
+  height: 6px;
+  margin-bottom: 3px;
+  border-radius: 50%;
+  background: var(--body);
+  transition: transform 70ms ease;
+}
+
+.face[data-blink="true"] .eye {
+  transform: scaleY(0.14);
+}
+
+// Asleep the lids take their time, and sit a touch lower than a blink.
+.face[data-asleep="true"] {
+  .eye {
+    margin-bottom: 1px;
+    transition-duration: 400ms;
+  }
+}
+
+.hit {
+  width: 44px;
+  height: 44px;
+  cursor: grab;
+  touch-action: none;
+  pointer-events: auto;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.say {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: 15rem;
+  scale: 0.92;
+  opacity: 0;
+  transform-origin: bottom right;
+  pointer-events: none;
+
+  transition:
+    opacity 160ms ease,
+    scale 260ms cubic-bezier(0.19, 1, 0.22, 1);
+
+  &[data-show="true"] {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+.say:has([data-tail="left"]) {
+  transform-origin: bottom left;
+}

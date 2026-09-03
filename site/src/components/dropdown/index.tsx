@@ -19,13 +19,27 @@ export const Dropdown = ({
 }) => {
   const [open, setOpen] = React.useState(false);
   const { trigger } = useWebHaptics();
+  const menuId = React.useId();
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
 
   const { ref } = useClickOutside<HTMLDivElement>(() => setOpen(false));
 
+  // On the container, so it catches the trigger and the options both.
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key !== "Escape" || !open) return;
+    event.stopPropagation();
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
+
   return (
-    <div ref={ref} className={styles.container}>
+    <div ref={ref} className={styles.container} onKeyDown={onKeyDown}>
       <button
+        ref={triggerRef}
         type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-controls={open ? menuId : undefined}
         onClick={() => {
           trigger("light");
           setOpen(!open);
@@ -34,6 +48,7 @@ export const Dropdown = ({
       >
         {children}
         <motion.svg
+          aria-hidden="true"
           className={styles.caret}
           width="16"
           height="16"
@@ -58,6 +73,7 @@ export const Dropdown = ({
       <AnimatePresence mode="popLayout" initial={false}>
         {open && (
           <motion.div
+            id={menuId}
             className={styles.dropdown}
             initial={{ opacity: 0, scale: 0.95, originY: 0, originX: 0 }}
             animate={{ opacity: 1, scale: 1 }}

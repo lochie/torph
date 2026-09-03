@@ -4,7 +4,8 @@
   justify-content: center;
   width: 100%;
   max-width: 40rem;
-  padding: 4rem 1rem;
+  // Deeper than the foot: the heading's perch clears the mascot's 48px edge margin.
+  padding: 5rem 1rem 4rem;
   margin: 0 auto;
 }
 

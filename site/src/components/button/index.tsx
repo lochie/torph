@@ -1,4 +1,4 @@
-import { CSSProperties } from "react";
+import { CSSProperties, Ref } from "react";
 import styles from "./styles.module.scss";
 
 export const Button = ({
@@ -8,6 +8,7 @@ export const Button = ({
 }: {
   children: React.ReactNode;
   wide?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
   return (
     <button

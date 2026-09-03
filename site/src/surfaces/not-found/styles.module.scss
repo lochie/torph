@@ -1,0 +1,108 @@
+.page {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  max-width: 40rem;
+  padding: 4rem 1rem;
+  margin: 0 auto;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  width: 100%;
+}
+
+.heading {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.stage {
+  display: flex;
+  gap: 3rem;
+  align-items: center;
+  flex-direction: column;
+  padding: 4rem 1.5rem 2rem;
+}
+.content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  &[data-found="true"] .path {
+    color: var(--primary);
+  }
+}
+
+// Where the mascot stands to read the repair out — his old label's slot.
+.narrator {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.path {
+  font-family: var(--font-mono);
+  // TextMorph's root can't wrap, so the longest path tidyPath allows sets the size.
+  font-size: clamp(0.9rem, 4.6vw, 1.75rem);
+  font-weight: 500;
+  color: #ffffff;
+  transition: color 400ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 2.5rem; // The button's own height, so the footer sits still
+  margin-top: -1.5rem;
+}
+
+.go,
+.again {
+  animation: rise 400ms cubic-bezier(0.19, 1, 0.22, 1) both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(0.375rem);
+    }
+  }
+}
+
+.go {
+  padding: 0.5rem 1rem;
+  font-family: var(--font-secondary);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #ffffff;
+  border-radius: 0.75rem;
+  corner-shape: superellipse(1.25);
+  box-shadow: 0 0 0 1px #131313;
+
+  transition: 100ms ease;
+  transition-property: background, transform;
+
+  &:active {
+    transform: scale(0.96);
+  }
+
+  &:hover {
+    background: #131313;
+  }
+}
+
+.again {
+  font-family: var(--font-secondary);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  animation-delay: 90ms;
+
+  &:hover {
+    color: var(--color);
+  }
+}

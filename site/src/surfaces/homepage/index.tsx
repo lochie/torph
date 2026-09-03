@@ -14,6 +14,7 @@ import { examples, populateExample } from "./usage";
 import * as Logos from "./logos";
 import { Examples } from "./examples";
 import { Button } from "@/components/button";
+import { useMascotSpot } from "@/components/mascot/spots";
 
 const frameworks = [
   {
@@ -42,10 +43,51 @@ const frameworks = [
   },
 ];
 
+type Framework = (typeof frameworks)[number];
+
+// Its own component so each button can declare a perch — hooks don't run in a loop.
+const FrameworkButton = ({
+  framework,
+  active,
+  onSelect,
+}: {
+  framework: Framework;
+  active: boolean;
+  onSelect: () => void;
+}) => {
+  const spot = useMascotSpot<HTMLButtonElement>({ side: "top-right", gap: 0 });
+
+  return (
+    <Button
+      ref={spot}
+      disabled={active}
+      onClick={onSelect}
+      aria-label={`View example for ${framework.name}`}
+    >
+      <span className={styles.logo}>{framework.logo}</span>
+      <span className={styles.name}>{framework.name}</span>
+    </Button>
+  );
+};
+
 export const Homepage = () => {
   const text = "Hello world";
   const [frameworkIndex, setFrameworkIndex] = useState(0);
   const { trigger } = useWebHaptics();
+
+  const heading = useMascotSpot<HTMLHeadingElement>({
+    side: "left",
+    says: "Dependency-free animated text component",
+    pull: 900,
+  });
+  const install = useMascotSpot<HTMLHeadingElement>({
+    side: "left",
+    says: "Run this in your terminal",
+  });
+  const usage = useMascotSpot<HTMLHeadingElement>({
+    side: "left",
+    says: "Best used with a framework",
+  });
 
   const codeExample = `import { TextMorph } from '${frameworks[frameworkIndex % frameworks.length].entrypoint}'
                
@@ -55,35 +97,31 @@ ${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}
     <div className={styles.page}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h1>&lt;TextMorph /&gt;</h1>
-          <p>Dependency-free animated text component.</p>
+          <h1 ref={heading}>&lt;TextMorph /&gt;</h1>
         </div>
 
         <Examples />
 
         <section>
-          <h3>Install</h3>
+          <h3 ref={install}>Install</h3>
           <InstallCommands />
         </section>
 
         <section>
-          <h3>Usage</h3>
+          <h3 ref={usage}>Usage</h3>
 
           <div className={styles.example}>
             <div className={styles.controls}>
               {frameworks.map((f, i) => (
-                <Button
+                <FrameworkButton
                   key={f.name}
-                  disabled={frameworkIndex === i}
-                  onClick={() => {
+                  framework={f}
+                  active={frameworkIndex === i}
+                  onSelect={() => {
                     trigger("selection");
                     setFrameworkIndex(i);
                   }}
-                  aria-label={`View example for ${f.name}`}
-                >
-                  <span className={styles.logo}>{f.logo}</span>
-                  <span className={styles.name}>{f.name}</span>
-                </Button>
+                />
               ))}
             </div>
 
