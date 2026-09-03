@@ -107,7 +107,20 @@ export const SECTIONS: Section[] = [
       { label: "Trailing tag", Component: TrailingTag },
       { label: "Bubble slider", Component: BubbleSlider },
       { label: "Range shove", Component: RangeShove },
-      { label: "Spin dial", Component: SpinDial },
+      { label: "Spin dial", Component: () => <SpinDial /> },
+      {
+        label: "Spin dial spring",
+        Component: () => (
+          <SpinDial
+            duration={900}
+            ease={{
+              stiffness: 150,
+              damping: 19,
+              mass: 1.2,
+            }}
+          />
+        ),
+      },
       { label: "Pull to count", Component: PullToCount },
     ],
   },

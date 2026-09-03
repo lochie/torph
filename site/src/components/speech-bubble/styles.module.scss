@@ -1,0 +1,48 @@
+.container {
+  position: relative;
+  padding: 0.625rem 0.875rem;
+  font-family: var(--font-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.55;
+  text-align: left;
+  color: #ffffff;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: var(--border);
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  &::before {
+    right: -0.3125rem;
+    bottom: -0.0625rem;
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  &::after {
+    right: -0.6875rem;
+    bottom: -0.3125rem;
+    width: 0.375rem;
+    height: 0.375rem;
+  }
+
+  // Mirrored, for a speaker standing to the left of their own bubble.
+  &[data-tail="left"] {
+    &::before {
+      right: auto;
+      left: -0.3125rem;
+    }
+
+    &::after {
+      right: auto;
+      left: -0.6875rem;
+    }
+  }
+}

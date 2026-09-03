@@ -5,15 +5,13 @@ import styles from "./styles.module.scss";
 
 import { SECTIONS } from "./entries";
 import { LazyDemo } from "./lazy-demo";
+import { Header } from "@/components/header";
 
 export const Examples = () => {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <div className={styles.header}>
-          <h1>&lt;TextMorph /&gt;</h1>
-          <p>Text continuity for interfaces on the web.</p>
-        </div>
+        <Header />
 
         {SECTIONS.map(({ title, demos }) => (
           <section key={title}>

@@ -21,10 +21,12 @@ export const InstallCommands = () => {
         {Object.keys(pkgCmds).map((cmd, i) => (
           <button
             key={cmd}
+            type="button"
             onClick={() => {
               trigger("selection");
               setCmdIndex(i);
             }}
+            aria-pressed={i === cmdIndex}
             data-active={i === cmdIndex}
           >
             {cmd}

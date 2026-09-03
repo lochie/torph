@@ -32,7 +32,13 @@ const pointerAngle = (event: React.PointerEvent, element: HTMLElement) => {
   );
 };
 
-export const SpinDial = () => {
+export const SpinDial = ({
+  duration,
+  ease,
+}: {
+  duration?: number;
+  ease?: string | object;
+}) => {
   const [value, setValue] = React.useState(0);
   const reducedMotion = usePrefersReducedMotion();
   const { trigger } = useWebHaptics();
@@ -177,13 +183,9 @@ export const SpinDial = () => {
       >
         <div className={styles.dialFace} ref={faceRef} />
         <TextMorph
+          ease={ease}
+          duration={duration}
           className={styles.dialValue}
-          duration={900}
-          ease={{
-            stiffness: 150,
-            damping: 19,
-            mass: 1.2,
-          }}
         >{`$${value}`}</TextMorph>
       </div>
 

@@ -11,6 +11,7 @@ export const BRIGHTNESS = [72, 18, 94, 41, 63];
 
 const MAX = 100;
 const AUTOPLAY_MS = 1700;
+const GLIDE = 0.09; // How much of the way to the next preset the value covers per frame
 
 const THUMB = 18; // The input's own thumb is sized to match, so both map a pointer alike
 
@@ -37,8 +38,100 @@ const tiltOf = (bob: Bob) => MAX_TILT * Math.tanh((bob.lag - bob.x) / SOFT);
 
 const stretchOf = (bob: Bob) => Math.min(Math.abs(bob.vel) * 0.006, 0.13);
 
+const scaleXof = (stretch: number, squash: number) =>
+  (1 - stretch * 0.7) * (1 - squash);
+
 const bubbleTransform = (tilt: number, stretch: number, squash = 0) =>
-  `translateX(-50%) rotate(${tilt}deg) scale(${(1 - stretch * 0.7) * (1 - squash)}, ${1 + stretch})`;
+  `translateX(-50%) rotate(${tilt}deg) scale(${scaleXof(stretch, squash)}, ${1 + stretch})`;
+
+const TAIL = 9; // px the tail hangs below the bubble — its tip is the pivot, per the stylesheet
+
+type Box = { half: number; top: number; bottom: number };
+type Pt = { x: number; y: number };
+
+const boxOf = (bubble: HTMLElement, kx: number, ky: number): Box => ({
+  half: (bubble.offsetWidth / 2) * kx,
+  top: -(TAIL + bubble.offsetHeight) * ky,
+  bottom: -TAIL * ky,
+});
+
+const RADIUS = 14; // px of corner rounding on the bubble, per the stylesheet
+
+// The body's box inset by its corner radius: a rounded rectangle is that box
+// swept by a disc, so two of them meet arc to arc once the boxes are 2 radii
+// apart. Swung about the tail tip, which sits at `x`.
+const cornersOf = (box: Box, tilt: number, x: number): Pt[] => {
+  const sin = Math.sin((tilt * Math.PI) / 180);
+  const cos = Math.cos((tilt * Math.PI) / 180);
+  const half = Math.max(box.half - RADIUS, 0);
+  const at = (px: number, py: number) => ({
+    x: x + px * cos - py * sin,
+    y: px * sin + py * cos,
+  });
+  return [
+    at(-half, box.top + RADIUS),
+    at(half, box.top + RADIUS),
+    at(half, box.bottom - RADIUS),
+    at(-half, box.bottom - RADIUS),
+  ];
+};
+
+const spanOn = (poly: Pt[], nx: number, ny: number) => {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const p of poly) {
+    const d = p.x * nx + p.y * ny;
+    min = Math.min(min, d);
+    max = Math.max(max, d);
+  }
+  return { min, max };
+};
+
+const overlaps = (a: Pt[], b: Pt[]) => {
+  for (const poly of [a, b]) {
+    for (let i = 0; i < 2; i += 1) {
+      const p = poly[i]!;
+      const q = poly[i + 1]!;
+      const len = Math.hypot(q.x - p.x, q.y - p.y) || 1;
+      const spanA = spanOn(a, (q.y - p.y) / len, (p.x - q.x) / len);
+      const spanB = spanOn(b, (q.y - p.y) / len, (p.x - q.x) / len);
+      if (spanB.min > spanA.max || spanA.min > spanB.max) return false;
+    }
+  }
+  return true;
+};
+
+const edgeDist = (v: Pt, p: Pt, q: Pt) => {
+  const ex = q.x - p.x;
+  const ey = q.y - p.y;
+  const along = ex * ex + ey * ey;
+  const t = along
+    ? Math.min(Math.max(((v.x - p.x) * ex + (v.y - p.y) * ey) / along, 0), 1)
+    : 0;
+  return Math.hypot(v.x - p.x - t * ex, v.y - p.y - t * ey);
+};
+
+// Daylight between two leaning bodies, negative once they cross. Their closest
+// approach, not their horizontal extents: bodies tilted into a V meet on their
+// near corners, which the extents pass long before the corners are anywhere
+// near each other.
+const gapBetween = (a: Pt[], b: Pt[]) => {
+  let near = Infinity;
+  for (const [poly, other] of [
+    [a, b],
+    [b, a],
+  ] as const) {
+    for (const v of poly) {
+      for (let i = 0; i < other.length; i += 1) {
+        near = Math.min(
+          near,
+          edgeDist(v, other[i]!, other[(i + 1) % other.length]!),
+        );
+      }
+    }
+  }
+  return (overlaps(a, b) ? -near : near) - 2 * RADIUS;
+};
 
 export const BubbleSlider = () => {
   const [value, setValue] = React.useState(BRIGHTNESS[0]!);
@@ -54,6 +147,9 @@ export const BubbleSlider = () => {
   const state = React.useRef({
     bob: { x: 0, lag: 0, vel: 0 },
     value: BRIGHTNESS[0]!,
+    play: BRIGHTNESS[0]!,
+    to: BRIGHTNESS[0]!,
+    still: false,
     width: 0,
   });
 
@@ -66,18 +162,35 @@ export const BubbleSlider = () => {
 
     const s = state.current;
     s.width = track.offsetWidth;
-    s.bob.x = thumbX(s.value, s.width);
+    s.bob.x = thumbX(s.play, s.width);
     s.bob.lag = s.bob.x;
 
     return {
       step: () => {
+        // The value eases rather than cuts, so the thumb glides to the next
+        // preset and the bob is thrown by the travel, not by the jump.
+        s.play += (s.to - s.play) * GLIDE;
+        if (s.still || Math.abs(s.to - s.play) < 0.05) s.play = s.to;
+        s.bob.x = thumbX(s.play, s.width);
         swing(s.bob);
-        if (!settled(s.bob)) return true;
+
+        if (s.still) {
+          s.bob.lag = s.bob.x;
+          s.bob.vel = 0;
+          return false;
+        }
+        if (s.play !== s.to || !settled(s.bob)) return true;
         s.bob.lag = s.bob.x;
         s.bob.vel = 0;
         return false;
       },
       paint: () => {
+        const shown = Math.round(s.play);
+        if (shown !== s.value) {
+          s.value = shown;
+          setValue(shown);
+        }
+
         anchor.style.transform = `translateX(${s.bob.x}px)`;
         bubble.style.transform = bubbleTransform(
           tiltOf(s.bob),
@@ -89,15 +202,9 @@ export const BubbleSlider = () => {
   });
 
   React.useEffect(() => {
-    const s = state.current;
-    s.value = value;
-    s.bob.x = thumbX(value, s.width);
-    if (reducedMotion) {
-      s.bob.lag = s.bob.x;
-      s.bob.vel = 0;
-    }
+    state.current.still = reducedMotion;
     wake();
-  }, [value, reducedMotion, wake]);
+  }, [reducedMotion, wake]);
 
   React.useEffect(() => {
     const track = trackRef.current;
@@ -106,7 +213,7 @@ export const BubbleSlider = () => {
     const observer = new ResizeObserver(([entry]) => {
       const s = state.current;
       s.width = entry!.contentRect.width;
-      s.bob.x = thumbX(s.value, s.width);
+      s.bob.x = thumbX(s.play, s.width);
       // A reflow is not a drag — the bubble is carried, not thrown.
       s.bob.lag = s.bob.x;
       s.bob.vel = 0;
@@ -122,10 +229,11 @@ export const BubbleSlider = () => {
     let step = 0;
     const id = window.setInterval(() => {
       step = (step + 1) % BRIGHTNESS.length;
-      setValue(BRIGHTNESS[step]!);
+      state.current.to = BRIGHTNESS[step]!;
+      wake();
     }, AUTOPLAY_MS);
     return () => window.clearInterval(id);
-  }, [taken, reducedMotion]);
+  }, [taken, reducedMotion, wake]);
 
   return (
     <div className={styles.bubbleSlider}>
@@ -143,8 +251,11 @@ export const BubbleSlider = () => {
           onChange={(event) => {
             const next = Number(event.target.value);
             if (next !== value) trigger("selection");
+            const s = state.current;
+            s.play = s.to = s.value = next;
             setTaken(true);
             setValue(next);
+            wake();
           }}
         />
 
@@ -161,8 +272,9 @@ export const BubbleSlider = () => {
 
 export const SHOVE_GAP = 8; // Units held between the thumbs, so both stay grabbable
 
-const SHOVE_PAD = 10; // px of clearance two bubbles want between them
-const SHOVE_TILT = 22;
+const SHOVE_PAD = 10; // px of closeness at which the pair start to squash
+const SHOVE_CLEAR = 2; // px of daylight they hold once they meet
+const SHOVE_LEAN = 90; // deg — however far it takes, up to lying flat on the tail
 const SHOVE_STIFFNESS = 0.2;
 const SHOVE_DAMPING = 0.62;
 
@@ -206,7 +318,7 @@ export const RangeShove = () => {
         swing(s.lo);
         swing(s.hi);
 
-        // What the pair would need to clear each other, against what they have.
+        // How pressed together the pair are, 0 to 1 — what lean and squash ride on.
         const need =
           (loBubble.offsetWidth + hiBubble.offsetWidth) / 2 + SHOVE_PAD;
         const target = Math.max(0, need - (s.hi.x - s.lo.x)) / need;
@@ -222,19 +334,52 @@ export const RangeShove = () => {
         );
       },
       paint: () => {
-        const lean = SHOVE_TILT * s.shove;
         const squash = Math.min(Math.max(s.shove, 0), 1) * 0.16;
+        const loStretch = stretchOf(s.lo);
+        const hiStretch = stretchOf(s.hi);
+        const loSwing = tiltOf(s.lo);
+        const hiSwing = tiltOf(s.hi);
+        const loBox = boxOf(
+          loBubble,
+          scaleXof(loStretch, squash),
+          1 + loStretch,
+        );
+        const hiBox = boxOf(
+          hiBubble,
+          scaleXof(hiStretch, squash),
+          1 + hiStretch,
+        );
+
+        // Both tails stay pinned to their thumbs, so leaning further is the only
+        // way out of an overlap. Monotonic in `lean`, so a bisection finds the
+        // shallowest one that still leaves SHOVE_CLEAR between the bodies.
+        const gapAt = (lean: number) =>
+          gapBetween(
+            cornersOf(loBox, loSwing - lean, s.lo.x),
+            cornersOf(hiBox, hiSwing + lean, s.hi.x),
+          );
+
+        let lean = 0;
+        if (gapAt(0) < SHOVE_CLEAR) {
+          let over = SHOVE_LEAN;
+          for (let i = 0; i < 12; i += 1) {
+            const mid = (lean + over) / 2;
+            if (gapAt(mid) < SHOVE_CLEAR) lean = mid;
+            else over = mid;
+          }
+          lean = over;
+        }
 
         lo.style.transform = `translateX(${s.lo.x}px)`;
         hi.style.transform = `translateX(${s.hi.x}px)`;
         loBubble.style.transform = bubbleTransform(
-          tiltOf(s.lo) - lean,
-          stretchOf(s.lo),
+          loSwing - lean,
+          loStretch,
           squash,
         );
         hiBubble.style.transform = bubbleTransform(
-          tiltOf(s.hi) + lean,
-          stretchOf(s.hi),
+          hiSwing + lean,
+          hiStretch,
           squash,
         );
         fill.style.transform = `translateX(${s.lo.x}px) scaleX(${

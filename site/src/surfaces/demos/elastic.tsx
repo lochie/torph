@@ -65,6 +65,12 @@ export const SquishyNumber = () => {
         s.width += s.vel;
 
         if (Math.abs(s.vel) < 0.05 && Math.abs(s.target - s.width) < 0.2) {
+          // A figure held squashed reads as broken type, so rest is its natural width.
+          const rest = s.widths[s.form]!;
+          if (Math.abs(rest - s.width) > 0.2) {
+            s.target = rest;
+            return true;
+          }
           s.width = s.target;
           s.vel = 0;
           return false;

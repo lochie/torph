@@ -1,0 +1,21 @@
+.header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.left {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  h1 {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #ffffff;
+    font-weight: 500;
+  }
+}

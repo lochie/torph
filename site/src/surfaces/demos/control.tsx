@@ -2,49 +2,91 @@ import styles from "./inline.module.scss";
 
 import React from "react";
 import { TextMorph } from "torph/react";
+import { useWebHaptics } from "web-haptics/react";
 
 import { Button } from "@/components/button";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useCycle } from "./use-cycle";
 
 export const SPRING_LABELS = ["Save changes", "Saved", "Save changes to draft"];
 
-export const EASINGS = {
-  spring: { stiffness: 200, damping: 20 },
-  bezier: "cubic-bezier(0.19, 1, 0.22, 1)",
-} as const;
+export const BEZIER = "cubic-bezier(0.19, 1, 0.22, 1)"; // TextMorph's own default
 
-type Kind = keyof typeof EASINGS;
+export const SPRINGS = [
+  { name: "gentle", stiffness: 120, damping: 14 },
+  { name: "snappy", stiffness: 200, damping: 20 },
+  { name: "bouncy", stiffness: 260, damping: 12 },
+];
+
+const MORPH_EVERY = 2400; // Longer than the slowest preset takes to settle
 
 export const Spring = () => {
+  const [chosen, setChosen] = React.useState(1); // The preset the docs sample uses
   const [index, setIndex] = React.useState(0);
-  const [kind, setKind] = React.useState<Kind>("spring");
+  const reducedMotion = usePrefersReducedMotion();
+  const { trigger } = useWebHaptics();
+  const { stiffness, damping } = SPRINGS[chosen]!;
+
+  const advance = React.useCallback(
+    () => setIndex((i) => (i + 1) % SPRING_LABELS.length),
+    [],
+  );
+
+  // Restarted on `chosen`, so a preset just picked gets a full window to itself.
+  React.useEffect(() => {
+    if (reducedMotion) return;
+    const id = window.setInterval(advance, MORPH_EVERY);
+    return () => window.clearInterval(id);
+  }, [advance, chosen, reducedMotion]);
 
   return (
-    <>
-      <div className={styles.stage}>
-        <TextMorph ease={EASINGS[kind]}>{SPRING_LABELS[index]!}</TextMorph>
-      </div>
-
-      <div className={styles.controls}>
-        {(Object.keys(EASINGS) as Kind[]).map((k) => (
-          <Button
-            key={k}
-            type="button"
-            aria-pressed={kind === k}
-            onClick={() => setKind(k)}
+    <div className={styles.bench}>
+      <div className={styles.lanes}>
+        <div className={styles.lane}>
+          <TextMorph
+            className={`${styles.stage} ${styles.stageSmall}`}
+            ease={{ stiffness, damping }}
           >
-            {k}
-          </Button>
-        ))}
+            {SPRING_LABELS[index]!}
+          </TextMorph>
+          <span className={styles.caption}>spring</span>
+        </div>
 
-        <Button
-          type="button"
-          onClick={() => setIndex((i) => (i + 1) % SPRING_LABELS.length)}
-        >
-          Morph
-        </Button>
+        <div className={styles.lane}>
+          <TextMorph
+            className={`${styles.stage} ${styles.stageSmall}`}
+            ease={BEZIER}
+          >
+            {SPRING_LABELS[index]!}
+          </TextMorph>
+          <span className={styles.caption}>cubic-bezier, 400ms</span>
+        </div>
       </div>
-    </>
+
+      <div className={styles.springPicker}>
+        <div className={styles.eases} role="group" aria-label="Spring preset">
+          {SPRINGS.map(({ name }, i) => (
+            <button
+              key={name}
+              type="button"
+              className={styles.ease}
+              aria-pressed={i === chosen}
+              onClick={() => {
+                if (i !== chosen) trigger("selection");
+                setChosen(i);
+                advance();
+              }}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+
+        <TextMorph className={styles.easeParams}>
+          {`{ stiffness: ${stiffness}, damping: ${damping} }`}
+        </TextMorph>
+      </div>
+    </div>
   );
 };
 

@@ -352,27 +352,30 @@
   box-shadow: 0 0 0 0.25rem var(--focus-color);
 }
 
-// The pivot is the tail's tip, which sits in the thumb — so it swings from there.
+// The pivot is the tail's tip, so the bubble swings from there.
 .bubble {
   position: absolute;
-  bottom: 1rem;
+  bottom: 1.25rem; // 9px of tail, then the thumb's 9px radius, then 2px of daylight
   left: 0;
   padding: 0.375rem 0.75rem;
   border-radius: 0.875rem;
   corner-shape: superellipse(1.25);
   background: var(--primary);
-  transform-origin: 50% calc(100% + 1rem);
+  transform-origin: 50% calc(100% + 9px);
   transform: translateX(-50%);
 
+  // A square stood on its corner: the point is a rounded corner, not a border trick.
   &::after {
     content: "";
     position: absolute;
     top: 100%;
     left: 50%;
-    margin-left: -0.375rem;
-    border-right: 0.375rem solid transparent;
-    border-left: 0.375rem solid transparent;
-    border-top: 1rem solid var(--primary);
+    z-index: -1; // Its buried half sits under the value, not over it
+    width: 1rem;
+    height: 1rem;
+    border-radius: 0 0 0.25rem 0;
+    background: var(--primary);
+    transform: translate(-50%, calc(-50% - 2.3px)) scaleX(0.72) rotate(45deg);
   }
 }
 
@@ -403,6 +406,91 @@
   .bubbleFill {
     transform-origin: left center;
   }
+}
+
+// ── Two eases, side by side ──
+
+.bench {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+// A lane keeps its share of the row, so one settling wider never shoves the other.
+.lanes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1.25rem 1.5rem;
+  width: 100%;
+}
+
+// Flush left, so both values start their travel from the same edge.
+.lane {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.springPicker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.eases {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 10rem;
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+// Nested past the button rules a preview panel sets on any button inside it.
+.eases .ease {
+  padding: 0.375rem 0.8125rem;
+  font-family: var(--font-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  border-radius: 10rem;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    transform 100ms ease;
+
+  &:hover {
+    color: #ffffff;
+    background: transparent;
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+
+  &[aria-pressed="true"] {
+    color: #000000;
+    background: var(--primary);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.easeParams {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
 }
 
 // ── A dial you flick ──
@@ -1137,7 +1225,7 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-  padding-left: 0.875rem;
+  padding: 0 0.875rem;
   border-radius: 0.875rem 0 0 0.875rem;
   background: #0d0d0d;
   box-shadow: inset 0 0 0 1px var(--border);
@@ -1159,9 +1247,9 @@
 .squishHandle {
   position: relative;
   flex: none;
-  width: 1.25rem;
+  width: 0.75rem;
   border-radius: 0 0.875rem 0.875rem 0;
-  background: var(--primary);
+  background: var(--border);
   cursor: ew-resize;
   touch-action: none;
 
@@ -1170,10 +1258,14 @@
     position: absolute;
     inset: 50% auto auto 50%;
     width: 0.125rem;
-    height: 1.25rem;
+    height: 1rem;
     border-radius: 10rem;
-    background: rgba(0, 0, 0, 0.4);
+    background: var(--color-muted);
     transform: translate(-50%, -50%);
+  }
+
+  &:hover::after {
+    background: var(--primary);
   }
 
   &:focus-visible {

@@ -2,10 +2,8 @@ import styles from "./card.module.scss";
 
 import React from "react";
 import { TextMorph } from "torph/react";
-import { wrap } from "./wrap";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-
-const MAX_CHARS = 24;
+import { SpeechBubble } from "@/components/speech-bubble";
 
 const states = [
   {
@@ -36,9 +34,7 @@ export const ExampleRewrite = () => {
 
   return (
     <div className={styles.rewrite}>
-      <div className={styles.bubble}>
-        <TextMorph>{wrap(states[currentStateIndex].body, MAX_CHARS)}</TextMorph>
-      </div>
+      <SpeechBubble message={states[currentStateIndex].body} />
 
       <div className={styles.tone}>
         <svg
