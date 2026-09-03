@@ -17,6 +17,7 @@ export const CodeBlock = ({
   return (
     <div className={styles.container}>
       <button
+        type="button"
         className={styles.copy}
         onClick={() => {
           if (code) {
