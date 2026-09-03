@@ -158,8 +158,13 @@ export const Download = () => {
 
   return (
     <div className={styles.download}>
-      <div className={styles.chip}>
-        <TextMorph duration={600} ease={`cubic-bezier(0.41, 1.03, 0.6, 1.03)`}>
+      <div
+        className={styles.chip}
+        style={{
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        <TextMorph duration={300} ease={`cubic-bezier(0.41, 1.03, 0.6, 1.03)`}>
           {label}
         </TextMorph>
       </div>

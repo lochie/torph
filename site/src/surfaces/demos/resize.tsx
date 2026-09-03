@@ -3,17 +3,17 @@ import styles from "./card.module.scss";
 import React from "react";
 import { TextMorph } from "torph/react";
 import { wrap } from "./wrap";
+import { ResizeFrame } from "@/components/resize-frame";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 const BODY = "Drag the handle to rewrap this sentence.";
 
-// Horizontal padding on `.frame`, doubled — the width the text cannot use.
-const PADDING = 28;
-const MIN = 96;
-const MAX = 236;
+// Content widths — the frame's cell is content-box, so padding is already out.
+const MIN = 68;
+const MAX = 208;
 
 // Each stop is a width at which the text wraps differently.
-const STOPS = [MAX, 168, MIN, 168];
+const STOPS = [MAX, 140, MIN, 140];
 
 export const ExampleResize = () => {
   const [width, setWidth] = React.useState(MAX);
@@ -21,7 +21,6 @@ export const ExampleResize = () => {
   const [charWidth, setCharWidth] = React.useState(6.6);
   const reducedMotion = usePrefersReducedMotion();
 
-  const frameRef = React.useRef<HTMLDivElement>(null);
   const rulerRef = React.useRef<HTMLSpanElement>(null);
 
   // Measured, so the wrap stays conservative enough never to outrun the box.
@@ -40,25 +39,27 @@ export const ExampleResize = () => {
     return () => window.clearInterval(id);
   }, [taken, reducedMotion]);
 
-  const drag = (clientX: number) => {
-    const frame = frameRef.current;
-    if (!frame) return;
-    setTaken(true);
-    const left = frame.getBoundingClientRect().left;
-    setWidth(Math.round(Math.min(MAX, Math.max(MIN, clientX - left))));
-  };
-
-  const maxChars = Math.max(8, Math.floor((width - PADDING) / charWidth));
+  const maxChars = Math.max(8, Math.floor(width / charWidth));
 
   return (
     <div className={styles.resize}>
-      <div
-        ref={frameRef}
+      <ResizeFrame
         className={styles.frame}
-        style={{
+        label="Frame width"
+        valueMin={MIN}
+        valueMax={MAX}
+        valueNow={width}
+        keyStep={16}
+        getWidth={() => width}
+        onGrab={() => setTaken(true)}
+        onResize={(next) => {
+          setTaken(true);
+          setWidth(Math.round(Math.min(MAX, Math.max(MIN, next))));
+        }}
+        cellStyle={{
           width,
           // Held off while dragging, or the frame lags the pointer.
-          transitionDuration: taken ? "0ms" : "400ms",
+          transition: `width ${taken ? 0 : 400}ms cubic-bezier(0.19, 1, 0.22, 1)`,
         }}
       >
         <TextMorph className={styles.text}>{wrap(BODY, maxChars)}</TextMorph>
@@ -77,52 +78,7 @@ export const ExampleResize = () => {
         >
           {BODY}
         </span>
-
-        <span
-          className={styles.bar}
-          role="slider"
-          tabIndex={0}
-          aria-label="Frame width"
-          aria-valuemin={MIN}
-          aria-valuemax={MAX}
-          aria-valuenow={width}
-          onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            drag(event.clientX);
-          }}
-          onPointerMove={(event) => {
-            if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-            drag(event.clientX);
-          }}
-          onKeyDown={(event) => {
-            const step =
-              event.key === "ArrowLeft"
-                ? -16
-                : event.key === "ArrowRight"
-                  ? 16
-                  : 0;
-            if (!step) return;
-            event.preventDefault();
-            setTaken(true);
-            setWidth((w) => Math.min(MAX, Math.max(MIN, w + step)));
-          }}
-        />
-
-        <svg
-          className={styles.cursor}
-          viewBox="0 0 16 10"
-          fill="none"
-          aria-hidden
-        >
-          <path
-            d="M4.5 1.5 1 5l3.5 3.5M11.5 1.5 15 5l-3.5 3.5M1.5 5H15"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
+      </ResizeFrame>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import React from "react";
 import { TextMorph } from "torph/react";
 import { useWebHaptics } from "web-haptics/react";
 
+import { ResizeFrame } from "@/components/resize-frame";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { measureForms } from "./measure";
 import { clamp, useMotionLoop } from "./use-motion-loop";
@@ -265,53 +266,34 @@ export const SqueezeToAbbreviate = () => {
   };
 
   return (
-    <div className={styles.squeeze}>
-      <div className={styles.squeezeCell} ref={cellRef}>
-        <span className={styles.squeezeText} ref={textRef}>
-          <TextMorph>{PHRASES[form]!}</TextMorph>
-        </span>
-      </div>
-
-      <span
-        className={styles.squeezeGrip}
-        role="slider"
-        tabIndex={0}
-        aria-label="Column width"
-        aria-valuemin={0}
-        aria-valuemax={PHRASES.length - 1}
-        aria-valuenow={PHRASES.length - 1 - form}
-        aria-valuetext={PHRASES[form]!}
-        onKeyDown={(event) => {
-          const step =
-            event.key === "ArrowLeft"
-              ? -24
-              : event.key === "ArrowRight"
-                ? 24
-                : 0;
-          if (!step) return;
-          event.preventDefault();
-          const s = state.current;
-          setTaken(true);
-          s.target = s.width + step;
-          wake();
-        }}
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          const s = state.current;
-          setTaken(true);
-          s.grabbed = true;
-          s.from = event.clientX - s.width;
-          wake();
-        }}
-        onPointerMove={(event) => {
-          const s = state.current;
-          if (!s.grabbed) return;
-          s.width = event.clientX - s.from;
-        }}
-        onPointerUp={release}
-        onPointerCancel={release}
-      />
-    </div>
+    <ResizeFrame
+      cellRef={cellRef}
+      label="Column width"
+      valueMin={0}
+      valueMax={PHRASES.length - 1}
+      valueNow={PHRASES.length - 1 - form}
+      valueText={PHRASES[form]!}
+      getWidth={() => state.current.width}
+      onGrab={() => {
+        setTaken(true);
+        state.current.grabbed = true;
+        wake();
+      }}
+      onResize={(width) => {
+        state.current.width = width;
+      }}
+      onRelease={release}
+      onStep={(delta) => {
+        const s = state.current;
+        setTaken(true);
+        s.target = s.width + delta;
+        wake();
+      }}
+    >
+      <span className={styles.squeezeText} ref={textRef}>
+        <TextMorph>{PHRASES[form]!}</TextMorph>
+      </span>
+    </ResizeFrame>
   );
 };
 

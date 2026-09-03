@@ -107,7 +107,6 @@ export const SECTIONS: Section[] = [
       { label: "Trailing tag", Component: TrailingTag },
       { label: "Bubble slider", Component: BubbleSlider },
       { label: "Range shove", Component: RangeShove },
-      { label: "Spin dial", Component: () => <SpinDial /> },
       {
         label: "Spin dial spring",
         Component: () => (

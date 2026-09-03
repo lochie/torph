@@ -186,7 +186,7 @@ export const DebugBoxes = () => {
   const index = useCycle(DEBUG_VALUES.length, 2000);
 
   return (
-    <>
+    <div className={styles.bench}>
       <div className={`${styles.stage} ${styles.mono}`}>
         <TextMorph debug={on}>{DEBUG_VALUES[index]!}</TextMorph>
       </div>
@@ -200,6 +200,6 @@ export const DebugBoxes = () => {
           {on ? "Boxes on" : "Boxes off"}
         </Button>
       </div>
-    </>
+    </div>
   );
 };
