@@ -33,6 +33,8 @@ export const Footer = () => {
           GitHub
         </a>
         {" • "}
+        <Link href="/examples">Examples</Link>
+        {" • "}
         <Link href="/playground">Playground</Link>
       </div>
     </footer>

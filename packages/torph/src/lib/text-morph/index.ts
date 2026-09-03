@@ -12,6 +12,7 @@ import {
 import {
   clearContainerTransition,
   holdContainerSize,
+  layoutSize,
   transitionContainerSize,
 } from "../utils/animate";
 import { animateExit, animateEnterOrPersist } from "./utils/animate";
@@ -170,9 +171,7 @@ export class TextMorph {
     cursorIndex?: number,
   ) {
     // Before the running transition is aborted below, so an interrupt carries on from screen.
-    const oldRect = element.getBoundingClientRect();
-    const oldWidth = oldRect.width;
-    const oldHeight = oldRect.height;
+    const { width: oldWidth, height: oldHeight } = layoutSize(element);
     const numbers = this.options.numbers !== false;
 
     this.syncAccessibleText(value);

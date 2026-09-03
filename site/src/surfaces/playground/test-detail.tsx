@@ -136,8 +136,7 @@ export function TestDetail({
     const el = root();
     if (!el) return;
     preMorph.current = takeJumpSnapshot(el);
-    // Sampled a frame in, but reported on completion — a state update
-    // mid-animation would re-render the thing being measured.
+    // Reported on completion: a state update mid-morph re-renders what it measures.
     requestAnimationFrame(() => {
       if (preMorph.current) {
         pendingJump.current = verifyNoJump(el, preMorph.current);
@@ -229,10 +228,8 @@ export function TestDetail({
         ref={stageRef}
         className={styles.stage}
         style={{ textAlign: align }}
+        // A pointer convenience, not a control — the "Morph" button is that.
         onClick={advance}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && advance()}
       >
         <TextMorph
           duration={SPEEDS[speed]}

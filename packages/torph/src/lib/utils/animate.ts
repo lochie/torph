@@ -16,6 +16,23 @@ export function parseTranslate(element: HTMLElement): {
   return { tx: v[4] || 0, ty: v[5] || 0 };
 }
 
+// The box a `width`/`height` write means. `getBoundingClientRect` is the visual box, so
+// a rotated or scaled ancestor inflates it — and the container transition writes what it
+// measures straight back, compounding every morph.
+export function layoutSize(element: HTMLElement): {
+  width: number;
+  height: number;
+} {
+  const style = getComputedStyle(element);
+  const width = parseFloat(style.width);
+  const height = parseFloat(style.height);
+  if (Number.isNaN(width) || Number.isNaN(height)) {
+    const rect = element.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }
+  return { width, height };
+}
+
 export function cancelAnimations(element: HTMLElement): {
   tx: number;
   ty: number;
@@ -88,9 +105,7 @@ export function transitionContainerSize(
   element.style.height = "";
   void element.offsetWidth;
 
-  const newRect = element.getBoundingClientRect();
-  const newWidth = newRect.width;
-  const newHeight = newRect.height;
+  const { width: newWidth, height: newHeight } = layoutSize(element);
 
   const anim = element.animate(
     [

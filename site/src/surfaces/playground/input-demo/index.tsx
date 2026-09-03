@@ -14,6 +14,8 @@ export const InputPlayground = () => {
     <div className={styles.container}>
       <div
         className={styles.output}
+        // A rendering of the field's own value; reading it back doubles it.
+        aria-hidden="true"
         style={{
           opacity: query === undefined ? 0.5 : 1,
         }}
@@ -23,6 +25,7 @@ export const InputPlayground = () => {
       <div className={styles.input}>
         <input
           ref={inputRef}
+          aria-label="Number to morph"
           placeholder="Type something..."
           value={query}
           type="number"

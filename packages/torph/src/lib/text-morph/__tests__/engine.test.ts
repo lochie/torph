@@ -608,6 +608,30 @@ describe("author sizing", () => {
     expect(element.style.width).toBe("");
     expect(element.style.height).toBe("");
   });
+
+  it("sizes from the layout box, not an ancestor transform's visual one", () => {
+    const { element, morph } = mount();
+    morph.update("hello");
+
+    // What a rotated or scaled ancestor does: every rect grows, the layout box does not.
+    element.style.width = "80px";
+    element.style.height = "20px";
+    element.getBoundingClientRect = () =>
+      ({ width: 200, height: 50, left: 0, top: 0 }) as DOMRect;
+
+    const starts: string[] = [];
+    const animate = element.animate.bind(element);
+    element.animate = ((keyframes: Keyframe[], options: unknown) => {
+      const first = Array.isArray(keyframes) ? keyframes[0] : undefined;
+      if (first && "width" in first) starts.push(String(first.width));
+      return animate(keyframes as never, options as never);
+    }) as typeof element.animate;
+
+    morph.update("hello world");
+
+    // Starting from the inflated 200px is what balloons the root, morph on morph.
+    expect(starts).toContain("80px");
+  });
 });
 
 describe("disabled", () => {

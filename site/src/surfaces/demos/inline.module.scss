@@ -1,0 +1,1766 @@
+// ── Preview primitives ──
+
+// The value under test. Everything else in a preview scaffolds one of these.
+.stage {
+  font-family: var(--font-secondary);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #ffffff;
+}
+
+.stageLarge {
+  font-size: 2.25rem;
+}
+
+.stageSmall {
+  font-size: 1.125rem;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-weight: 400;
+}
+
+.prompt {
+  color: var(--color-muted);
+  user-select: none;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.caption {
+  font-family: var(--font-secondary);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+// The same value side by side, for differences that only show in the motion.
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1.5rem 2.5rem;
+}
+
+.splitItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+// ── Preview scaffolding ──
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 18rem;
+  font-family: var(--font-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tableLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+.tableValue {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.fieldInput {
+  width: 12rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  text-align: center;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.875rem;
+  font-family: var(--font-secondary);
+  font-size: 1.375rem;
+  font-weight: 600;
+  border-radius: 10rem;
+  background: var(--body-light);
+}
+
+.rtl {
+  direction: rtl;
+}
+
+// A pill that reads as a button, for previews about a control resizing.
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.125rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+  border-radius: 10rem;
+  background: var(--body-light);
+
+  img {
+    display: block;
+  }
+}
+
+.download {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.125rem;
+  width: 100%;
+  max-width: 15rem;
+}
+
+.track {
+  width: 100%;
+  height: 0.25rem;
+  overflow: hidden;
+  border-radius: 10rem;
+  background: var(--body-light);
+}
+
+// Duration is set inline: the easing is sampled in JS, so this fills the gaps.
+.fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #ffffff;
+  transition-property: width;
+  transition-timing-function: linear;
+}
+
+// The global reset strips `appearance`, so track and thumb are drawn here.
+.slider {
+  width: 100%;
+  max-width: 16rem;
+  height: 1.25rem;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  cursor: ew-resize;
+
+  &::-webkit-slider-runnable-track {
+    height: 0.25rem;
+    border-radius: 10rem;
+    background: var(--body-light);
+  }
+
+  &::-moz-range-track {
+    height: 0.25rem;
+    border-radius: 10rem;
+    background: var(--body-light);
+  }
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 0.875rem;
+    height: 0.875rem;
+    margin-top: -0.3125rem;
+    border-radius: 50%;
+    background: #ffffff;
+  }
+
+  &::-moz-range-thumb {
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 0;
+    border-radius: 50%;
+    background: #ffffff;
+  }
+}
+
+.driven {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  width: 100%;
+}
+
+.drivenRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.announced {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.prose {
+  width: 100%;
+  max-width: 17rem;
+  font-family: var(--font-secondary);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.6;
+  text-align: left;
+  color: #ffffff;
+}
+
+.swatchRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.swatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  // TextMorph's defaults, so the colour lands with the characters.
+  transition: background 400ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.counters {
+  display: flex;
+  gap: 2.5rem;
+}
+
+.counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+// A value carried above the thumb, leaning as it is dragged along. Every
+// transform here is written from the physics loop; the rules are the rest state.
+.bubbleSlider {
+  width: 100%;
+  // Side padding is the bubble's half-width at either end of the track.
+  max-width: 21.5rem;
+  padding: 5rem 2.75rem 0.5rem;
+}
+
+.bubbleTrack {
+  position: relative;
+  width: 100%;
+  height: 0.375rem;
+  border-radius: 10rem;
+  background: var(--body-light);
+}
+
+.bubbleFill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--primary);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+.bubbleInput {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 2;
+  width: 100%;
+  height: 2.5rem;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  cursor: ew-resize;
+  transform: translateY(-50%);
+
+  // Invisible, but its size is what maps a pointer to a value — keep it at 18px.
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  &::-moz-range-thumb {
+    width: 1.125rem;
+    height: 1.125rem;
+    border: 0;
+  }
+}
+
+.bubbleAnchor {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.bubbleThumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: #ffffff;
+  transform: translate(-50%, -50%);
+}
+
+.bubbleInput:focus-visible ~ .bubbleAnchor .bubbleThumb {
+  box-shadow: 0 0 0 0.25rem var(--focus-color);
+}
+
+// The pivot is the tail's tip, which sits in the thumb — so it swings from there.
+.bubble {
+  position: absolute;
+  bottom: 1rem;
+  left: 0;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: var(--primary);
+  transform-origin: 50% calc(100% + 1rem);
+  transform: translateX(-50%);
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -0.375rem;
+    border-right: 0.375rem solid transparent;
+    border-left: 0.375rem solid transparent;
+    border-top: 1rem solid var(--primary);
+  }
+}
+
+.bubbleValue {
+  font-family: var(--font-secondary);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: #000000;
+}
+
+// Two thumbs on one track: only the thumbs take a pointer, or the upper input
+// swallows every press meant for the lower one.
+.shoveInput {
+  pointer-events: none;
+
+  &::-webkit-slider-thumb {
+    pointer-events: auto;
+  }
+
+  &::-moz-range-thumb {
+    pointer-events: auto;
+  }
+}
+
+.shoveTrack {
+  .bubbleFill {
+    transform-origin: left center;
+  }
+}
+
+// ── A dial you flick ──
+
+.dialStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.dial {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 9rem;
+  height: 9rem;
+  border-radius: 50%;
+  background: var(--body-light);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+// Ticks around the rim, so a turn reads even where the value has not changed yet.
+.dialFace {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    var(--color-muted) 0deg 0.7deg,
+    transparent 0.7deg 6deg
+  );
+  // `closest-side`, so the band is a ring on the rim rather than one cut by the corners.
+  mask: radial-gradient(circle closest-side, transparent 76%, #000 77%);
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0.3125rem;
+    left: 50%;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: -0.25rem;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+}
+
+.dialValue {
+  position: relative;
+  font-family: var(--font-secondary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+// ── A chip you pull ──
+
+.pull {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.pullTrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 3.5rem;
+}
+
+.pullRail {
+  position: absolute;
+  right: 2.5rem;
+  left: 2.5rem;
+  height: 0.25rem;
+  border-radius: 10rem;
+  background: var(--body-light);
+}
+
+.pullNotch {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.25rem;
+  height: 0.875rem;
+  border-radius: 10rem;
+  background: var(--color-muted);
+  transform: translate(-50%, -50%);
+}
+
+.pullChip {
+  position: relative;
+  padding: 0.5rem 1.125rem;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: var(--primary);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.pullValue {
+  text-align: center;
+  font-family: var(--font-secondary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #000000;
+}
+
+// The caption sits under the track, which the bubbles overhang rather than clear.
+.shoveStage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+// ── A lever you pull ──
+
+.slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.slotHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.slotBody {
+  display: flex;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.reel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3.5rem;
+  border-radius: 0.5rem;
+  background: var(--primary);
+}
+
+.reelFace {
+  font-family: var(--font-secondary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #000000;
+}
+
+.lever {
+  position: relative;
+  width: 1.5rem;
+  height: 5rem;
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.375rem var(--focus-color);
+  }
+}
+
+.leverStem {
+  position: absolute;
+  top: 0.75rem;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 10rem;
+  background: #2a2a2a;
+}
+
+.leverKnob {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.slotVerdict {
+  font-family: var(--font-secondary);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+// ── A tank that sloshes ──
+
+.slosh {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 22rem;
+  isolation: isolate; // Keeps the value's blend on the tank rather than the page
+}
+
+.sloshValue {
+  z-index: 9;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-secondary);
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  mix-blend-mode: difference;
+}
+
+.tank {
+  position: relative;
+  flex: 1;
+  height: 8rem;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: ns-resize;
+  touch-action: none;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.tankLiquid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+
+  path {
+    fill: var(--primary);
+  }
+}
+
+// ── A value you throw ──
+
+.arena {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  max-width: 20rem;
+}
+
+.arenaFloor {
+  position: relative;
+  width: 100%;
+  height: 9rem;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.puck {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 3rem;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  border-radius: 0.75rem;
+  corner-shape: superellipse(1.25);
+  background: var(--primary);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.puckValue {
+  font-family: var(--font-secondary);
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #000000;
+}
+
+// ── A pill that stretches between tabs ──
+
+.tabs {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3125rem;
+  border-radius: 10rem;
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.tabPill {
+  position: absolute;
+  top: 0.3125rem;
+  left: 0;
+  padding: 0.4375rem 0.875rem;
+  border-radius: 10rem;
+  background: var(--primary);
+}
+
+.tabPillLabel {
+  font-family: var(--font-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #000000;
+}
+
+.tabs .tab {
+  position: relative;
+  padding: 0.4375rem 0.875rem;
+  font-family: var(--font-secondary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  background: transparent;
+  border-radius: 10rem;
+  box-shadow: none;
+  cursor: pointer;
+
+  &:hover {
+    color: #ffffff;
+    background: transparent;
+  }
+
+  // The pill carries the active label, so the button underneath would double it.
+  &[data-active="true"] {
+    color: transparent;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+// ── A list that ripples ──
+
+.reorder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  max-width: 17rem;
+}
+
+.reorderList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 2.5rem;
+  padding: 0 0.875rem;
+  border-radius: 0.75rem;
+  corner-shape: superellipse(1.25);
+  // Opaque: a lifted row passes over the rows still catching up to it.
+  background: #1b1b1b;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.rowIndex {
+  font-family: var(--font-secondary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+
+.rowLabel {
+  flex: 1;
+  font-family: var(--font-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+// Three bars, the usual handle.
+.rowGrip {
+  width: 0.75rem;
+  height: 0.5rem;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--color-muted) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+// ── A wheel you flick ──
+
+.wheel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.wheelWindow {
+  position: relative;
+  width: 11rem;
+  height: 6.75rem; // Three rows of 36px
+  overflow: hidden;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  // Rows fade out rather than being cut off at the window's edge.
+  mask: linear-gradient(
+    to bottom,
+    transparent,
+    #000 22%,
+    #000 78%,
+    transparent
+  );
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.wheelLens {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  left: 0.5rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background: var(--body-light);
+  transform: translateY(-50%);
+}
+
+// Offset by a row, so item zero sits in the lens at y = 0.
+.wheelStrip {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  margin-top: -1.125rem;
+}
+
+.wheelItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  transition: color 200ms ease;
+
+  &[data-active="true"] {
+    color: #ffffff;
+  }
+}
+
+.wheelArrives {
+  font-family: var(--font-secondary);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+// ── A button you hold ──
+
+.hold {
+  position: relative;
+  overflow: hidden;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #1b1b1b;
+  box-shadow: none;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+
+  &:hover {
+    background: #202020;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.holdFill {
+  position: absolute;
+  inset: 0;
+  background: #ff6b6b;
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+
+.holdLabel {
+  position: relative;
+  font-family: var(--font-secondary);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+// ── A word that pops ──
+
+.rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 16rem;
+}
+
+.ratingWord {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.5rem;
+}
+
+.ratingLabel {
+  font-family: var(--font-secondary);
+  font-size: 1.75rem;
+  font-weight: 700;
+  // Set inline per rating; TextMorph's own defaults carry it across the change.
+  transition: color 400ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.ratingTrack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 1.5rem;
+}
+
+.ratingDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--border);
+  transition:
+    background 300ms ease,
+    transform 300ms ease;
+
+  &[data-filled="true"] {
+    background: var(--primary);
+    transform: scale(1.25);
+  }
+}
+
+.ratingInput {
+  position: absolute;
+  inset: -0.5rem 0;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  cursor: ew-resize;
+
+  &::-webkit-slider-thumb {
+    appearance: none;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &::-moz-range-thumb {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 0;
+  }
+}
+
+// ── A tag that trails ──
+
+.zoneField {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  width: 100%;
+  max-width: 22rem;
+  height: 9rem;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-secondary);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-muted);
+  box-shadow: inset 0 0 0 1px #161616;
+}
+
+// Hung from the point it is following, so a sideways move swings it.
+.tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 0.625rem;
+  corner-shape: superellipse(1.25);
+  background: var(--primary);
+  // The pivot is where the string is tied, which is the point being chased.
+  transform-origin: 50% -8px;
+  pointer-events: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 1px;
+    height: 8px;
+    background: var(--primary);
+  }
+}
+
+.tagLabel {
+  font-family: var(--font-secondary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #000000;
+}
+
+// ── A figure you squash ──
+
+.squish {
+  display: flex;
+  align-items: stretch;
+  height: 4rem;
+}
+
+.squishBox {
+  box-sizing: content-box;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding-left: 0.875rem;
+  border-radius: 0.875rem 0 0 0.875rem;
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+// Scaled from the left, so the squash follows the handle rather than the middle.
+// The type lives here, not on the morph inside: this is the element measured.
+.squishText {
+  display: inline-flex;
+  font-family: var(--font-secondary);
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #ffffff;
+  transform-origin: left center;
+}
+
+.squishHandle {
+  position: relative;
+  flex: none;
+  width: 1.25rem;
+  border-radius: 0 0.875rem 0.875rem 0;
+  background: var(--primary);
+  cursor: ew-resize;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 0.125rem;
+    height: 1.25rem;
+    border-radius: 10rem;
+    background: rgba(0, 0, 0, 0.4);
+    transform: translate(-50%, -50%);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+// ── A sentence you squeeze ──
+
+.squeeze {
+  display: flex;
+  align-items: stretch;
+  height: 3rem;
+}
+
+.squeezeCell {
+  box-sizing: content-box;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding-left: 0.875rem;
+  border-radius: 0.5rem 0 0 0.5rem;
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.squeezeText {
+  display: inline-flex;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.squeezeGrip {
+  position: relative;
+  flex: none;
+  width: 0.75rem;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: var(--border);
+  cursor: col-resize;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 0.125rem;
+    height: 1rem;
+    border-radius: 10rem;
+    background: var(--color-muted);
+    transform: translate(-50%, -50%);
+  }
+
+  &:hover::after {
+    background: var(--primary);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+// ── A word you pull ──
+
+.taffy {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 24rem;
+  height: 4rem;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+
+  &:focus-visible {
+    outline: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+// Stretched from the left, so the word's far end follows the hand pulling it.
+.taffyWord {
+  display: inline-flex;
+  font-family: var(--font-secondary);
+  font-size: 2rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--primary);
+  transform-origin: left center;
+}
+
+// ── Digits you drag ──
+
+.scrub {
+  position: relative;
+  display: inline-flex;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.scrubValue {
+  position: relative;
+  font-family: var(--font-secondary);
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+// One column per place, over the digits rather than beside them.
+.scrubColumns {
+  position: absolute;
+  inset: 0.5rem 0.75rem;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+}
+
+.scrubColumn {
+  cursor: ns-resize;
+  touch-action: none;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.1875rem var(--focus-color);
+    border-radius: 0.25rem;
+  }
+}
+
+.scrubLens {
+  position: absolute;
+  top: 0.375rem;
+  bottom: 0.375rem;
+  left: 0.75rem;
+  width: calc((100% - 1.5rem) / 4);
+  border-radius: 0.375rem;
+  background: rgba(255, 206, 68, 0.16);
+  box-shadow: inset 0 0 0 1px var(--primary);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+// ── Letters you rearrange ──
+
+.beads {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1rem;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.beadsWord {
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  white-space: pre;
+}
+
+.beadsLens {
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  left: 1rem;
+  width: 1.75rem;
+  margin-left: -0.875rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 206, 68, 0.18);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+// ── Pi, as deep as you drag ──
+
+.pi {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 24rem;
+  height: 4.5rem;
+  padding: 0 0.75rem;
+  overflow: hidden;
+  border-radius: 0.875rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: ns-resize;
+  touch-action: none;
+  user-select: none;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.piValue {
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+// ── Digits you flick off ──
+
+.flick {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 20rem;
+  height: 8rem;
+}
+
+.flickValue {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-secondary);
+  font-size: 2.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-radius: 0.375rem;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+// The digit that left, in flight. Positioned where the number's tail was.
+.flickChip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -1.375rem;
+  font-family: var(--font-secondary);
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primary);
+  pointer-events: none;
+}
+
+// ── A sentence you tear ──
+
+.tear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 22rem;
+  min-height: 5rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.tearText {
+  display: inline-flex;
+  font-family: var(--font-secondary);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+  color: #ffffff;
+}
+
+// ── A split you drag ──
+
+.splitBar {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  max-width: 22rem;
+  height: 4rem;
+}
+
+.splitSide {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  padding: 0 0.875rem;
+  border-radius: 0.75rem 0 0 0.75rem;
+  background: var(--primary);
+}
+
+.splitRight {
+  justify-content: flex-end;
+  border-radius: 0 0.75rem 0.75rem 0;
+  background: var(--border);
+}
+
+.splitValue {
+  font-family: var(--font-secondary);
+  font-size: 1.375rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: #000000;
+}
+
+.splitRight .splitValue {
+  color: #ffffff;
+}
+
+.splitGrip {
+  position: relative;
+  flex: none;
+  width: 0.75rem;
+  background: #0d0d0d;
+  cursor: col-resize;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 0.125rem;
+    height: 1.5rem;
+    border-radius: 10rem;
+    background: var(--color-muted);
+    transform: translate(-50%, -50%);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+// ── A word you whip ──
+
+.whip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  width: 100%;
+  max-width: 20rem;
+  height: 5rem;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+
+  &:focus-visible {
+    outline: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+// One letter, one spring. Each turns about its own middle as it snaps.
+.whipLetter {
+  display: inline-flex;
+  font-family: var(--font-secondary);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+// ── A break you drag ──
+
+.breakBlock {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  padding: 0.75rem 0;
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+
+  &:focus-visible {
+    outline: none;
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.breakText {
+  display: inline-flex;
+  font-family: var(--font-secondary);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.6;
+  color: #ffffff;
+}
+
+// Parked at the end of the first line, which is exactly where the break is.
+.breakBead {
+  position: absolute;
+  top: 0.75rem;
+  left: 0;
+  width: 0.375rem;
+  height: 1.8rem;
+  border-radius: 10rem;
+  background: var(--primary);
+}
+
+// ── A block you pump ──
+
+.pump {
+  // `width` is set from the wrap measurement, so the padding sits outside it.
+  box-sizing: content-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 6rem;
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  corner-shape: superellipse(1.25);
+  background: #0d0d0d;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.pumpText {
+  display: inline-flex;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--primary);
+}
+
+// ── A gap you spread ──
+
+.spread {
+  position: relative;
+  width: 100%;
+  max-width: 17rem;
+}
+
+.spreadRow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  height: 2.25rem; // ROW_H is 40px; the rest is the gap a seam sits in
+  padding: 0 0.875rem;
+  border-radius: 0.625rem;
+  corner-shape: superellipse(1.25);
+  background: #1b1b1b;
+}
+
+.spreadIndex {
+  font-family: var(--font-secondary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+
+.spreadLabel {
+  font-family: var(--font-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+// Straddles the boundary, so the grab target is bigger than the gap it sits in.
+.seam {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 0.875rem;
+  margin-top: -0.4375rem;
+  cursor: ns-resize;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 50% 35% auto;
+    height: 0.125rem;
+    border-radius: 10rem;
+    background: var(--color-muted);
+    opacity: 0;
+    transform: translateY(-50%);
+    transition: opacity 150ms ease;
+  }
+
+  &:hover::after,
+  &:focus-visible::after {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+// ── A block you pull out ──
+
+.tower {
+  position: relative;
+  width: 100%;
+  max-width: 13rem;
+}
+
+.block {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  corner-shape: superellipse(1.25);
+  background: var(--primary);
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem var(--focus-color);
+  }
+}
+
+.blockGone {
+  background: var(--border);
+  pointer-events: none;
+}
+
+.blockNumber {
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #000000;
+}

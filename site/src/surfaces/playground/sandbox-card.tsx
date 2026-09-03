@@ -62,10 +62,8 @@ export function SandboxCard({
       <div
         className={styles.stage}
         style={{ textAlign: align }}
+        // A pointer convenience, not a control — the "Morph" button is that.
         onClick={toggle}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && toggle()}
       >
         <TextMorph
           duration={SPEEDS[speed]}
