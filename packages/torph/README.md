@@ -211,7 +211,8 @@ morph.update("$120", 2);
 All components accept the following props/options:
 
 - `text` / `children: string` - The text to display (required)
-- `duration?: number` - Animation duration in milliseconds (default: `400`)
+- `duration?: number` - Animation duration in milliseconds (default: `400`).
+  Ignored when `ease` is a spring, which settles on its own physics
 - `ease?: string | SpringParams` - CSS easing function or spring parameters (default: `"cubic-bezier(0.19, 1, 0.22, 1)"`)
 - `scale?: boolean` - Enable scale animation on exiting segments (default: `true`)
 - `numbers?: boolean` - Morph numeric words by place value, sliding digits along

@@ -76,9 +76,15 @@ export class TextMorph {
   private hasSetup = false;
 
   constructor(options: TextMorphOptions) {
+    // A prop left off in JSX arrives as an explicit `undefined`, which would spread
+    // over the default rather than fall back to it — and `undefined * fraction` is NaN.
+    const given = Object.fromEntries(
+      Object.entries(options).filter(([, value]) => value !== undefined),
+    ) as TextMorphOptions;
+
     const { ease: rawEase, ...rest } = {
       ...DEFAULT_TEXT_MORPH_OPTIONS,
-      ...options,
+      ...given,
     };
     const { ease, duration } = resolveEase(rawEase, rest.duration!);
 
