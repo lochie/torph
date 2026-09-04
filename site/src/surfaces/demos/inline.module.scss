@@ -55,18 +55,22 @@
 
 // The same value side by side, for differences that only show in the motion.
 .split {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
   justify-content: center;
-  gap: 1.5rem 2.5rem;
+  text-align: center;
+  width: 100%;
+  padding: 0 2rem;
 }
 
 .splitItem {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
+  text-align: right;
 }
 
 // ── Preview scaffolding ──
@@ -1891,4 +1895,67 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: #000000;
+}
+
+// ── numora's field, worn under the morph ──
+
+.numora {
+  position: relative;
+  display: inline-flex;
+  margin: 0 2rem;
+  align-items: center;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  cursor: text;
+  width: 100%;
+
+  // A rule, not padding — the host is inset to this box, so padding would
+  // offset the input's glyphs from the display's.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -0.75rem;
+    height: 1px;
+    background: var(--border);
+    transition: background 150ms ease;
+  }
+
+  &:focus-within::after {
+    background: var(--primary);
+  }
+  ::selection {
+    color: #000000;
+    background: var(--primary);
+  }
+}
+
+.numoraDisplay {
+  pointer-events: none;
+  white-space: pre;
+}
+
+.numoraHost {
+  position: absolute;
+  inset: 0;
+
+  input {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--primary);
+    outline: none;
+    // The global `input` rule paints a bordered box; it would frame the morph.
+    box-shadow: none;
+    border-radius: 0;
+    font: inherit;
+  }
+
+  input::placeholder {
+    color: transparent;
+  }
 }

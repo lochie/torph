@@ -11,7 +11,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Torph – Dependency-Free Text Morphing",
+  title: "Torph • Dependency-Free Text Morphing",
   description: "Dependency-free animated text component.",
   openGraph: {
     type: "website",

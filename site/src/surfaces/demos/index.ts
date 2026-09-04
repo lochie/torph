@@ -10,6 +10,7 @@ export * from "./machines";
 export * from "./matter";
 export * from "./number";
 export * from "./numbers";
+export * from "./numora";
 export * from "./playful";
 export * from "./reflow";
 export * from "./resize";

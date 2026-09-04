@@ -48,4 +48,10 @@
   font-size: 0.75rem;
   text-align: center;
   color: var(--color-muted);
+
+  a {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 }

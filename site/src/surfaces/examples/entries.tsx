@@ -20,6 +20,7 @@ import {
   HoldToConfirm,
   Install,
   NumbersOff,
+  NumoraField,
   PullToCount,
   RangeShove,
   RatingSlider,
@@ -39,42 +40,13 @@ import {
 } from "@/surfaces/demos";
 
 export type Demo = {
-  label: string;
+  label: React.ReactNode;
   Component: ComponentType;
 };
 
 /** Hand-ordered: each section opens with the plainest use of what it covers. */
 export const DEMOS: Demo[] = [
   { label: "Install command", Component: Install },
-  { label: "Hex colour", Component: HexColour },
-  { label: "Streamed text", Component: Streaming },
-  { label: "Copy button", Component: ExampleCopy },
-  { label: "Wallet", Component: Wallet },
-  { label: "Filters", Component: Filters },
-  { label: "Version tag", Component: Versions },
-  { label: "Counter", Component: ExampleNumber },
-  { label: "Units", Component: Units },
-  { label: "Delta", Component: Delta },
-  { label: "Currency swap", Component: CurrencySwap },
-  { label: "Dimensions", Component: Dimensions },
-  { label: "Accruing balance", Component: Earned },
-  { label: "Numbers off", Component: NumbersOff },
-  { label: "Results summary", Component: ResultsSummary },
-
-  { label: "Action button", Component: ExampleAction },
-  { label: "Rewrite", Component: ExampleRewrite },
-  { label: "Ticker", Component: ExampleTicker },
-  { label: "Chart readout", Component: ExampleChart },
-  { label: "Download progress", Component: Download },
-  { label: "Reorder list", Component: ReorderList },
-
-  { label: "Resize", Component: ExampleResize },
-  { label: "Squishy number", Component: SquishyNumber },
-  { label: "Squeeze to abbreviate", Component: SqueezeToAbbreviate },
-
-  { label: "Hold to confirm", Component: HoldToConfirm },
-  { label: "Rating slider", Component: RatingSlider },
-  { label: "Trailing tag", Component: TrailingTag },
   { label: "Bubble slider", Component: BubbleSlider },
   { label: "Range shove", Component: RangeShove },
   {
@@ -89,7 +61,50 @@ export const DEMOS: Demo[] = [
       />
     ),
   },
+  {
+    label: (
+      <>
+        <a
+          href="https://numeric-input.com/docs/numora/integrations/torph/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Numora
+        </a>{" "}
+        input
+      </>
+    ),
+    Component: NumoraField,
+  },
+  { label: "Streamed text", Component: Streaming },
+  { label: "Copy button", Component: ExampleCopy },
+  { label: "Hex colour", Component: HexColour },
+  { label: "Wallet", Component: Wallet },
+  { label: "Delta", Component: Delta },
+  { label: "Accruing balance", Component: Earned },
+  { label: "Filters", Component: Filters },
+  { label: "Version tag", Component: Versions },
+  { label: "Hold to confirm", Component: HoldToConfirm },
+  { label: "Units", Component: Units },
+  { label: "Currency swap", Component: CurrencySwap },
+  { label: "Action button", Component: ExampleAction },
+  { label: "Dimensions", Component: Dimensions },
+  { label: "Results summary", Component: ResultsSummary },
+
+  { label: "Rewrite", Component: ExampleRewrite },
+  { label: "Ticker", Component: ExampleTicker },
+  { label: "Chart readout", Component: ExampleChart },
+  { label: "Download progress", Component: Download },
+  { label: "Reorder list", Component: ReorderList },
   { label: "Pull to count", Component: PullToCount },
+  { label: "Rating slider", Component: RatingSlider },
   { label: "Split bar", Component: SplitBar },
+
+  { label: "Resize", Component: ExampleResize },
+  { label: "Squishy number", Component: SquishyNumber },
+  { label: "Squeeze to abbreviate", Component: SqueezeToAbbreviate },
+
   { label: "Slosh gauge", Component: SloshGauge },
+  { label: "Reflowing paragraph", Component: ExampleNumber },
+  { label: "Trailing tag", Component: TrailingTag },
 ];

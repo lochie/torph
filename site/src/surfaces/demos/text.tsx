@@ -187,8 +187,8 @@ export const HexColour = () => {
   );
 };
 
-export const GLUED = ["842K", "999K", "1.2M", "12.4M"];
-export const SPACED = ["1.25 MB", "1.5 MB", "999 MB", "1.25 GB"];
+export const GLUED = ["819K", "990K", "9.9M", "19.4M"];
+export const SPACED = ["910 KB", "1.2 MB", "12 MB", "1.25 GB"];
 
 export const Units = () => {
   const index = useCycle(4, 1600);
@@ -197,12 +197,10 @@ export const Units = () => {
     <div className={styles.split}>
       <div className={styles.splitItem}>
         <TextMorph className={styles.stage}>{GLUED[index]!}</TextMorph>
-        <span className={styles.caption}>glued — text</span>
       </div>
-
+      –
       <div className={styles.splitItem}>
         <TextMorph className={styles.stage}>{SPACED[index]!}</TextMorph>
-        <span className={styles.caption}>spaced — place value</span>
       </div>
     </div>
   );

@@ -109,7 +109,7 @@ export function segmentNumber(
 
   const matches =
     cursorIndex != null
-      ? cursorMatch(oldChars, chars, cursorIndex)
+      ? cursorMatch(oldChars, chars, cursorIndex, decimalChar)
       : placeMatch(oldChars, chars, decimalChar);
 
   const usedIds = new Set<string>();
@@ -153,45 +153,92 @@ function simpleSegment(chars: string[]): NumberSegment[] {
   }));
 }
 
-/** The caret in the new string says where the edit was; both sides of it map across. */
+/**
+ * The caret in the new string says where the edit was; both sides of it map across.
+ *
+ * The walk is over everything *but* the grouping separators. A comma reflows with the
+ * magnitude rather than with the keystroke, so counting it into the edit would shear
+ * every match past the caret — typing a digit that carries "123" to "1,234" is a
+ * two-character delta of which the user typed one, and they are not adjacent.
+ */
 function cursorMatch(
   oldChars: string[],
   newChars: string[],
   cursor: number,
+  decimalChar: string,
 ): Map<number, number> {
   const matches = new Map<number, number>();
-  const lenDiff = newChars.length - oldChars.length;
+
+  const oldKept = keptIndices(oldChars, decimalChar);
+  const newKept = keptIndices(newChars, decimalChar);
+  const pair = (ni: number, oi: number) =>
+    matches.set(newKept[ni]!, oldKept[oi]!);
+
+  let keptCursor = 0;
+  while (keptCursor < newKept.length && newKept[keptCursor]! < cursor)
+    keptCursor++;
+
+  const lenDiff = newKept.length - oldKept.length;
 
   if (lenDiff > 0) {
-    const editStart = cursor - lenDiff;
-    for (let i = 0; i < editStart && i < oldChars.length; i++) {
-      matches.set(i, i);
+    const editStart = keptCursor - lenDiff;
+    for (let i = 0; i < editStart && i < oldKept.length; i++) {
+      pair(i, i);
     }
-    for (let i = cursor; i < newChars.length; i++) {
+    for (let i = keptCursor; i < newKept.length; i++) {
       const oldIdx = i - lenDiff;
-      if (oldIdx >= 0 && oldIdx < oldChars.length) {
-        matches.set(i, oldIdx);
+      if (oldIdx >= 0 && oldIdx < oldKept.length) {
+        pair(i, oldIdx);
       }
     }
   } else if (lenDiff < 0) {
-    for (let i = 0; i < cursor && i < newChars.length; i++) {
-      matches.set(i, i);
+    for (let i = 0; i < keptCursor && i < newKept.length; i++) {
+      pair(i, i);
     }
-    for (let i = cursor; i < newChars.length; i++) {
+    for (let i = keptCursor; i < newKept.length; i++) {
       const oldIdx = i - lenDiff;
-      if (oldIdx >= 0 && oldIdx < oldChars.length) {
-        matches.set(i, oldIdx);
+      if (oldIdx >= 0 && oldIdx < oldKept.length) {
+        pair(i, oldIdx);
       }
     }
   } else {
-    for (let i = 0; i < newChars.length; i++) {
-      if (newChars[i] === oldChars[i]) {
-        matches.set(i, i);
+    for (let i = 0; i < newKept.length; i++) {
+      if (newChars[newKept[i]!] === oldChars[oldKept[i]!]) {
+        pair(i, i);
       }
     }
   }
 
+  // Paired from the units end, so the thousands comma stays the thousands comma.
+  const oldSeps = groupingIndices(oldChars, decimalChar);
+  const newSeps = groupingIndices(newChars, decimalChar);
+  for (let k = 1; k <= oldSeps.length && k <= newSeps.length; k++) {
+    const oldIdx = oldSeps[oldSeps.length - k]!;
+    const newIdx = newSeps[newSeps.length - k]!;
+    if (oldChars[oldIdx] === newChars[newIdx]) matches.set(newIdx, oldIdx);
+  }
+
   return matches;
+}
+
+function isGrouping(char: string, decimalChar: string): boolean {
+  return char !== decimalChar && CORE_SEPARATORS.includes(char);
+}
+
+function keptIndices(chars: string[], decimalChar: string): number[] {
+  const indices: number[] = [];
+  for (let i = 0; i < chars.length; i++) {
+    if (!isGrouping(chars[i]!, decimalChar)) indices.push(i);
+  }
+  return indices;
+}
+
+function groupingIndices(chars: string[], decimalChar: string): number[] {
+  const indices: number[] = [];
+  for (let i = 0; i < chars.length; i++) {
+    if (isGrouping(chars[i]!, decimalChar)) indices.push(i);
+  }
+  return indices;
 }
 
 /**
