@@ -161,11 +161,13 @@ export const HexColour = () => {
 
   return (
     <div className={styles.driven}>
-      <div className={styles.swatchRow}>
-        <span className={styles.swatch} style={{ background: value }} />
-        <TextMorph className={`${styles.stage} ${styles.mono}`}>
-          {value}
-        </TextMorph>
+      <div
+        className={styles.swatchRow}
+        style={{
+          color: value,
+        }}
+      >
+        <TextMorph>{value}</TextMorph>
       </div>
       <div className={styles.swatches}>
         {Array.from({ length: 12 }, (_, i) => {
@@ -175,6 +177,7 @@ export const HexColour = () => {
               key={h}
               className={styles.swatch}
               style={{ background: hex(h) }}
+              data-active={hue === h}
               onClick={() => setHue(h)}
             />
           );

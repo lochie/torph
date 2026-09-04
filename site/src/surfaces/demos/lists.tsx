@@ -128,13 +128,7 @@ export const ElasticTabs = () => {
 
 // ── A list that ripples ──
 
-export const TRACKS = [
-  "Ambient loops",
-  "Field recordings",
-  "Tape hiss",
-  "Room tone",
-  "Vinyl crackle",
-];
+export const TRACKS = ["Ambient loops", "Field recordings", "Tape hiss"];
 
 const RIPPLE = 0.025; // Seconds a row waits per row of distance from the one that moved
 const SHUFFLE_EVERY = 2600;
@@ -295,8 +289,6 @@ export const ReorderList = () => {
           </Reorder.Item>
         ))}
       </Reorder.Group>
-
-      <span className={styles.caption}>drag a row</span>
     </div>
   );
 };

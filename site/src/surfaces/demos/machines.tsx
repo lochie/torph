@@ -173,7 +173,7 @@ export const SlotLever = () => {
 
 // ── A tank that sloshes ──
 
-export const LEVELS = [0.72, 0.24, 0.95, 0.46];
+export const LEVELS = [0.72, 0.52, 0.95, 0.46];
 
 const TANK_W = 100; // viewBox units; the SVG stretches to the tank
 const TANK_H = 60;
@@ -193,6 +193,7 @@ export const SloshGauge = () => {
 
   const tankRef = React.useRef<HTMLDivElement>(null);
   const pathRef = React.useRef<SVGPathElement>(null);
+  const overRef = React.useRef<HTMLDivElement>(null);
 
   const state = React.useRef({
     level: LEVELS[0]!,
@@ -206,7 +207,8 @@ export const SloshGauge = () => {
 
   const wake = useMotionLoop(() => {
     const path = pathRef.current;
-    if (!path) return null;
+    const over = overRef.current;
+    if (!path || !over) return null;
     const s = state.current;
 
     return {
@@ -240,6 +242,7 @@ export const SloshGauge = () => {
         const amp = clamp(s.wave * 22, -7, 7);
 
         let d = "";
+        const surface: string[] = [];
         for (let i = 0; i <= POINTS; i += 1) {
           const t = i / POINTS;
           const x = t * TANK_W;
@@ -248,8 +251,13 @@ export const SloshGauge = () => {
             amp * Math.sin(s.phase + t * Math.PI * 2.2) +
             amp * 0.5 * (t - 0.5);
           d += `${i ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`;
+          surface.push(
+            `${(t * 100).toFixed(2)}% ${((y / TANK_H) * 100).toFixed(2)}%`,
+          );
         }
         path.setAttribute("d", `${d}L${TANK_W} ${TANK_H}L0 ${TANK_H}Z`);
+        // The same surface in the value's own box, so the digits under it read dark.
+        over.style.clipPath = `polygon(${surface.join(",")},100% 100%,0 100%)`;
       },
     };
   });
@@ -278,10 +286,20 @@ export const SloshGauge = () => {
     setLevel(clamp(1 - (event.clientY - rect.top) / rect.height, 0, 1));
   };
 
+  const value = `${Math.round(level * 100)}%`;
+
   return (
     <div className={styles.slosh}>
       <div className={styles.sloshValue}>
-        <TextMorph>{`${Math.round(level * 100)}%`}</TextMorph>
+        <TextMorph>{value}</TextMorph>
+      </div>
+
+      <div
+        className={`${styles.sloshValue} ${styles.sloshOver}`}
+        ref={overRef}
+        aria-hidden
+      >
+        <TextMorph>{value}</TextMorph>
       </div>
 
       <div

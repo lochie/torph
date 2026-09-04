@@ -267,6 +267,7 @@ export const SqueezeToAbbreviate = () => {
 
   return (
     <ResizeFrame
+      className={styles.squeezeFrame}
       cellRef={cellRef}
       label="Column width"
       valueMin={0}

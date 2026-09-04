@@ -249,22 +249,28 @@ export const ExampleTicker = () => {
           />
         </g>
       </svg>
+      <div className={styles.stats}>
+        <div className={styles.stat}>
+          <TextMorph className={styles.statValue}>
+            {compact(stats.requests)}
+          </TextMorph>
+          <span className={styles.caption}>Requests / min</span>
+        </div>
 
-      <div className={styles.stat}>
-        <TextMorph className={styles.statValue}>
-          {compact(stats.requests)}
-        </TextMorph>
-        <span className={styles.caption}>Requests / min</span>
-      </div>
-
-      <div className={styles.stat}>
-        <TextMorph
-          className={styles.statValue}
-          style={{ color: stats.change < 0 ? "#ff6b6b" : "#4ade80" }}
-        >
-          {percent(stats.change)}
-        </TextMorph>
-        <span className={styles.caption}>vs. last week</span>
+        <div className={styles.stat}>
+          <TextMorph
+            className={styles.statValue}
+            style={{ color: stats.change < 0 ? "#ff6b6b" : "#4ade80" }}
+            ease={{
+              stiffness: 150,
+              damping: 19,
+              mass: 1.2,
+            }}
+          >
+            {percent(stats.change)}
+          </TextMorph>
+          <span className={styles.caption}>vs. last week</span>
+        </div>
       </div>
     </div>
   );

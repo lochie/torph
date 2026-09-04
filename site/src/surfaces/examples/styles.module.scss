@@ -13,37 +13,26 @@
   margin: 0 auto;
 }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-
-  h2 {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #ffffff;
-  }
-}
-
-.grid {
+.demos {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  overflow: hidden;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 8px;
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
 }
 
 .example {
-  aspect-ratio: 0.8 / 1;
+  aspect-ratio: 1.2 / 1;
+  overflow: hidden;
   position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 1.25rem 1rem 0.875rem;
-  background: var(--body);
+  padding: 1rem;
+  box-shadow: inset 0 0 0 1px var(--border);
+  border-radius: 0.5rem;
+  background: #131313;
 }
 
 .preview {

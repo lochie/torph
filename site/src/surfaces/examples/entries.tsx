@@ -43,81 +43,53 @@ export type Demo = {
   Component: ComponentType;
 };
 
-export type Section = {
-  title: string;
-  demos: Demo[];
-};
-
 /** Hand-ordered: each section opens with the plainest use of what it covers. */
-export const SECTIONS: Section[] = [
+export const DEMOS: Demo[] = [
+  { label: "Install command", Component: Install },
+  { label: "Hex colour", Component: HexColour },
+  { label: "Streamed text", Component: Streaming },
+  { label: "Copy button", Component: ExampleCopy },
+  { label: "Wallet", Component: Wallet },
+  { label: "Filters", Component: Filters },
+  { label: "Version tag", Component: Versions },
+  { label: "Counter", Component: ExampleNumber },
+  { label: "Units", Component: Units },
+  { label: "Delta", Component: Delta },
+  { label: "Currency swap", Component: CurrencySwap },
+  { label: "Dimensions", Component: Dimensions },
+  { label: "Accruing balance", Component: Earned },
+  { label: "Numbers off", Component: NumbersOff },
+  { label: "Results summary", Component: ResultsSummary },
+
+  { label: "Action button", Component: ExampleAction },
+  { label: "Rewrite", Component: ExampleRewrite },
+  { label: "Ticker", Component: ExampleTicker },
+  { label: "Chart readout", Component: ExampleChart },
+  { label: "Download progress", Component: Download },
+  { label: "Reorder list", Component: ReorderList },
+
+  { label: "Resize", Component: ExampleResize },
+  { label: "Squishy number", Component: SquishyNumber },
+  { label: "Squeeze to abbreviate", Component: SqueezeToAbbreviate },
+
+  { label: "Hold to confirm", Component: HoldToConfirm },
+  { label: "Rating slider", Component: RatingSlider },
+  { label: "Trailing tag", Component: TrailingTag },
+  { label: "Bubble slider", Component: BubbleSlider },
+  { label: "Range shove", Component: RangeShove },
   {
-    title: "Text",
-    demos: [
-      { label: "Install command", Component: Install },
-      { label: "Hex colour", Component: HexColour },
-      { label: "Streamed text", Component: Streaming },
-      { label: "Copy button", Component: ExampleCopy },
-      { label: "Wallet", Component: Wallet },
-      { label: "Filters", Component: Filters },
-    ],
+    label: "Spin dial spring",
+    Component: () => (
+      <SpinDial
+        ease={{
+          stiffness: 150,
+          damping: 19,
+          mass: 1.2,
+        }}
+      />
+    ),
   },
-  {
-    title: "Numbers",
-    demos: [
-      { label: "Version tag", Component: Versions },
-      { label: "Counter", Component: ExampleNumber },
-      { label: "Units", Component: Units },
-      { label: "Delta", Component: Delta },
-      { label: "Currency swap", Component: CurrencySwap },
-      { label: "Dimensions", Component: Dimensions },
-      { label: "Accruing balance", Component: Earned },
-      { label: "Numbers off", Component: NumbersOff },
-      { label: "Results summary", Component: ResultsSummary },
-    ],
-  },
-  {
-    title: "Interface",
-    demos: [
-      { label: "Action button", Component: ExampleAction },
-      { label: "Rewrite", Component: ExampleRewrite },
-      { label: "Ticker", Component: ExampleTicker },
-      { label: "Chart readout", Component: ExampleChart },
-      { label: "Download progress", Component: Download },
-      { label: "Reorder list", Component: ReorderList },
-    ],
-  },
-  {
-    title: "Layout",
-    demos: [
-      { label: "Resize", Component: ExampleResize },
-      { label: "Squishy number", Component: SquishyNumber },
-      { label: "Squeeze to abbreviate", Component: SqueezeToAbbreviate },
-    ],
-  },
-  {
-    title: "Gestures",
-    demos: [
-      { label: "Hold to confirm", Component: HoldToConfirm },
-      { label: "Rating slider", Component: RatingSlider },
-      { label: "Trailing tag", Component: TrailingTag },
-      { label: "Bubble slider", Component: BubbleSlider },
-      { label: "Range shove", Component: RangeShove },
-      {
-        label: "Spin dial spring",
-        Component: () => (
-          <SpinDial
-            duration={900}
-            ease={{
-              stiffness: 150,
-              damping: 19,
-              mass: 1.2,
-            }}
-          />
-        ),
-      },
-      { label: "Pull to count", Component: PullToCount },
-      { label: "Split bar", Component: SplitBar },
-      { label: "Slosh gauge", Component: SloshGauge },
-    ],
-  },
+  { label: "Pull to count", Component: PullToCount },
+  { label: "Split bar", Component: SplitBar },
+  { label: "Slosh gauge", Component: SloshGauge },
 ];

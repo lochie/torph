@@ -79,7 +79,14 @@ export const ExampleChart = () => {
   return (
     <div className={styles.chart}>
       <div className={styles.readout}>
-        <TextMorph className={styles.amount}>
+        <TextMorph
+          ease={{
+            stiffness: 150,
+            damping: 19,
+            mass: 1.2,
+          }}
+          className={styles.amount}
+        >
           {`$${current.value.toLocaleString("en")}`}
         </TextMorph>
         <span className={styles.caption}>

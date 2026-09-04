@@ -33,7 +33,13 @@ export const ResultsSummary = () => {
 
   return (
     <div className={`${styles.stage} ${styles.stageSmall}`}>
-      <TextMorph>
+      <TextMorph
+        ease={{
+          stiffness: 150,
+          damping: 19,
+          mass: 1.2,
+        }}
+      >
         {`Showing ${shown} of ${total.toLocaleString("en")} results`}
       </TextMorph>
     </div>
@@ -221,31 +227,34 @@ export const Announced = () => {
   );
 };
 
-export const DRAFT = "The capital of France is Lyon, a city in the east.";
-export const REVISED = "The capital of France is Paris, a city in the north.";
-export const WORDS = DRAFT.split(" ");
-// One past the last word is the settled pause; two is the correction.
-export const STEPS = WORDS.length + 2;
+export const STREAM =
+  "The capital of Australia is Canberra, which sits in the Australian Capital Territory between Sydney and Melbourne. It was chosen in 1908 as a compromise between the two rival cities, and Walter Burley Griffin and Marion Mahony Griffin won the competition to design it. Their plan set the city around a lake and a grid of axes and circles, and today it holds Parliament House, the High Court, and the National Gallery.";
+export const STREAM_WORDS = STREAM.split(" ");
+
+const STREAM_MS = 110;
+const STREAM_HOLD = 2400; // Beat on the finished passage before it starts over
 
 export const Streaming = () => {
-  const [step, setStep] = React.useState(0);
+  const [count, setCount] = React.useState(1);
   const reducedMotion = usePrefersReducedMotion();
 
   React.useEffect(() => {
     if (reducedMotion) return;
-    const delay =
-      step < WORDS.length - 1 ? 110 : step === WORDS.length - 1 ? 900 : 2400;
+    const done = count >= STREAM_WORDS.length;
     const timer = window.setTimeout(
-      () => setStep((s) => (s + 1) % STEPS),
-      delay,
+      () => setCount((n) => (done ? 1 : n + 1)),
+      done ? STREAM_HOLD : STREAM_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [step, reducedMotion]);
+  }, [count, reducedMotion]);
 
-  const text =
-    step >= WORDS.length + 1 ? REVISED : WORDS.slice(0, step + 1).join(" ");
+  const shown = reducedMotion ? STREAM_WORDS.length : count;
 
-  return <TextMorph className={styles.prose}>{wrap(text, 28)}</TextMorph>;
+  return (
+    <div className={styles.prose}>
+      <TextMorph>{wrap(STREAM_WORDS.slice(0, shown).join(" "), 28)}</TextMorph>
+    </div>
+  );
 };
 
 export const Rename = () => {

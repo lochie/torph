@@ -63,7 +63,16 @@ export const Delta = () => {
 
   return (
     <div className={styles.badge}>
-      <TextMorph style={{ color }}>{value}</TextMorph>
+      <TextMorph
+        style={{ color }}
+        ease={{
+          stiffness: 150,
+          damping: 19,
+          mass: 1.2,
+        }}
+      >
+        {value}
+      </TextMorph>
     </div>
   );
 };
@@ -162,9 +171,17 @@ export const Dimensions = () => {
   const index = useCycle(DIMENSIONS.length, 1600);
 
   return (
-    <TextMorph className={`${styles.stage} ${styles.tabular}`}>
-      {DIMENSIONS[index]!}
-    </TextMorph>
+    <div className={`${styles.stage} ${styles.tabular}`}>
+      <TextMorph
+        ease={{
+          stiffness: 150,
+          damping: 19,
+          mass: 1.2,
+        }}
+      >
+        {DIMENSIONS[index]!}
+      </TextMorph>
+    </div>
   );
 };
 
@@ -196,7 +213,14 @@ export const Earned = () => {
 
   return (
     <div className={styles.splitItem}>
-      <TextMorph className={`${styles.stage} ${styles.tabular}`}>
+      <TextMorph
+        ease={{
+          stiffness: 150,
+          damping: 19,
+          mass: 1.2,
+        }}
+        className={`${styles.stage} ${styles.tabular}`}
+      >
         {`$${money(DEPOSIT + earned)}`}
       </TextMorph>
       <span className={styles.caption}>4.18% APY · accruing every second</span>

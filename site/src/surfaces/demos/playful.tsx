@@ -188,8 +188,6 @@ export const SpinDial = ({
           className={styles.dialValue}
         >{`$${value}`}</TextMorph>
       </div>
-
-      <span className={styles.caption}>flick it</span>
     </div>
   );
 };
@@ -347,8 +345,6 @@ export const PullToCount = () => {
           <TextMorph className={styles.pullValue}>{signed(value)}</TextMorph>
         </div>
       </div>
-
-      <span className={styles.caption}>pull either way</span>
     </div>
   );
 };
