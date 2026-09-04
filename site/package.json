@@ -12,8 +12,9 @@
   "dependencies": {
     "@torph/test-cases": "workspace:*",
     "@vercel/analytics": "^2.0.1",
-    "motion": "^12.23.16",
+    "motion": "^13.2.0",
     "next": "16.3.4",
+    "numora": "^4.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "torph": "workspace:*",

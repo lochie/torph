@@ -25,9 +25,7 @@ const TICKER_DEMO = -4;
 const MODES = ["text", "numbers"] as const;
 type Mode = (typeof MODES)[number];
 
-// Scoped per mode: the chart and input demos drive numeric morphs, so they have
-// nothing to show under text. The mode switch already says "numbers", so the
-// labels don't repeat it.
+// Per mode: the chart, ticker and input demos only drive numeric morphs.
 const PANELS: Record<Mode, { id: number; label: string }[]> = {
   text: [{ id: SANDBOX, label: "Sandbox" }],
   numbers: [
@@ -38,9 +36,7 @@ const PANELS: Record<Mode, { id: number; label: string }[]> = {
   ],
 };
 
-// The chart and input demos style their own numbers, so the shared duration,
-// easing and alignment controls would sit there doing nothing. The ticker runs
-// on them — its whole point is the interval measured against the duration.
+// Demos that style their own numbers, so the shared controls do nothing there.
 const SELF_STYLED: number[] = [CHART_DEMO, INPUT_DEMO];
 const DEMOS: number[] = [CHART_DEMO, INPUT_DEMO, TICKER_DEMO];
 
@@ -131,6 +127,7 @@ export const Playground = ({
               className={`${styles.btn} ${styles.modeBtn} ${
                 mode === m ? styles.btnActive : ""
               }`}
+              aria-pressed={mode === m}
               onClick={() => {
                 setMode(m);
                 setFilter("");
@@ -143,6 +140,8 @@ export const Playground = ({
 
         <input
           className={styles.search}
+          type="search"
+          aria-label="Filter cases"
           placeholder="Filter…"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -156,6 +155,7 @@ export const Playground = ({
               className={`${styles.listItem} ${
                 selected === panel.id ? styles.listItemActive : ""
               }`}
+              aria-current={selected === panel.id}
               onClick={() => select(panel.id)}
             >
               <span className={styles.dotIdle} />
@@ -171,6 +171,11 @@ export const Playground = ({
                 type="button"
                 className={`${styles.listItem} ${
                   selected === i ? styles.listItemActive : ""
+                }`}
+                aria-current={selected === i}
+                // The dot beside the label states the result in colour alone.
+                aria-label={`${cases[i]!.label} — ${
+                  !r ? "not run" : r.pass ? "passing" : "failing"
                 }`}
                 onClick={() => select(i)}
               >

@@ -1,7 +1,8 @@
-import styles from "./styles.module.scss";
+import styles from "./card.module.scss";
 
 import React from "react";
 import { TextMorph } from "torph/react";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 const sequence = [
   // Type $20
@@ -28,15 +29,17 @@ const sequence = [
 
 export const ExampleNumber = () => {
   const [currentIndex, setCurrentIndex] = React.useState(0);
+  const reducedMotion = usePrefersReducedMotion();
 
   React.useEffect(() => {
+    if (reducedMotion) return;
     const step = sequence[currentIndex];
     const timeout = setTimeout(() => {
       setCurrentIndex((prev) => (prev + 1) % sequence.length);
     }, step.delay);
 
     return () => clearTimeout(timeout);
-  }, [currentIndex]);
+  }, [currentIndex, reducedMotion]);
 
   const step = sequence[currentIndex];
   const measureRef = React.useRef<HTMLSpanElement>(null);

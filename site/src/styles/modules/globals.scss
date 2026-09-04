@@ -33,10 +33,6 @@
   background: var(--selection-bg);
 }
 
-:focus-visible {
-  outline: 2px solid var(--focus-color);
-}
-
 html {
   background: var(--body);
   color: var(--color);

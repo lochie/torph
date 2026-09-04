@@ -193,11 +193,14 @@ importers:
         specifier: ^2.0.1
         version: 2.0.1(@sveltejs/kit@2.70.3(@sveltejs/vite-plugin-svelte@7.3.0(svelte@5.53.7)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.27.7)(sass@1.93.0)(yaml@2.8.1)))(svelte@5.53.7)(typescript@5.9.3)(vite@8.2.2(@types/node@24.13.3)(esbuild@0.27.7)(sass@1.93.0)(yaml@2.8.1)))(next@16.3.4(@babel/core@7.28.4)(@types/node@24.13.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.93.0))(react@19.2.3)(svelte@5.53.7)(vue@3.5.24(typescript@5.9.3))
       motion:
-        specifier: ^12.23.16
-        version: 12.34.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: ^13.2.0
+        version: 13.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@7.28.4)(@types/node@24.13.3)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(sass@1.93.0)
+      numora:
+        specifier: ^4.0.0
+        version: 4.0.0
       react:
         specifier: 19.2.3
         version: 19.2.3
@@ -2555,15 +2558,12 @@ packages:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
 
-  framer-motion@12.34.1:
-    resolution: {integrity: sha512-kcZyNaYQfvE2LlH6+AyOaJAQV4rGp5XbzfhsZpiSZcwDMfZUHhuxLWeyRzf5I7jip3qKRpuimPA9pXXfr111kQ==}
+  framer-motion@13.2.0:
+    resolution: {integrity: sha512-9E33ebgMaO33w1nN/jEdW8z3/GO483fMi4rqbMG9rt83XgW9QLKRe4NcmJ8s+fQ3O34++UHrIQwlIWGIWTITjA==}
     peerDependencies:
-      '@emotion/is-prop-valid': '*'
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
     peerDependenciesMeta:
-      '@emotion/is-prop-valid':
-        optional: true
       react:
         optional: true
       react-dom:
@@ -3386,21 +3386,18 @@ packages:
   mlly@1.8.0:
     resolution: {integrity: sha512-l8D9ODSRWLe2KHJSifWGwBqpTZXIXTeo8mlKjY+E2HAakaTeNpqAyBZ8GSqLzHgw4XmHmC8whvpjJNMbFZN7/g==}
 
-  motion-dom@12.34.1:
-    resolution: {integrity: sha512-SC7ZC5dRcGwku2g7EsPvI4q/EzHumUbqsDNumBmZTLFg+goBO5LTJvDu9MAxx+0mtX4IA78B2be/A3aRjY0jnw==}
+  motion-dom@13.2.0:
+    resolution: {integrity: sha512-N6gdSoWRDk0Rh/fVtlqUtLs+fEN3ELFZI3cn3IQE9Mnf3E+Mh8wjO6MstzCOPFh4Yf0L1as5m2eUyYWj8ylVSQ==}
 
-  motion-utils@12.29.2:
-    resolution: {integrity: sha512-G3kc34H2cX2gI63RqU+cZq+zWRRPSsNIOjpdl9TN4AQwC4sgwYPl/Q/Obf/d53nOm569T0fYK+tcoSV50BWx8A==}
+  motion-utils@13.0.0:
+    resolution: {integrity: sha512-7DnN7TmbLcYXcG4RVadXIihWlyuM9afoUww8Y5Agg431kGKiuL2/OMyP4mJ5wLz+pvN3t5ySClLOaVXJ+wekRQ==}
 
-  motion@12.34.1:
-    resolution: {integrity: sha512-N9RVNGn/NSo85OgHX1wGaUWHvReuQ7dZUwuQRhHyzY2wfVOvY3cEgn0Mw4NXOsXMHL/y7EYuzA+b59PYI6EejA==}
+  motion@13.2.0:
+    resolution: {integrity: sha512-4Hrb5vD6HhjFstLUiCmWvtpsw+WTpP4R+QXfSDYZBz7+uxE/LrRg3aV0ReJxHrTRffHhbIE6svEqnotngXvesQ==}
     peerDependencies:
-      '@emotion/is-prop-valid': '*'
       react: ^18.0.0 || ^19.0.0
       react-dom: ^18.0.0 || ^19.0.0
     peerDependenciesMeta:
-      '@emotion/is-prop-valid':
-        optional: true
       react:
         optional: true
       react-dom:
@@ -3478,6 +3475,9 @@ packages:
   npm-run-path@5.1.0:
     resolution: {integrity: sha512-sJOdmRGrY2sjNTRMbSvluQqg+8X7ZK61yvzBEIDhz4f8z1TZFYABsqjjCBd/0PUNE9M6QDgHJXQkGUEm7Q+l9Q==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
+
+  numora@4.0.0:
+    resolution: {integrity: sha512-NNmzFi5ZhRtkhpJr/3vTF81ge7pCcQFfe5YQSQbqyPCuoqJxqbRpCaa3QnG8GmqX2U6BgJ2i7cBvJcmy9yit3A==}
 
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
@@ -6837,7 +6837,7 @@ snapshots:
       eslint: 9.36.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.36.0))(eslint@9.36.0)
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.36.0))(eslint@9.36.0))(eslint@9.36.0)
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.36.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.36.0)
       eslint-plugin-react: 7.37.5(eslint@9.36.0)
       eslint-plugin-react-hooks: 7.0.1(eslint@9.36.0)
@@ -6874,7 +6874,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.36.0))(eslint@9.36.0))(eslint@9.36.0)
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.36.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -6888,7 +6888,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.36.0))(eslint@9.36.0))(eslint@9.36.0):
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.36.0):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -7165,10 +7165,10 @@ snapshots:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
 
-  framer-motion@12.34.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  framer-motion@13.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
-      motion-dom: 12.34.1
-      motion-utils: 12.29.2
+      motion-dom: 13.2.0
+      motion-utils: 13.0.0
       tslib: 2.8.1
     optionalDependencies:
       react: 19.2.3
@@ -8017,15 +8017,15 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.1
 
-  motion-dom@12.34.1:
+  motion-dom@13.2.0:
     dependencies:
-      motion-utils: 12.29.2
+      motion-utils: 13.0.0
 
-  motion-utils@12.29.2: {}
+  motion-utils@13.0.0: {}
 
-  motion@12.34.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  motion@13.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
-      framer-motion: 12.34.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      framer-motion: 13.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       tslib: 2.8.1
     optionalDependencies:
       react: 19.2.3
@@ -8103,6 +8103,8 @@ snapshots:
   npm-run-path@5.1.0:
     dependencies:
       path-key: 4.0.0
+
+  numora@4.0.0: {}
 
   object-assign@4.1.1: {}
 

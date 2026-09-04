@@ -31,6 +31,10 @@
     background: #131313;
   }
 
+  &[aria-pressed="true"] {
+    background: #131313;
+  }
+
   &[disabled] {
     background: #131313;
     pointer-events: none;

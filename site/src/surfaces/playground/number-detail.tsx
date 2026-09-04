@@ -48,14 +48,12 @@ export function NumberDetail({
   const [copied, setCopied] = React.useState(false);
   const [notes, setNotes] = React.useState("");
 
-  // A case that pins a locale or a decimal count is testing that setting, so it
-  // wins over the toolbar the same way `test.align` does.
+  // A case that pins a setting is testing it, so it wins over the toolbar.
   const align = test.align ?? globalAlign;
   const locale = test.locale ?? globalLocale;
   const decimals = test.decimals ?? DECIMALS[globalDecimals];
   const decimalChar = decimalSeparator(locale);
-  // A case that opts into tabular figures is testing them, so it cannot be
-  // switched off from the toolbar — but any case can be switched on.
+  // …except tabular, which the toolbar can switch on but not off.
   const tabular = test.tabular || globalTabular;
 
   const [dom, setDom] = React.useState<Result | null>(null);
@@ -97,8 +95,7 @@ export function NumberDetail({
     const el = root();
     if (!el) return;
     preMorph.current = takeJumpSnapshot(el);
-    // Sampled a frame in, but reported on completion — a state update
-    // mid-animation would re-render the thing being measured.
+    // Reported on completion: a state update mid-morph re-renders what it measures.
     requestAnimationFrame(() => {
       if (preMorph.current) {
         pendingJump.current = verifyNoJump(el, preMorph.current);
@@ -193,10 +190,8 @@ export function NumberDetail({
           textAlign: align,
           fontVariantNumeric: tabular ? "tabular-nums" : "normal",
         }}
+        // A pointer convenience, not a control — the "Morph" button is that.
         onClick={advance}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === "Enter" && advance()}
       >
         <TextMorph
           duration={SPEEDS[speed]}

@@ -235,6 +235,28 @@ export const NUMBER_CASES: NumberCase[] = [
     verify: (t) =>
       verifyUniqueIds(t, ["$", "$2", "$20", "$420", "$4,020", "$4.20"]),
   },
+  {
+    label: "Cursor grows a separator",
+    description:
+      "Typing the 4 of 1,234 is one keystroke that lands as two characters, and they are not adjacent. The caret speaks for the digit only \u2014 the comma it pushed in is new, and the digits before it slide rather than mutating into it.",
+    tags: ["cursor", "separator", "enter"],
+    values: ["123", "1,234", "12,345"],
+    cursors: [undefined, 5, 6],
+    verify: (t) =>
+      verifyAlignment(t, "123", "1,234", [0, null, 1, 2, null], { cursor: 5 }),
+  },
+  {
+    label: "Cursor insert beside the same digit",
+    description:
+      "1,111 \u2192 11,111 is the case place matching cannot call: every digit is a 1, so only the caret says which one was typed. The comma stays the comma while the digit at the caret is the one that enters.",
+    tags: ["cursor", "separator", "enter"],
+    values: ["1,111", "11,111"],
+    cursors: [undefined, 2],
+    verify: (t) =>
+      verifyAlignment(t, "1,111", "11,111", [0, null, 1, 2, 3, 4], {
+        cursor: 2,
+      }),
+  },
 
   // ── Symbols and affixes that are not currency ──
   {

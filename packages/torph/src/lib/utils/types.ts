@@ -12,6 +12,7 @@ export type Segment = {
 
 export interface BaseMorphOptions {
   element: HTMLElement;
+  /** Ignored when `ease` is a spring, which settles on its own physics. */
   duration?: number;
   ease?: string | SpringParams;
   locale?: Intl.LocalesArgument;

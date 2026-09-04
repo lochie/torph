@@ -14,6 +14,7 @@ import { examples, populateExample } from "./usage";
 import * as Logos from "./logos";
 import { Examples } from "./examples";
 import { Button } from "@/components/button";
+import { Header } from "@/components/header";
 
 const frameworks = [
   {
@@ -42,7 +43,7 @@ const frameworks = [
   },
 ];
 
-export const Homepage = () => {
+export const Homepage = ({ size }: { size?: string }) => {
   const text = "Hello world";
   const [frameworkIndex, setFrameworkIndex] = useState(0);
   const { trigger } = useWebHaptics();
@@ -54,27 +55,26 @@ ${populateExample(frameworks[frameworkIndex % frameworks.length].example, text)}
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <div className={styles.header}>
-          <h1>&lt;TextMorph /&gt;</h1>
-          <p>Dependency-free animated text component.</p>
-        </div>
+        <Header />
 
         <Examples />
 
         <section>
-          <h3>Install</h3>
+          <h2>Install</h2>
           <InstallCommands />
         </section>
 
         <section>
-          <h3>Usage</h3>
+          <h2>Usage</h2>
 
           <div className={styles.example}>
             <div className={styles.controls}>
               {frameworks.map((f, i) => (
                 <Button
                   key={f.name}
-                  disabled={frameworkIndex === i}
+                  type="button"
+                  // Not `disabled`: that drops the selected one from the tab order.
+                  aria-pressed={frameworkIndex === i}
                   onClick={() => {
                     trigger("selection");
                     setFrameworkIndex(i);
