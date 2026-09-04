@@ -55,6 +55,10 @@ export const SECTIONS: Section[] = [
     demos: [
       { label: "Install command", Component: Install },
       { label: "Hex colour", Component: HexColour },
+      { label: "Streamed text", Component: Streaming },
+      { label: "Copy button", Component: ExampleCopy },
+      { label: "Wallet", Component: Wallet },
+      { label: "Filters", Component: Filters },
     ],
   },
   {
@@ -68,35 +72,26 @@ export const SECTIONS: Section[] = [
       { label: "Dimensions", Component: Dimensions },
       { label: "Accruing balance", Component: Earned },
       { label: "Numbers off", Component: NumbersOff },
+      { label: "Results summary", Component: ResultsSummary },
     ],
   },
   {
     title: "Interface",
     demos: [
       { label: "Action button", Component: ExampleAction },
-      { label: "Copy button", Component: ExampleCopy },
       { label: "Rewrite", Component: ExampleRewrite },
       { label: "Ticker", Component: ExampleTicker },
       { label: "Chart readout", Component: ExampleChart },
-      { label: "Results summary", Component: ResultsSummary },
-      { label: "Wallet", Component: Wallet },
       { label: "Download progress", Component: Download },
-      { label: "Filters", Component: Filters },
-      { label: "Streamed text", Component: Streaming },
+      { label: "Reorder list", Component: ReorderList },
     ],
   },
   {
     title: "Layout",
     demos: [
       { label: "Resize", Component: ExampleResize },
-      { label: "Reorder list", Component: ReorderList },
-    ],
-  },
-  {
-    title: "Control",
-    demos: [
-      { label: "Spring", Component: Spring },
-      { label: "Debug boxes", Component: DebugBoxes },
+      { label: "Squishy number", Component: SquishyNumber },
+      { label: "Squeeze to abbreviate", Component: SqueezeToAbbreviate },
     ],
   },
   {
@@ -121,13 +116,6 @@ export const SECTIONS: Section[] = [
         ),
       },
       { label: "Pull to count", Component: PullToCount },
-    ],
-  },
-  {
-    title: "Matter",
-    demos: [
-      { label: "Squishy number", Component: SquishyNumber },
-      { label: "Squeeze to abbreviate", Component: SqueezeToAbbreviate },
       { label: "Split bar", Component: SplitBar },
       { label: "Slosh gauge", Component: SloshGauge },
     ],

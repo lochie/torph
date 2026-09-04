@@ -1,35 +1,34 @@
 .page {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  width: 100%;
-  max-width: 56rem;
+  gap: 2rem;
   padding: 4rem 1rem;
-  margin: 0 auto;
 }
 
 .container {
+  width: 100%;
+  max-width: 56rem;
+  margin: 0 auto;
+}
+
+.section {
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 1rem;
   width: 100%;
 
-  section {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-
-    h2 {
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: #ffffff;
-    }
+  h2 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #ffffff;
   }
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1px;
   background: var(--border);
   border: 1px solid var(--border);
@@ -38,6 +37,7 @@
 }
 
 .example {
+  aspect-ratio: 0.8 / 1;
   position: relative;
   display: flex;
   flex-direction: column;

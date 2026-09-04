@@ -1086,57 +1086,97 @@
 
 // ── A word that pops ──
 
-.rating {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
+.mood {
+  position: relative;
   width: 100%;
   max-width: 16rem;
+  height: 2.25rem;
+  border-radius: 10rem;
+  background: #0d0d0d;
 }
 
-.ratingWord {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 2.5rem;
+// Inset by half a face, so the end stops sit flush with the ends of the pill.
+.moodRail {
+  position: absolute;
+  inset: 0 1.375rem;
 }
 
-.ratingLabel {
-  font-family: var(--font-secondary);
-  font-size: 1.75rem;
-  font-weight: 700;
-  // Set inline per rating; TextMorph's own defaults carry it across the change.
-  transition: color 400ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.ratingTrack {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  height: 1.5rem;
-}
-
-.ratingDot {
-  width: 0.625rem;
-  height: 0.625rem;
+.moodDot {
+  position: absolute;
+  top: 50%;
+  width: 0.4375rem;
+  height: 0.4375rem;
   border-radius: 50%;
-  background: var(--border);
-  transition:
-    background 300ms ease,
-    transform 300ms ease;
+  background: var(--color-muted);
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
+  transition: opacity 320ms ease 140ms; // Delayed, so a dot waits for the word to clear it
 
-  &[data-filled="true"] {
-    background: var(--primary);
-    transform: scale(1.25);
+  &[data-covered="true"] {
+    opacity: 0;
+    transition: opacity 160ms ease;
   }
 }
 
-.ratingInput {
+.moodPin {
   position: absolute;
-  inset: -0.5rem 0;
+  top: 50%;
+  transition: left 460ms cubic-bezier(0.34, 1.28, 0.5, 1);
+}
+
+.moodFace {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  z-index: 1;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: background 380ms cubic-bezier(0.19, 1, 0.22, 1);
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  circle {
+    fill: #ffffff;
+  }
+
+  path {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+  }
+}
+
+// Pinned to the face, and swung past it — behind — once the right side runs out of rail.
+// Wraps the morph rather than being it: torph's own sheet lands after this one, and
+// its `position: relative` on the root matches a class for specificity.
+.moodWord {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 700;
+  transform: translate(1.625rem, -50%);
+  transition:
+    color 400ms cubic-bezier(0.19, 1, 0.22, 1),
+    transform 460ms cubic-bezier(0.34, 1.28, 0.5, 1);
+}
+
+.moodPin[data-side="left"] .moodWord {
+  transform: translate(calc(-1.625rem - 100%), -50%);
+}
+
+.moodInput {
+  position: absolute;
+  inset: -0.25rem 0;
+  z-index: 2;
   width: 100%;
   padding: 0;
   margin: 0;
@@ -1147,15 +1187,19 @@
 
   &::-webkit-slider-thumb {
     appearance: none;
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
   }
 
   &::-moz-range-thumb {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
     border: 0;
   }
+}
+
+.moodInput:focus-visible ~ .moodRail .moodFace {
+  box-shadow: 0 0 0 3px var(--focus-color);
 }
 
 // ── A tag that trails ──

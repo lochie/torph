@@ -294,50 +294,79 @@ export const HoldToConfirm = () => {
 
 // ── A word that pops ──
 
+// One family, so every step has letters to hand over: Al, Al, Aig, Anig.
 export const RATINGS = [
-  { word: "Not bad", tone: "#ff6b6b" },
-  { word: "Okay", tone: "#ff9f6b" },
-  { word: "Good", tone: "#d6d6d6" },
-  { word: "Great", tone: "#ffce44" },
-  { word: "Excellent", tone: "#4ade80" },
+  { word: "Abysmal", tone: "#f2453d" },
+  { word: "Awful", tone: "#ff7a2f" },
+  { word: "Alright", tone: "#f0b429" },
+  { word: "Amazing", tone: "#3b82f6" },
+  { word: "Astonishing", tone: "#34c759" },
 ];
+
+const LAST = RATINGS.length - 1;
+const START = 2;
 
 const POP_KICK = 0.9;
 const POP_STIFFNESS = 0.24;
 const POP_DAMPING = 0.58;
+const WORD_GAP = 26; // px from the centre of the face to the word — `.moodWord` offsets by the same
+const MOUTH_GLIDE = 0.16; // Share of the way to the new expression the mouth covers per frame
+const MOUTH_BEND = 4.4; // viewBox units the middle of the mouth travels either side of flat
 const RATE_EVERY = 1800;
 
+const mouthPath = (mood: number) =>
+  `M7.8 15.2Q12 ${(15.2 + (mood * 2 - 1) * MOUTH_BEND).toFixed(2)} 16.2 15.2`;
+
 export const RatingSlider = () => {
-  const [rating, setRating] = React.useState(2);
+  const [rating, setRating] = React.useState(START);
   const [taken, setTaken] = React.useState(false);
   const reducedMotion = usePrefersReducedMotion();
   const { trigger } = useWebHaptics();
 
-  const wordRef = React.useRef<HTMLDivElement>(null);
-  const state = React.useRef({ pop: 0, vel: 0, reduced: false });
+  const faceRef = React.useRef<HTMLSpanElement>(null);
+  const mouthRef = React.useRef<SVGPathElement>(null);
+  const railRef = React.useRef<HTMLDivElement>(null);
+  const wordRef = React.useRef<HTMLSpanElement>(null);
+  const dotsRef = React.useRef<(HTMLSpanElement | null)[]>([]);
+  const state = React.useRef({
+    pop: 0,
+    vel: 0,
+    mood: START / LAST,
+    curve: START / LAST,
+    reduced: false,
+  });
 
   const wake = useMotionLoop(() => {
-    const word = wordRef.current;
-    if (!word) return null;
+    const face = faceRef.current;
+    const mouth = mouthRef.current;
+    if (!face || !mouth) return null;
     const s = state.current;
 
     return {
       step: () => {
         if (s.reduced) {
           s.pop = s.vel = 0;
+          s.curve = s.mood;
           return false;
         }
         s.vel = (s.vel - s.pop * POP_STIFFNESS) * POP_DAMPING;
         s.pop += s.vel;
-        if (Math.abs(s.vel) < 0.002 && Math.abs(s.pop) < 0.002) {
+        s.curve += (s.mood - s.curve) * MOUTH_GLIDE;
+        if (
+          Math.abs(s.vel) < 0.002 &&
+          Math.abs(s.pop) < 0.002 &&
+          Math.abs(s.mood - s.curve) < 0.001
+        ) {
           s.pop = 0;
           s.vel = 0;
+          s.curve = s.mood;
           return false;
         }
         return true;
       },
       paint: () => {
-        word.style.transform = `scale(${1 + s.pop * 0.22}) rotate(${s.pop * 5}deg)`;
+        face.style.transform = `translate(-50%, -50%) scale(${1 + s.pop * 0.22}) rotate(${s.pop * 5}deg)`;
+        mouth.setAttribute("d", mouthPath(s.curve));
       },
     };
   });
@@ -348,6 +377,7 @@ export const RatingSlider = () => {
       // Kicked in the direction of travel, so a slide up and a slide down differ.
       s.vel = POP_KICK * (next > rating ? 0.1 : -0.1);
       s.pop = POP_KICK * 0.25;
+      s.mood = next / LAST;
       setRating(next);
       trigger("selection");
       wake();
@@ -368,40 +398,89 @@ export const RatingSlider = () => {
     return () => window.clearInterval(id);
   }, [taken, reducedMotion, rating, choose]);
 
+  const side = rating > LAST / 2 ? "left" : "right";
+
+  // A long word reaches past its neighbour, so the dots it covers yield as it grows.
+  React.useEffect(() => {
+    const rail = railRef.current;
+    const word = wordRef.current;
+    if (!rail || !word) return;
+
+    const sync = () => {
+      const step = rail.clientWidth / LAST;
+      const reach = WORD_GAP + word.offsetWidth;
+      dotsRef.current.forEach((dot, i) => {
+        const away = (i - rating) * (side === "right" ? 1 : -1);
+        dot?.setAttribute(
+          "data-covered",
+          String(away === 0 || (away > 0 && away * step < reach)),
+        );
+      });
+    };
+
+    const observer = new ResizeObserver(sync);
+    observer.observe(word);
+    observer.observe(rail);
+    return () => observer.disconnect();
+  }, [rating, side]);
+
   const { word, tone } = RATINGS[rating]!;
 
   return (
-    <div className={styles.rating}>
-      <div className={styles.ratingWord} ref={wordRef}>
-        <TextMorph className={styles.ratingLabel} style={{ color: tone }}>
-          {word}
-        </TextMorph>
-      </div>
+    <div className={styles.mood}>
+      <input
+        className={styles.moodInput}
+        type="range"
+        min={0}
+        max={LAST}
+        value={rating}
+        aria-label="Rating"
+        aria-valuetext={word}
+        onChange={(event) => {
+          const next = Number(event.target.value);
+          setTaken(true);
+          if (next !== rating) choose(next);
+        }}
+      />
 
-      <div className={styles.ratingTrack}>
+      <div className={styles.moodRail} ref={railRef}>
         {RATINGS.map((entry, i) => (
           <span
             key={entry.word}
-            className={styles.ratingDot}
-            data-filled={i <= rating}
+            className={styles.moodDot}
+            style={{ left: `${(i / LAST) * 100}%` }}
+            ref={(el) => {
+              dotsRef.current[i] = el;
+            }}
             aria-hidden
           />
         ))}
 
-        <input
-          className={styles.ratingInput}
-          type="range"
-          min={0}
-          max={RATINGS.length - 1}
-          value={rating}
-          aria-label="Rating"
-          aria-valuetext={word}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            setTaken(true);
-            if (next !== rating) choose(next);
-          }}
-        />
+        <span
+          className={styles.moodPin}
+          style={{ left: `${(rating / LAST) * 100}%` }}
+          data-side={side}
+        >
+          <span
+            className={styles.moodWord}
+            ref={wordRef}
+            style={{ color: tone }}
+          >
+            <TextMorph>{word}</TextMorph>
+          </span>
+
+          <span
+            className={styles.moodFace}
+            ref={faceRef}
+            style={{ background: tone }}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden>
+              <circle cx="8.8" cy="9.4" r="1.5" />
+              <circle cx="15.2" cy="9.4" r="1.5" />
+              <path ref={mouthRef} d={mouthPath(rating / LAST)} />
+            </svg>
+          </span>
+        </span>
       </div>
     </div>
   );

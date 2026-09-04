@@ -479,8 +479,6 @@ export const RangeShove = () => {
           </div>
         </div>
       </div>
-
-      <span className={styles.caption}>drag them together</span>
     </div>
   );
 };
