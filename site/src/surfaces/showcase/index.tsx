@@ -7,6 +7,7 @@ import { CSSProperties, Fragment, useEffect, useRef } from "react";
 import { Footer } from "@/components/footer";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ENTRIES, type Entry } from "./entries";
+import { Header } from "@/components/header";
 
 const XLogo = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -145,7 +146,7 @@ const Card = ({ entry }: { entry: Entry }) => {
 
       <a
         className={styles.author}
-        href={`https://x.com/${entry.handle}`}
+        href={entry.url}
         target="_blank"
         rel="noopener noreferrer"
       >
@@ -176,28 +177,30 @@ export const Showcase = () => {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <div className={styles.header}>
-          <h1>Showcase</h1>
-          <p>Interfaces people have built with Torph.</p>
-        </div>
-        <div className={styles.grid}>
-          {ENTRIES.map((entry) => (
-            <Card key={entry.slug} entry={entry} />
-          ))}
-        </div>
-        <div className={styles.callout}>
-          <p>
-            Made something cool with Torph? Tag{" "}
-            <a
-              href="https://x.com/lochieaxon"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              @lochieaxon
-            </a>
-            {" and it might make its way here."}
-          </p>
-        </div>
+        <Header />
+      </div>
+
+      <div className={styles.grid}>
+        {ENTRIES.map((entry) => (
+          <Card key={entry.slug} entry={entry} />
+        ))}
+      </div>
+
+      <div className={styles.callout}>
+        <p>
+          Made something cool with Torph? Tag{" "}
+          <a
+            href="https://x.com/lochieaxon"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            @lochieaxon
+          </a>
+          {" and it might make its way here."}
+        </p>
+      </div>
+
+      <div className={styles.container}>
         <Footer />
       </div>
     </div>
