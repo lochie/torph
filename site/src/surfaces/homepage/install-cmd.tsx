@@ -37,15 +37,15 @@ export const InstallCommands = () => {
         <CodeBlock
           code={pkgCmds[Object.keys(pkgCmds)[cmdIndex] as keyof typeof pkgCmds]}
         >
-          <span
-            style={{
-              opacity: 0.4,
-              userSelect: "none",
-            }}
-          >
-            {"$ "}
-          </span>
           <TextMorph>
+            <span
+              style={{
+                opacity: 0.4,
+                userSelect: "none",
+              }}
+            >
+              {"$"}
+            </span>{" "}
             {pkgCmds[Object.keys(pkgCmds)[cmdIndex] as keyof typeof pkgCmds]}
           </TextMorph>
         </CodeBlock>

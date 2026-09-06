@@ -7,5 +7,7 @@ export interface TextMorphOptions extends BaseMorphOptions {
   numbers?: boolean;
   /** Fraction digits for a numeric value. Ignored for strings. */
   decimals?: number;
+  /** Let lines fall where the width puts them, not only where the value has `\n`. */
+  wrap?: boolean;
   onAnimationCancel?: () => void;
 }

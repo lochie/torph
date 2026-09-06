@@ -145,10 +145,14 @@
   color: #ffffff;
   border-radius: 10rem;
   background: var(--body-light);
+}
 
-  img {
-    display: block;
-  }
+.avatar {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  border-radius: 50%;
 }
 
 .download {

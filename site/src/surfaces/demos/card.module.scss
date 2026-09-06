@@ -3,7 +3,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.625rem;
   padding: 0.75rem 1.5rem;
   padding-left: 1.125rem;
   font-family: var(--font-secondary);
@@ -27,18 +26,17 @@
     );
   }
 
-  .iconWrapper {
-    position: relative;
+  // Fixed, so the container does not step when one icon swaps for the next. The
+  // margin is the gap the flex row used to hold, now that the label is one box.
+  .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 1.5rem;
     height: 1.5rem;
-
-    .icon {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    margin-right: 0.625rem;
+    // `middle` sits on half the x-height; the cap height is what reads as centred.
+    vertical-align: calc(0.35em - 0.75rem);
   }
 }
 

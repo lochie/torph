@@ -1,4 +1,5 @@
 import type { SpringParams } from "./spring";
+import type { Format } from "../text-morph/utils/content";
 
 /** Numeric segments slide instead of fading, and digits and symbols slide opposite ways. */
 export type SegmentKind = "digit" | "symbol";
@@ -8,6 +9,10 @@ export type Segment = {
   string: string;
   /** Absent for ordinary text. */
   kind?: SegmentKind;
+  /** An atomic element segment — `string` holds its token, never text to render. */
+  node?: Element;
+  /** Inline tags rebuilt around this segment's text. */
+  format?: Format;
 };
 
 export interface BaseMorphOptions {

@@ -69,14 +69,6 @@ const states = [
   },
 ];
 
-const transition = {
-  type: "spring" as const,
-  mass: 4,
-  stiffness: 800,
-  damping: 80,
-  restDelta: 0.0001,
-};
-
 export const ExampleAction = () => {
   const [currentStateIndex, setCurrentStateIndex] = React.useState(0);
   const reducedMotion = usePrefersReducedMotion();
@@ -91,30 +83,11 @@ export const ExampleAction = () => {
 
   return (
     <div className={styles.action}>
-      <div className={styles.iconWrapper}>
-        <AnimatePresence initial={false}>
-          <motion.div
-            key={currentStateIndex}
-            className={styles.icon}
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{
-              opacity: 0,
-              scale: 0.6,
-              transition: transition,
-            }}
-            transition={{
-              delay: 0.1,
-              ...transition,
-            }}
-          >
-            {states[currentStateIndex].icon}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
       <div className={styles.label}>
         <TextMorph duration={600} ease={`cubic-bezier(0.41, 1.03, 0.6, 1.03)`}>
+          <span key={`icon-${currentStateIndex}`} className={styles.icon}>
+            {states[currentStateIndex].icon}
+          </span>
           {states[currentStateIndex].label}
         </TextMorph>
       </div>

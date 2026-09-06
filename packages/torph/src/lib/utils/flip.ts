@@ -1,18 +1,26 @@
-import { ATTR_EXITING, ATTR_ID, ATTR_SR } from "./constants";
+import { ATTR_EXITING, ATTR_ID, ATTR_ITEM } from "./constants";
 import { parseTranslate } from "./animate";
+
+/**
+ * Every segment, in document order. A formatted run is a real wrapper holding its
+ * items, so they are not all children of the root — but they are all positioned by
+ * it, which is the only thing the FLIP pass needs.
+ */
+export function itemsOf(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(`[${ATTR_ITEM}]`));
+}
 
 export type Measures = {
   [key: string]: { x: number; y: number };
 };
 
 export function measure(element: HTMLElement): Measures {
-  const children = Array.from(element.children) as HTMLElement[];
+  const children = itemsOf(element);
   const measures: Measures = {};
   const rootRect = element.getBoundingClientRect();
 
   children.forEach((child, index) => {
     if (child.hasAttribute(ATTR_EXITING)) return;
-    if (child.hasAttribute(ATTR_SR)) return;
     if (child.tagName === "BR") return;
     const key = child.getAttribute(ATTR_ID) || `child-${index}`;
     const rect = child.getBoundingClientRect();
@@ -27,12 +35,14 @@ export function measure(element: HTMLElement): Measures {
   return measures;
 }
 
+/** `fromKey` differs when one segment takes another's place — the two are one slot. */
 export function computeDelta(
   prev: Measures,
   current: Measures,
   key: string,
+  fromKey: string = key,
 ): { dx: number; dy: number } {
-  const p = prev[key];
+  const p = prev[fromKey];
   const c = current[key];
   if (!p || !c) return { dx: 0, dy: 0 };
   return { dx: p.x - c.x, dy: p.y - c.y };
@@ -64,6 +74,30 @@ export function findNearestAnchor(
   };
 
   return search(firstDir) ?? search(secondDir);
+}
+
+/**
+ * Elements that changed hands in the same place. One leaving the head of a value
+ * while an unrelated one joins the tail is not a swap — they would fly across each
+ * other — so position among the elements is what decides, not mere coincidence.
+ */
+export function pairElementSlots(
+  oldIds: string[],
+  newIds: string[],
+  isLeaving: (id: string) => boolean,
+  isArriving: (id: string) => boolean,
+): Map<string, string> {
+  const partners = new Map<string, string>();
+
+  for (let i = 0; i < Math.min(oldIds.length, newIds.length); i++) {
+    const from = oldIds[i]!;
+    const to = newIds[i]!;
+    if (!isLeaving(from) || !isArriving(to)) continue;
+    partners.set(from, to);
+    partners.set(to, from);
+  }
+
+  return partners;
 }
 
 export function resolveExitingAnchors(

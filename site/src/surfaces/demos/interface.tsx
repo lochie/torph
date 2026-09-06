@@ -6,7 +6,6 @@ import { TextMorph } from "torph/react";
 import { wrap } from "./wrap";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useCycle } from "./use-cycle";
-import { AnimatePresence, motion } from "motion/react";
 
 export const COUNTS = [3, 13, 9, 128, 7];
 
@@ -86,30 +85,19 @@ export const Wallet = () => {
 
   return (
     <div className={styles.chip}>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <AnimatePresence>
-          {index >= 2 && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5, width: 0 }}
-              animate={{ opacity: 1, scale: 1, width: "auto" }}
-              exit={{ opacity: 0, scale: 0.5, width: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <motion.img
-                src="https://lochie.me/avatar.jpg"
-                alt=""
-                width={20}
-                height={20}
-                style={{
-                  borderRadius: "50%",
-                  marginRight: "0.5rem",
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <TextMorph>{WALLET[index]!}</TextMorph>
-      </div>
+      <TextMorph>
+        {index >= 2 && (
+          <img
+            key="avatar"
+            className={styles.avatar}
+            src="https://lochie.me/avatar.jpg"
+            alt=""
+            width={20}
+            height={20}
+          />
+        )}
+        {WALLET[index]!}
+      </TextMorph>
     </div>
   );
 };

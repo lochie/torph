@@ -1,9 +1,12 @@
 import { TextMorph } from "./index";
 import type { TextMorphOptions } from "./types";
+import { type ContentPart, flattenContent } from "./utils/content";
 
 export class MorphController {
   private instance: TextMorph | null = null;
-  private lastText: string | number = "";
+  // Flattened on the way in: the engine adopts an element source's children, so
+  // re-reading one on a later re-attach would find it empty.
+  private lastText: string | number | ContentPart[] = "";
   private lastCursorIndex?: number;
   private configKey = "";
 
@@ -17,7 +20,14 @@ export class MorphController {
     }
   }
 
-  update(text: string | number, cursorIndex?: number) {
+  update(
+    value: Element | string | number | ContentPart[],
+    cursorIndex?: number,
+  ) {
+    const text =
+      typeof value === "object" && !Array.isArray(value)
+        ? flattenContent(value)
+        : value;
     this.lastText = text;
     this.lastCursorIndex = cursorIndex;
     this.instance?.update(text, cursorIndex);
@@ -39,6 +49,7 @@ export class MorphController {
       locale: options.locale,
       scale: options.scale,
       numbers: options.numbers,
+      wrap: options.wrap,
       decimals: options.decimals,
       debug: options.debug,
       disabled: options.disabled,

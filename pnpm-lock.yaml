@@ -138,6 +138,9 @@ importers:
       '@types/react':
         specifier: ^18.2.15
         version: 18.3.24
+      '@types/react-dom':
+        specifier: ^18.2.0
+        version: 18.3.7(@types/react@18.3.24)
       eslint:
         specifier: ^9.36.0
         version: 9.36.0

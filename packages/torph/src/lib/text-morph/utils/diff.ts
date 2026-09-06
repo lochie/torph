@@ -1,5 +1,12 @@
 import type { Segment } from "./segment";
-import { createIdAllocator, groupIntoWords, segmentText } from "./segment";
+import { createIdAllocator, groupIntoWords, segmentContent } from "./segment";
+import {
+  type ContentPart,
+  type Format,
+  isElementToken,
+  plainText,
+  toParts,
+} from "./content";
 import { lcsIndices } from "../../utils/lcs";
 import type { NumberSegment } from "./number";
 import {
@@ -35,6 +42,7 @@ function splitIfWhole(
   if (oldGroup.segments.length !== 1 || oldGroup.word.length <= 1) {
     return oldGroup.segments;
   }
+  if (oldGroup.segments[0]!.node) return oldGroup.segments;
 
   const wordSeg = oldGroup.segments[0]!;
   const charSegs = oldGroup.word.split("").map((char, i) => ({
@@ -82,6 +90,7 @@ const MIN_SIMILARITY = 0.4;
 
 /** An old word's claim on a new one. A matching numeric skeleton beats shared characters. */
 function pairAffinity(a: string, b: string): number {
+  if (isElementToken(a) || isElementToken(b)) return 0;
   if (
     (hasDigit(a) || hasDigit(b)) &&
     numericSkeleton(a) === numericSkeleton(b)
@@ -97,45 +106,69 @@ const MAX_LCS_CELLS = 1_000_000;
 
 export function diffSegments(
   oldSegments: Segment[],
-  newText: string,
+  newValue: string | ContentPart[],
   locale: Intl.LocalesArgument,
   options: DiffOptions = {},
 ): DiffResult {
+  const newParts = toParts(newValue);
+  const newText = plainText(newParts);
   const newHasSpaces = newText.includes(" ");
   const newHasNewlines = newText.includes("\n");
   const oldWords = groupIntoWords(oldSegments);
 
   const numbersOn = options.numbers !== false;
-  const isNum = (word: string) => numbersOn && isNumericWord(word);
+  const isNum = (word: string) =>
+    numbersOn && !isElementToken(word) && isNumericWord(word);
   const token = (word: string) => (isNum(word) ? NUMBER_TOKEN : word);
 
   // Text IDs are derived from the text and survive re-segmentation; minted numeric IDs don't.
   const digitsInvolved =
-    numbersOn && (hasDigit(newText) || oldWords.some((g) => hasDigit(g.word)));
+    numbersOn &&
+    (hasDigit(newText) ||
+      oldWords.some((g) => !isElementToken(g.word) && hasDigit(g.word)));
+
+  const elementsInvolved =
+    newParts.some((part) => part.kind === "element") ||
+    oldWords.some((g) => isElementToken(g.word));
 
   if (
     oldWords.length <= 1 &&
     !newHasSpaces &&
     !newHasNewlines &&
-    !digitsInvolved
+    !digitsInvolved &&
+    !elementsInvolved
   ) {
     return {
-      segments: segmentText(newText, locale, numbersOn),
+      segments: segmentContent(newParts, locale, numbersOn),
       splits: new Map(),
     };
   }
 
   const newWordStrings: string[] = [];
-  const newSeparators: string[][] = []; // separators BEFORE each word
-  const parts = newText.split(/( |\n)/);
-  let pendingSeps: string[] = [];
-  for (const part of parts) {
-    if (part === " " || part === "\n") {
-      pendingSeps.push(part);
-    } else if (part.length > 0) {
-      newSeparators.push(pendingSeps);
-      newWordStrings.push(part);
-      pendingSeps = [];
+  const newSeparators: { sep: string; format?: Format }[][] = []; // before each word
+  const newNodes = new Map<number, Element>();
+  const newFormats = new Map<number, Format>();
+  // Each separator remembers the part it came from, which is the run it sits inside.
+  let pendingSeps: { sep: string; format?: Format }[] = [];
+  const pushWord = (word: string) => {
+    newSeparators.push(pendingSeps);
+    newWordStrings.push(word);
+    pendingSeps = [];
+  };
+  for (const part of newParts) {
+    if (part.kind === "element") {
+      newNodes.set(newWordStrings.length, part.node);
+      pushWord(part.id);
+      continue;
+    }
+    for (const chunk of part.value.split(/( |\n)/)) {
+      if (chunk === " " || chunk === "\n") {
+        pendingSeps.push({ sep: chunk, format: part.format });
+      } else if (chunk.length > 0) {
+        // A word carries one format: the parts were already cut at every change.
+        if (part.format) newFormats.set(newWordStrings.length, part.format);
+        pushWord(chunk);
+      }
     }
   }
   const trailingSeparators = pendingSeps;
@@ -144,7 +177,7 @@ export function diffSegments(
 
   if (oldWordStrings.length * newWordStrings.length > MAX_LCS_CELLS) {
     return {
-      segments: segmentText(newText, locale, numbersOn),
+      segments: segmentContent(newParts, locale, numbersOn),
       splits: new Map(),
     };
   }
@@ -238,6 +271,7 @@ export function diffSegments(
   for (const plan of plans) {
     if (plan.mode === "fresh") continue;
     const oldGroup = oldWords[plan.oi]!;
+    if (isElementToken(oldGroup.word)) continue;
 
     if (plan.mode !== "reuse" && oldGroup.segments.length === 1) {
       // About to be split into per-character spans
@@ -255,8 +289,8 @@ export function diffSegments(
   let charOffset = 0;
 
   // Includes the edges — segmentText keeps leading and trailing whitespace on first render.
-  function pushSeparators(seps: string[]) {
-    for (const sep of seps) {
+  function pushSeparators(seps: { sep: string; format?: Format }[]) {
+    for (const { sep, format } of seps) {
       if (sep === "\n") {
         segments.push({
           id: alloc.take(`newline-${charOffset}`),
@@ -266,6 +300,7 @@ export function diffSegments(
         segments.push({
           id: alloc.take(`space-${charOffset}`),
           string: "\u00A0",
+          format,
         });
       }
       charOffset++;
@@ -273,10 +308,19 @@ export function diffSegments(
   }
 
   for (let ni = 0; ni < newWordStrings.length; ni++) {
-    pushSeparators(newSeparators[ni] ?? (ni > 0 ? [" "] : []));
+    pushSeparators(newSeparators[ni] ?? (ni > 0 ? [{ sep: " " }] : []));
 
     const plan = plans[ni]!;
     const newWord = newWordStrings[ni]!;
+    const from = segments.length;
+
+    const node = newNodes.get(ni);
+    if (node) {
+      // The ID is the key itself: reusing it is what keeps the element in place.
+      segments.push({ id: newWord, string: newWord, node });
+      charOffset += 1;
+      continue;
+    }
 
     if (plan.mode === "reuse") {
       for (const seg of oldWords[plan.oi]!.segments) segments.push(seg);
@@ -323,6 +367,13 @@ export function diffSegments(
       segments.push(...segmentNumber(newWord));
     } else {
       segments.push({ id: alloc.take(newWord), string: newWord });
+    }
+
+    // Stamped after the fact: a word reused or morphed carries whatever format it
+    // had, and what it becomes is the new value's business.
+    const format = newFormats.get(ni);
+    for (let i = from; i < segments.length; i++) {
+      segments[i] = { ...segments[i]!, format };
     }
 
     charOffset += newWord.length;

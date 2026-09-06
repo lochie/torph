@@ -51,7 +51,7 @@ type PendingTransition = {
   stop: () => void;
   onCancel?: () => void;
   /** Read before the abort, while the animations are still running. */
-  snapshot: () => { width: AxisState; height: AxisState };
+  snapshot: () => { width: AxisState | null; height: AxisState };
 };
 
 type Axis = {
@@ -260,6 +260,9 @@ export function transitionContainerSize(
   ease: string,
   onComplete?: () => void,
   onCancel?: () => void,
+  // Off when the value wraps: the width is the author's, and driving it through
+  // intermediate values would rewrap the text on every frame of the morph.
+  animateWidth = true,
 ) {
   // Read before the abort, off the curves the box is still riding.
   const previous = inFlight(element);
@@ -282,16 +285,18 @@ export function transitionContainerSize(
   const base = parseEasing(ease);
 
   // One per axis: each carries its own momentum, so they need their own curves.
-  const width = animateAxis(
-    element,
-    "width",
-    oldWidth,
-    newWidth,
-    previous?.width,
-    duration,
-    ease,
-    base,
-  );
+  const width = animateWidth
+    ? animateAxis(
+        element,
+        "width",
+        oldWidth,
+        newWidth,
+        previous?.width ?? undefined,
+        duration,
+        ease,
+        base,
+      )
+    : null;
   const height = animateAxis(
     element,
     "height",
@@ -304,11 +309,11 @@ export function transitionContainerSize(
   );
 
   const stop = () => {
-    width.anim.cancel();
+    width?.anim.cancel();
     height.anim.cancel();
   };
 
-  width.anim.onfinish = () => {
+  (width ?? height).anim.onfinish = () => {
     pending.delete(element);
     stop();
     restoreSize(element);
@@ -319,7 +324,7 @@ export function transitionContainerSize(
     stop,
     onCancel,
     snapshot: () => ({
-      width: axisState(width, duration),
+      width: width && axisState(width, duration),
       height: axisState(height, duration),
     }),
   });

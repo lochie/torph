@@ -1,0 +1,226 @@
+.stage strong {
+  font-weight: 700;
+}
+
+.stage {
+  padding: 0.625rem 1.125rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+  border-radius: 10rem;
+  background: var(--body-light);
+}
+
+// A box holding no text has no baseline of its own, so one is synthesised from its
+// bottom edge — which is what this offset is measured against. Centres on the cap
+// height, rather than the half x-height `vertical-align: middle` would use.
+@mixin inline-graphic($size) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: $size;
+  vertical-align: calc(0.35em - #{$size} / 2);
+}
+
+// One holding text takes its baseline from that text instead, so the offset above
+// would drop it by most of its height. `middle` is measured off the line box.
+@mixin inline-chip($size) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: $size;
+  vertical-align: middle;
+}
+
+.avatar {
+  @include inline-chip(1.375rem);
+  width: 1.375rem;
+  margin-right: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 50%;
+}
+
+.key {
+  @include inline-chip(1.5rem);
+  min-width: 1.5rem;
+  padding: 0 0.375rem;
+  margin-right: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.star {
+  @include inline-graphic(0.9375rem);
+  width: 0.9375rem;
+  margin-right: 0.125rem;
+}
+
+// Multi-line: the root is nowrap, so the lines are the ones the value asked for.
+.block {
+  padding: 0.875rem 1.25rem;
+  line-height: 2;
+  text-align: left;
+  border-radius: 0.875rem;
+}
+
+.box {
+  @include inline-graphic(0.875rem);
+  width: 0.875rem;
+  margin-right: 0.375rem;
+}
+
+.swatch {
+  @include inline-graphic(1.25rem);
+  width: 1.25rem;
+  margin-right: 0.375rem;
+  border-radius: 0.375rem;
+}
+
+.crumb {
+  @include inline-graphic(0.8125rem);
+  width: 0.8125rem;
+  margin-right: 0.25rem;
+}
+
+// Two columns, so the art sits beside both lines rather than above the second —
+// one morph cannot do that, its root being a single inline flow.
+.player {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  font-family: var(--font-secondary);
+  color: #ffffff;
+}
+
+.cover {
+  display: block;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.875rem;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.meta {
+  font-size: 1.0625rem;
+  line-height: 1.45;
+
+  strong {
+    font-weight: 600;
+  }
+}
+
+.artist {
+  font-size: 1em;
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+// Its own animation, on its own element — the engine moves the box around it.
+.ring {
+  @include inline-graphic(0.9375rem);
+  width: 0.9375rem;
+  margin-right: 0.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.switch {
+  @include inline-graphic(1rem);
+  justify-content: flex-start;
+  width: 1.75rem;
+  padding: 0.125rem;
+  margin: 0 0.125rem;
+  border-radius: 10rem;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.2s ease;
+}
+
+.switchOn {
+  background: #3fb884;
+}
+
+.knob {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.2s ease;
+}
+
+.switchOn .knob {
+  transform: translateX(0.75rem);
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  color: #ffffff;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.375rem 0.625rem 0.375rem 0.75rem;
+  margin-right: 0.375rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: inherit;
+  vertical-align: middle;
+  border: 1px solid var(--border);
+  border-radius: 10rem;
+  background: var(--body-light);
+  cursor: pointer;
+
+  span {
+    opacity: 0.5;
+  }
+
+  &:hover span {
+    opacity: 1;
+  }
+}
+
+.reset {
+  font: inherit;
+  font-size: 0.875rem;
+  color: inherit;
+  opacity: 0.55;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.passage {
+  width: 100%;
+  max-width: 26rem;
+  font-family: var(--font-secondary);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  color: #ffffff;
+  text-align: left;
+}
+
+// The root sizes to the column, and the lines land where that width puts them.
+.wrapped {
+  width: 100%;
+}

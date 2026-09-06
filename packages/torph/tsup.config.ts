@@ -34,7 +34,7 @@ export default defineConfig((options) => {
       dts: true,
       target: "es2022",
       treeshake: true,
-      external: ["react", "react/jsx-runtime"],
+      external: ["react", "react-dom", "react/jsx-runtime"],
       esbuildPlugins: [aliasCorePlugin],
       minify: !options.watch,
       banner: { js: '"use client";' },

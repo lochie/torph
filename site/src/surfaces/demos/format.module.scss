@@ -1,0 +1,65 @@
+.code {
+  padding: 0.875rem 1.125rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  color: #ffffff;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--body-light);
+}
+
+.keyword {
+  color: #c58af9;
+}
+
+.fn {
+  color: #6cb6ff;
+}
+
+.string {
+  color: #8ddb8c;
+}
+
+.number {
+  color: #f0a45d;
+}
+
+.punct {
+  opacity: 0.5;
+}
+
+.budget {
+  font-family: var(--font-secondary);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.under {
+  color: #8ddb8c;
+}
+
+.over {
+  color: #ff6b6b;
+}
+
+.expand {
+  font-family: var(--font-secondary);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 50%;
+  vertical-align: middle;
+}

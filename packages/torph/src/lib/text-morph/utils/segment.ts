@@ -1,5 +1,6 @@
 export type { Segment } from "../../utils/types";
 import type { Segment } from "../../utils/types";
+import { type ContentPart, formatKey, plainText } from "./content";
 import { isNumericWord, segmentNumber } from "./number";
 
 // A collision makes two segments fight over one element and one silently loses its
@@ -47,9 +48,17 @@ export function groupIntoWords(segments: Segment[]): {
     current = [];
   };
 
+  let key = "";
   for (const seg of segments) {
     if (seg.string === "\u00A0" || seg.string === "\n") flush();
-    else current.push(seg);
+    else if (seg.node) {
+      flush();
+      groups.push({ word: seg.string, segments: [seg] });
+    } else {
+      if (formatKey(seg.format) !== key) flush();
+      key = formatKey(seg.format);
+      current.push(seg);
+    }
   }
   flush();
 
@@ -74,7 +83,7 @@ function expandNumbers(segments: Segment[]): Segment[] {
   };
 
   for (const seg of segments) {
-    if (seg.string === "\u00A0" || seg.string === "\n") {
+    if (seg.string === "\u00A0" || seg.string === "\n" || seg.node) {
       flush();
       out.push(seg);
     } else {
@@ -91,34 +100,50 @@ export function segmentText(
   locale: Intl.LocalesArgument,
   numbers = true,
 ): Segment[] {
-  const hasNewlines = value.includes("\n");
-  const byWord = value.includes(" ") || hasNewlines;
+  return segmentContent([{ kind: "text", value }], locale, numbers);
+}
+
+export function segmentContent(
+  parts: ContentPart[],
+  locale: Intl.LocalesArgument,
+  numbers = true,
+): Segment[] {
+  const text = plainText(parts);
+  // An element is a word boundary, so any value holding one is segmented by word.
+  const byWord =
+    text.includes(" ") ||
+    text.includes("\n") ||
+    parts.some((part) => part.kind === "element");
   const alloc = createIdAllocator();
 
-  if (hasNewlines) {
-    // `offset` indexes the full value, so IDs derived from it stay unique across lines.
-    const lines = value.split("\n");
-    const allSegments: Segment[] = [];
-    let offset = 0;
+  const segments: Segment[] = [];
+  // `offset` indexes the whole value, so IDs derived from it stay unique across parts.
+  let offset = 0;
 
-    lines.forEach((line, lineIndex) => {
+  for (const part of parts) {
+    if (part.kind === "element") {
+      segments.push({ id: part.id, string: part.id, node: part.node });
+      offset += 1;
+      continue;
+    }
+
+    part.value.split("\n").forEach((line, lineIndex) => {
       if (lineIndex > 0) {
-        allSegments.push({
-          id: alloc.take(`newline-${offset}`),
-          string: "\n",
-        });
+        segments.push({ id: alloc.take(`newline-${offset}`), string: "\n" });
         offset += 1;
       }
       if (line.length > 0) {
-        allSegments.push(...segmentLine(line, locale, true, offset, alloc));
+        // Spaces included: a part is one run, so a space inside it is interior to
+        // that run — and a decoration drawn on it would otherwise break at every gap.
+        for (const seg of segmentLine(line, locale, byWord, offset, alloc)) {
+          if (part.format) seg.format = part.format;
+          segments.push(seg);
+        }
       }
       offset += line.length;
     });
-
-    return numbers ? expandNumbers(allSegments) : allSegments;
   }
 
-  const segments = segmentLine(value, locale, byWord, 0, alloc);
   return numbers ? expandNumbers(segments) : segments;
 }
 

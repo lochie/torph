@@ -188,3 +188,42 @@ describe("momentum through a target that moves mid-flight", () => {
     expect(slopeAt(carriedFn, 0)).toBeGreaterThan(slopeAt(baseFn, 0) * 2);
   });
 });
+
+describe("a value that wraps", () => {
+  it("leaves the width to the author and animates only the height", () => {
+    const stage_ = stage(120);
+    stage_.reported.width = 200;
+    stage_.reported.height = 60;
+
+    transitionContainerSize(
+      stage_.element,
+      120,
+      20,
+      400,
+      "linear",
+      undefined,
+      undefined,
+      false,
+    );
+
+    const animated = stage_.frames
+      .flat()
+      .flatMap((frame) => Object.keys(frame));
+    expect(animated).not.toContain("width");
+    expect(animated).toContain("height");
+  });
+
+  it("still animates both when it does not", () => {
+    const stage_ = stage(120);
+    stage_.reported.width = 200;
+    stage_.reported.height = 60;
+
+    transitionContainerSize(stage_.element, 120, 20, 400, "linear");
+
+    const animated = stage_.frames
+      .flat()
+      .flatMap((frame) => Object.keys(frame));
+    expect(animated).toContain("width");
+    expect(animated).toContain("height");
+  });
+});

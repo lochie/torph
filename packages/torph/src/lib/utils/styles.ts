@@ -4,6 +4,7 @@ import {
   ATTR_DEBUG,
   ATTR_SLOT,
   ATTR_SR,
+  ATTR_WRAP,
 } from "./constants";
 
 const TORPH_CSS = `
@@ -22,6 +23,15 @@ const TORPH_CSS = `
   will-change: opacity, transform;
   transform: none;
   opacity: 1;
+}
+
+/*
+ * Lines the value did not ask for. Every other rule holds: an item is still its own
+ * box, and still measured against the root — it just may now sit on a line of its
+ * own making, so the line count has to be counted rather than derived.
+ */
+[${ATTR_ROOT}][${ATTR_WRAP}] {
+  white-space: normal;
 }
 
 /*

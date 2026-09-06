@@ -1,0 +1,101 @@
+// One surface: the source lies over the rendered line rather than beside it.
+.field {
+  position: relative;
+  width: 100%;
+  cursor: text;
+}
+
+.prose {
+  font-family: var(--font-secondary);
+  font-size: 1.0625rem;
+  font-weight: 400;
+  line-height: 1.7;
+  color: #ffffff;
+  text-align: left;
+
+  strong {
+    font-weight: 650;
+  }
+}
+
+.inlineCode {
+  padding: 0.2em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.9375em;
+  color: #8ddb8c;
+  border-radius: 0.4em;
+  background: rgba(141, 219, 140, 0.14);
+}
+
+// Present for the keyboard, invisible to the eye: the rendered line is the only
+// thing on screen, and the caret below is drawn as part of the value.
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  color: transparent;
+  caret-color: transparent;
+  resize: none;
+  border: 0;
+  background: none;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 0.05em;
+  vertical-align: calc(0.35em - 0.525em);
+  background: currentColor;
+  animation: blink 1.05s steps(2, start) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+// Inline, not block: the root is one flow of segments, and a block box inside it
+// would break the line rather than sit on it. The line it lives on is the value's.
+.h1,
+.h2 {
+  display: inline;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.h1 {
+  font-size: 1.5em;
+}
+
+.h2 {
+  font-size: 1.25em;
+}
+
+.link {
+  color: #6cb6ff;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+
+.marker {
+  opacity: 0.45;
+}
+
+// A left rule on an inline box is drawn at the run's leading edge, which is where
+// the line it wraps begins.
+.quote {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--border);
+  opacity: 0.8;
+  font-style: italic;
+}

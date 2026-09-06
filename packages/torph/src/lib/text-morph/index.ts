@@ -1,12 +1,20 @@
 import type { TextMorphOptions } from "./types";
 import { BASE_DEFAULTS, type Segment } from "../utils/types";
 import { resolveEase } from "../utils/spring";
-import { segmentText } from "./utils/segment";
+import { segmentContent } from "./utils/segment";
+import {
+  type ContentPart,
+  contentSignature,
+  contentText,
+  flattenContent,
+} from "./utils/content";
 import {
   type Measures,
+  itemsOf,
   measure,
   computeDelta,
   findNearestAnchor,
+  pairElementSlots,
   resolveExitingAnchors,
 } from "../utils/flip";
 import {
@@ -15,7 +23,13 @@ import {
   layoutSize,
   transitionContainerSize,
 } from "../utils/animate";
-import { animateExit, animateEnterOrPersist } from "./utils/animate";
+import {
+  animateExit,
+  animateEnterOrPersist,
+  animateElementEnter,
+  animateElementExit,
+  animateFormatChange,
+} from "./utils/animate";
 import {
   animateNumberEnter,
   animateNumberExit,
@@ -39,7 +53,9 @@ import {
   ATTR_EXITING,
   ATTR_ID,
   ATTR_KIND,
+  ATTR_NODE,
   ATTR_SR,
+  ATTR_WRAP,
   EMPTY_ID,
 } from "../utils/constants";
 import {
@@ -65,7 +81,8 @@ export class TextMorph {
     ease?: string;
   } = {};
 
-  private data: HTMLElement | string;
+  /** The value's identity, not the value — see `contentSignature`. */
+  private data: string;
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
@@ -107,6 +124,7 @@ export class TextMorph {
     this.hasSetup = true;
 
     this.element.setAttribute(ATTR_ROOT, "");
+    if (this.options.wrap) this.element.setAttribute(ATTR_WRAP, "");
     if (this.options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     addStyles();
   }
@@ -119,6 +137,7 @@ export class TextMorph {
     this.srNode?.remove();
     this.srNode = null;
     this.element.removeAttribute(ATTR_ROOT);
+    this.element.removeAttribute(ATTR_WRAP);
     this.element.removeAttribute(ATTR_DEBUG);
     // An instance that never ran setup must not decrement the stylesheet refcount.
     if (this.hasSetup) {
@@ -133,46 +152,65 @@ export class TextMorph {
     );
   }
 
-  /** `cursorIndex` switches a single-number value from place matching to caret matching. */
-  update(value: HTMLElement | string | number, cursorIndex?: number) {
-    const formatted =
-      typeof value === "number"
-        ? value.toLocaleString(this.options.locale, {
-            minimumFractionDigits: this.options.decimals,
-            maximumFractionDigits: this.options.decimals,
-          })
-        : value;
+  /**
+   * `cursorIndex` switches a single-number value from place matching to caret matching.
+   * An element source is read, never kept — its children are adopted into the root.
+   */
+  update(
+    value: Element | string | number | ContentPart[],
+    cursorIndex?: number,
+  ) {
+    const parts = this.toParts(value);
 
-    if (formatted === this.data) return;
-    this.data = formatted;
+    const signature = contentSignature(parts);
+    if (signature === this.data) return;
+    this.data = signature;
 
     if (this.isDisabled()) {
-      if (typeof formatted === "string") {
-        // Plain text is already the whole accessible value.
-        this.srNode = null;
-        this.element.textContent = formatted;
-        // A later diff against these would animate from elements no longer in the DOM.
-        this.previousSegments = [];
-        this.isInitialRender = true;
-      }
+      this.renderStatic(parts);
       return;
     }
 
     this.setup();
 
-    if (this.data instanceof HTMLElement) {
-      // TODO: handle HTMLElement case
-      throw new Error("HTMLElement not yet supported");
-    } else {
-      if (this.options.onAnimationStart && !this.isInitialRender) {
-        this.options.onAnimationStart();
-      }
-      this.createTextGroup(this.data, this.element, cursorIndex);
+    if (this.options.onAnimationStart && !this.isInitialRender) {
+      this.options.onAnimationStart();
     }
+    this.createTextGroup(parts, this.element, cursorIndex);
+  }
+
+  private toParts(
+    value: Element | string | number | ContentPart[],
+  ): ContentPart[] {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "object") return flattenContent(value);
+    return [
+      {
+        kind: "text",
+        value:
+          typeof value === "number"
+            ? value.toLocaleString(this.options.locale, {
+                minimumFractionDigits: this.options.decimals,
+                maximumFractionDigits: this.options.decimals,
+              })
+            : value,
+      },
+    ];
+  }
+
+  /** The value as it stands, unsplit and unhidden — the whole of reduced motion. */
+  private renderStatic(parts: ContentPart[]) {
+    this.srNode = null;
+    this.element.replaceChildren(
+      ...parts.map((part) => (part.kind === "text" ? part.value : part.node)),
+    );
+    // A later diff against these would animate from elements no longer in the DOM.
+    this.previousSegments = [];
+    this.isInitialRender = true;
   }
 
   private createTextGroup(
-    value: string,
+    parts: ContentPart[],
     element: HTMLElement,
     cursorIndex?: number,
   ) {
@@ -180,7 +218,7 @@ export class TextMorph {
     const { width: oldWidth, height: oldHeight } = layoutSize(element);
     const numbers = this.options.numbers !== false;
 
-    this.syncAccessibleText(value);
+    this.syncAccessibleText(contentText(parts));
 
     let segments: Segment[];
     let splits: Map<string, Segment[]>;
@@ -188,14 +226,14 @@ export class TextMorph {
     if (this.previousSegments.length > 0) {
       const result = diffSegments(
         this.previousSegments,
-        value,
+        parts,
         this.options.locale!,
         { numbers, cursorIndex },
       );
       segments = result.segments;
       splits = result.splits;
     } else {
-      segments = segmentText(value, this.options.locale!, numbers);
+      segments = segmentContent(parts, this.options.locale!, numbers);
       splits = new Map();
     }
 
@@ -208,10 +246,8 @@ export class TextMorph {
     splitWordSpans(element, splits);
 
     this.prevMeasures = measure(this.element);
-    // The stand-in has no ID, so the exit path would claim it and animate it away.
-    const oldChildren = (Array.from(element.children) as HTMLElement[]).filter(
-      (child) => !child.hasAttribute(ATTR_SR),
-    );
+    // Items wherever they sit — a formatted run holds its own in a real wrapper.
+    const oldChildren = itemsOf(element);
     const newIds = new Set(segments.map((b) => b.id));
 
     const exiting = oldChildren.filter(
@@ -221,6 +257,10 @@ export class TextMorph {
     );
 
     const exitingSet = new Set(exiting);
+
+    // An element swapped for another is one slot changing hands, so each anchors to
+    // the other. A neighbouring word would drag it the width of a word instead.
+    const partners = this.pairElements(oldChildren, exitingSet, segments);
     const oldIds = oldChildren.map((c) => c.getAttribute(ATTR_ID) as string);
     const exitingAnchorId = resolveExitingAnchors(
       oldChildren,
@@ -230,15 +270,25 @@ export class TextMorph {
     );
 
     detachFromFlow(element, exiting);
-    reconcileChildren(element, oldChildren, newIds, segments);
+    const formatChanges = reconcileChildren(
+      element,
+      oldChildren,
+      newIds,
+      segments,
+    );
 
     this.currentMeasures = measure(this.element);
 
-    // One line's worth. The root is nowrap, so a line exists only where the value put one.
-    const lineCount = segments.reduce(
-      (lines, segment) => (segment.string === "\n" ? lines + 1 : lines),
-      1,
-    );
+    // One line's worth. Without wrapping a line exists only where the value put one;
+    // with it, only the boxes know, so they are asked.
+    const lineCount = this.options.wrap
+      ? new Set(
+          Object.values(this.currentMeasures).map((at) => Math.round(at.y)),
+        ).size || 1
+      : segments.reduce(
+          (lines, segment) => (segment.string === "\n" ? lines + 1 : lines),
+          1,
+        );
     const slideDistance = (element.offsetHeight || 20 * lineCount) / lineCount;
 
     // Measured at the old width, not derived — text-align does nothing to overflowing content.
@@ -247,7 +297,7 @@ export class TextMorph {
     const firstFrameMeasures = measure(this.element);
     element.style.width = "";
 
-    this.updateStyles(segments, firstFrameMeasures, slideDistance);
+    this.updateStyles(segments, firstFrameMeasures, slideDistance, partners);
 
     // A run with no survivors inside it recedes as one shape.
     const leavingRuns = this.isInitialRender
@@ -263,18 +313,32 @@ export class TextMorph {
     }
 
     exiting.forEach((child) => {
-      if (this.isInitialRender || child.getAttribute(ATTR_ID) === EMPTY_ID) {
+      const id = child.getAttribute(ATTR_ID) as string;
+      if (this.isInitialRender || id === EMPTY_ID) {
         child.remove();
         return;
       }
       if (leavingTogether.has(child)) return;
 
-      const anchorId = exitingAnchorId.get(child);
+      const partnerId = partners.get(id);
+      const anchorId = partnerId ?? exitingAnchorId.get(child);
       const { dx, dy } = anchorId
-        ? computeDelta(this.currentMeasures, this.prevMeasures, anchorId)
+        ? computeDelta(
+            this.currentMeasures,
+            this.prevMeasures,
+            partnerId ? id : anchorId,
+            anchorId,
+          )
         : { dx: 0, dy: 0 };
 
-      if (child.hasAttribute(ATTR_KIND)) {
+      if (child.hasAttribute(ATTR_NODE)) {
+        animateElementExit(child, {
+          dx,
+          dy,
+          duration: this.options.duration!,
+          ease: this.options.ease!,
+        });
+      } else if (child.hasAttribute(ATTR_KIND)) {
         animateNumberExit(child, {
           dx,
           dy,
@@ -292,6 +356,14 @@ export class TextMorph {
         });
       }
     });
+
+    for (const change of formatChanges) {
+      animateFormatChange(change.element, {
+        from: change.from,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+      });
+    }
 
     this.previousSegments = segments;
 
@@ -320,20 +392,45 @@ export class TextMorph {
         this.options.ease!,
         this.options.onAnimationComplete,
         this.options.onAnimationCancel,
+        !this.options.wrap,
       );
     }
+  }
+
+  /** Each side of an element swap, by ID, in both directions. */
+  private pairElements(
+    oldChildren: HTMLElement[],
+    exiting: Set<HTMLElement>,
+    segments: Segment[],
+  ): Map<string, string> {
+    // Everything an element sits among, so a swap is recognised by its position.
+    const settled = oldChildren.filter(
+      (child) =>
+        child.hasAttribute(ATTR_NODE) && !child.hasAttribute(ATTR_EXITING),
+    );
+    const leaving = new Set(
+      settled
+        .filter((child) => exiting.has(child))
+        .map((child) => child.getAttribute(ATTR_ID) as string),
+    );
+
+    return pairElementSlots(
+      settled.map((child) => child.getAttribute(ATTR_ID) as string),
+      segments.filter((segment) => segment.node).map((segment) => segment.id),
+      (id) => leaving.has(id),
+      (id) => !this.prevMeasures[id],
+    );
   }
 
   private updateStyles(
     segments: Segment[],
     firstFrameMeasures: Measures,
     slideDistance: number,
+    partners: Map<string, string>,
   ) {
     if (this.isInitialRender) return;
 
-    const children = (
-      Array.from(this.element.children) as HTMLElement[]
-    ).filter((child) => !child.hasAttribute(ATTR_SR));
+    const children = itemsOf(this.element);
     const segmentIds = segments.map((b) => b.id);
     const kinds = new Map(segments.map((b) => [b.id, b.kind]));
 
@@ -370,21 +467,35 @@ export class TextMorph {
       if (key === EMPTY_ID) return;
       const isNew = !this.prevMeasures[key];
 
+      const partnerId = isNew ? partners.get(key) : undefined;
       const deltaKey = isNew
-        ? findNearestAnchor(
+        ? (partnerId ??
+          findNearestAnchor(
             segments.findIndex((b) => b.id === key),
             segmentIds,
             persistentIds,
-          )
+          ))
         : key;
 
       const { dx: deltaX, dy: deltaY } = deltaKey
-        ? computeDelta(this.prevMeasures, firstFrameMeasures, deltaKey)
+        ? computeDelta(
+            this.prevMeasures,
+            firstFrameMeasures,
+            partnerId ? key : deltaKey,
+            deltaKey,
+          )
         : { dx: 0, dy: 0 };
 
       const kind = kinds.get(key);
 
-      if (kind && isNew) {
+      if (child.hasAttribute(ATTR_NODE) && isNew) {
+        animateElementEnter(child, {
+          deltaX,
+          deltaY,
+          duration: this.options.duration!,
+          ease: this.options.ease!,
+        });
+      } else if (kind && isNew) {
         animateNumberEnter(child, {
           deltaX,
           deltaY,
