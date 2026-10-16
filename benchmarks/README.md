@@ -9,11 +9,11 @@ Median of nine measurements per version, with two discarded warmups per version.
 
 | Scenario                                  |  Baseline | Optimized | Less processing time |
 | ----------------------------------------- | --------: | --------: | -------------------: |
-| Mount 60 components                       |  33.50 ms |  19.60 ms |                41.5% |
-| Update 60 settled components              | 303.01 ms |  38.49 ms |                87.3% |
-| Update 60 components on successive frames | 526.41 ms |  53.91 ms |                89.8% |
-| Reorder 180 words, 30 diffs               |  19.00 ms |  18.90 ms |                 0.5% |
-| Match 600 tokens, 30 LCS calls            |  52.50 ms |  42.30 ms |                19.4% |
+| Mount 60 components                       |  31.50 ms |  18.90 ms |                40.0% |
+| Update 60 settled components              | 296.15 ms |  38.45 ms |                87.0% |
+| Update 60 components on successive frames | 520.25 ms |  53.90 ms |                89.6% |
+| Reorder 180 words, 30 diffs               |  18.90 ms |  18.90 ms |                 0.0% |
+| Match 600 tokens, 30 LCS calls            |  51.80 ms |  41.80 ms |                19.3% |
 
 The update rows average eight batches within each measurement. These are workload-specific local results, not a claim about every page or frame rate. The word-reordering result is effectively unchanged. Even the optimized 60-component update exceeds a 16.7 ms frame budget on this machine.
 
@@ -44,7 +44,7 @@ pnpm test:browser
 pnpm benchmark --check
 ```
 
-The baseline is compiled directly from Git, so capturing it does not replace working-tree files. Both versions use the same bundler settings. Cached bundles stay in the ignored `benchmarks/.cache/` directory; reports are saved in this directory. `--check` fails if any of the three DOM workloads improves by less than 25%. Close unrelated workloads before measuring.
+The baseline is compiled directly from Git, so capturing it does not replace working-tree files. Both versions are built through the library's existing tsup installation with the same settings. Cached bundles stay in the ignored `benchmarks/.cache/` directory; reports are saved in this directory. `--check` fails if any of the three DOM workloads improves by less than 25%. Close unrelated workloads before measuring.
 
 Browser scripts default to installed Microsoft Edge. To use installed Chrome in PowerShell:
 
@@ -53,7 +53,7 @@ $env:BROWSER_CHANNEL = "chrome"
 pnpm benchmark --check
 ```
 
-`BENCH_SAMPLES` controls the number of measurements (default 9, minimum 3). Playwright and esbuild are pinned development dependencies; the published library still has no runtime dependencies.
+`BENCH_SAMPLES` controls the number of measurements (default 9, minimum 3). Playwright is a pinned development dependency. The benchmarks reuse the library's tsup dependency; the published library still has no runtime dependencies.
 
 ## Correctness
 

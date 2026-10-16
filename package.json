@@ -28,7 +28,6 @@
     "@changesets/cli": "^2.26.2",
     "@commitlint/cli": "^17.8.0",
     "@commitlint/config-conventional": "^17.8.0",
-    "esbuild": "0.27.7",
     "lint-staged": "^15.0.2",
     "playwright": "1.62.1"
   }

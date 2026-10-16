@@ -17,9 +17,6 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^17.8.0
         version: 17.8.0
-      esbuild:
-        specifier: 0.27.7
-        version: 0.27.7
       lint-staged:
         specifier: ^15.0.2
         version: 15.0.2
