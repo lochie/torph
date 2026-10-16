@@ -20,12 +20,16 @@
     "version": "changeset version && git add --all",
     "test": "pnpm --filter=torph test",
     "typecheck": "pnpm --filter=torph typecheck",
+    "benchmark": "node scripts/performance.mjs",
+    "test:browser": "node scripts/browser-regressions.mjs",
     "release": "pnpm run typecheck && pnpm run test && pnpm build && changeset publish && git push --follow-tags"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.2",
     "@commitlint/cli": "^17.8.0",
     "@commitlint/config-conventional": "^17.8.0",
-    "lint-staged": "^15.0.2"
+    "esbuild": "0.27.7",
+    "lint-staged": "^15.0.2",
+    "playwright": "1.62.1"
   }
 }

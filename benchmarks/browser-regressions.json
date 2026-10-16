@@ -1,0 +1,60 @@
+{
+  "browser": "155.0.4283.45",
+  "cases": [
+    {
+      "name": "tag replacement",
+      "steps": 3,
+      "largestDelta": 0
+    },
+    {
+      "name": "labels",
+      "steps": 3,
+      "largestDelta": 0
+    },
+    {
+      "name": "split words",
+      "steps": 4,
+      "largestDelta": 0
+    },
+    {
+      "name": "group replacement",
+      "steps": 3,
+      "largestDelta": 0
+    },
+    {
+      "name": "multiline",
+      "steps": 4,
+      "largestDelta": 0
+    },
+    {
+      "name": "empty",
+      "steps": 5,
+      "largestDelta": 0
+    },
+    {
+      "name": "caret",
+      "steps": 3,
+      "largestDelta": 0
+    },
+    {
+      "name": "center aligned",
+      "steps": 3,
+      "largestDelta": 0
+    },
+    {
+      "name": "right aligned",
+      "steps": 3,
+      "largestDelta": 0
+    },
+    {
+      "name": "transformed ancestor",
+      "steps": 3,
+      "largestDelta": 0
+    },
+    {
+      "name": "CSS width",
+      "steps": 3,
+      "largestDelta": 0
+    }
+  ]
+}

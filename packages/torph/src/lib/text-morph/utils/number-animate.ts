@@ -1,4 +1,5 @@
-import { parseTranslate, cancelAnimations } from "../../utils/animate";
+import { readAnimationState, cancelAnimations } from "../../utils/animate";
+import type { AnimationState } from "../../utils/animate";
 import { moverOf } from "../../utils/dom";
 
 // Shares of the morph, not fixed lengths. The outgoing share is larger because a
@@ -50,16 +51,24 @@ export function animateNumberEnter(
     deltaY: number;
     slideDistance: number;
     kind: "digit" | "symbol";
+    previous?: AnimationState;
+    moverPrevious?: AnimationState;
     duration: number;
     ease: string;
   },
 ) {
   const { deltaX, deltaY, slideDistance, kind, duration, ease } = options;
 
-  animateNumberPersist(slot, { deltaX, deltaY, duration, ease });
+  animateNumberPersist(slot, {
+    deltaX,
+    deltaY,
+    duration,
+    ease,
+    previous: options.previous,
+  });
 
   const mover = moverOf(slot);
-  const prev = cancelAnimations(mover);
+  const prev = cancelAnimations(mover, options.moverPrevious);
 
   // Digits arrive from above, separators from below, so each reads as its own event.
   const from = kind === "digit" ? -slideDistance : slideDistance;
@@ -84,13 +93,14 @@ export function animateNumberPersist(
   options: {
     deltaX: number;
     deltaY: number;
+    previous?: AnimationState;
     duration: number;
     ease: string;
   },
 ) {
   const { deltaX, deltaY, duration, ease } = options;
 
-  const { tx, ty } = parseTranslate(slot);
+  const { tx, ty } = options.previous ?? readAnimationState(slot);
   slot.getAnimations().forEach((a) => a.cancel());
 
   const startX = deltaX + tx;
