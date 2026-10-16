@@ -1,4 +1,8 @@
-import { cancelAnimations, fadeDuration } from "../../utils/animate";
+import type { AnimationState } from "../../utils/animate";
+import {
+  cancelAnimations,
+  fadeDuration,
+} from "../../utils/animate";
 
 export function animateExit(
   child: HTMLElement,
@@ -47,17 +51,20 @@ export function animateEnterOrPersist(
     deltaX: number;
     deltaY: number;
     isNew: boolean;
+    previous?: AnimationState;
     duration: number;
     ease: string;
   },
 ) {
   const { deltaX, deltaY, isNew, duration, ease } = options;
 
-  const prev = cancelAnimations(child);
+  const prev = cancelAnimations(child, options.previous);
 
   const startX = deltaX + prev.tx;
   const startY = deltaY + prev.ty;
   const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
+
+  if (!isNew && startX === 0 && startY === 0 && startOpacity === 1) return;
 
   child.animate(
     [

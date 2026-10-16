@@ -1,5 +1,6 @@
 .DS_Store
 node_modules
+benchmarks/.cache/
 apps/*/dist
 
 # This is a pnpm workspace — other lockfiles only ever drift.

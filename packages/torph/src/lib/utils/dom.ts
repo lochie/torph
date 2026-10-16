@@ -6,6 +6,7 @@ import {
   ATTR_ITEM,
   ATTR_KIND,
   ATTR_SLOT,
+  ATTR_SR,
 } from "./constants";
 
 /**
@@ -127,7 +128,8 @@ function syncSlot(element: HTMLElement, segment: Segment) {
     element.removeAttribute(ATTR_KIND);
     element.removeAttribute(ATTR_SLOT);
     // Also discards the inner span, if this element had one.
-    element.textContent = segment.string;
+    if (element.textContent !== segment.string)
+      element.textContent = segment.string;
     return;
   }
 
@@ -140,7 +142,7 @@ function syncSlot(element: HTMLElement, segment: Segment) {
     inner = document.createElement("span");
     element.appendChild(inner);
   }
-  inner.textContent = segment.string;
+  if (inner.textContent !== segment.string) inner.textContent = segment.string;
 }
 
 /** The box the slide is applied to — the nested span for a slot, else the element. */
@@ -150,6 +152,7 @@ export function moverOf(element: HTMLElement): HTMLElement {
     : element;
 }
 
+/** Keep survivors attached and retain their text nodes unless their content changes. */
 export function reconcileChildren(
   element: HTMLElement,
   oldChildren: HTMLElement[],
@@ -161,7 +164,6 @@ export function reconcileChildren(
     const id = child.getAttribute(ATTR_ID) as string;
     if (newIds.has(id) && !child.hasAttribute(ATTR_EXITING)) {
       reusable.set(id, child);
-      child.remove();
     }
   });
 
@@ -172,16 +174,32 @@ export function reconcileChildren(
     }
   });
 
+  let cursor = element.firstElementChild;
+  const place = (child: HTMLElement) => {
+    while (
+      cursor?.hasAttribute(ATTR_SR) ||
+      cursor?.hasAttribute(ATTR_EXITING)
+    ) {
+      cursor = cursor.nextElementSibling;
+    }
+    if (child === cursor) cursor = cursor.nextElementSibling;
+    else element.insertBefore(child, cursor);
+  };
+
   segments.forEach((segment) => {
     // Claimed once only: a shared ID would leave the earlier position empty.
     const existing = reusable.get(segment.id);
     if (existing) reusable.delete(segment.id);
+    if (existing && (segment.string === "\n") !== (existing.tagName === "BR")) {
+      if (existing === cursor) cursor = existing.nextElementSibling;
+      existing.remove();
+    }
 
     if (segment.string === "\n") {
       if (existing && existing.tagName === "BR") {
-        element.appendChild(existing);
+        place(existing);
       } else {
-        element.appendChild(createItem("br", segment.id));
+        place(createItem("br", segment.id));
       }
       return;
     }
@@ -190,11 +208,11 @@ export function reconcileChildren(
       // A group replacement leaves a shared origin behind; the next morph would use it.
       existing.style.transformOrigin = "";
       syncSlot(existing, segment);
-      element.appendChild(existing);
+      place(existing);
     } else {
       const span = createItem("span", segment.id);
       syncSlot(span, segment);
-      element.appendChild(span);
+      place(span);
     }
   });
 }

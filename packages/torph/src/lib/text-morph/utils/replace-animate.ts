@@ -1,4 +1,5 @@
 import { cancelAnimations } from "../../utils/animate";
+import type { AnimationState } from "../../utils/animate";
 
 // Where characters moving becomes one thing swapped for another. Past this, nothing
 // that survived is near enough to animate from, and the run smears.
@@ -52,12 +53,13 @@ export function animateGroupExit(
 export function animateGroupEnter(
   elements: HTMLElement[],
   options: { duration: number; ease: string },
+  previous?: Map<HTMLElement, AnimationState>,
 ) {
   const { duration, ease } = options;
   const origins = originsFor(elements);
 
   elements.forEach((element, i) => {
-    const prev = cancelAnimations(element);
+    const prev = cancelAnimations(element, previous?.get(element));
     element.style.transformOrigin = origins[i]!;
 
     element.animate(
