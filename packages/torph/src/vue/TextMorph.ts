@@ -34,6 +34,7 @@ export default defineComponent({
     },
     scale: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.scale },
     numbers: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.numbers },
+    steady: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.steady },
     debug: { type: Boolean, default: undefined },
     disabled: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.disabled },
     respectReducedMotion: {
@@ -60,6 +61,7 @@ export default defineComponent({
         debug: props.debug,
         scale: props.scale,
         numbers: props.numbers,
+        steady: props.steady,
         disabled: props.disabled,
         respectReducedMotion: props.respectReducedMotion,
       }),
@@ -74,6 +76,7 @@ export default defineComponent({
           debug: props.debug,
           scale: props.scale,
           numbers: props.numbers,
+          steady: props.steady,
           disabled: props.disabled,
           respectReducedMotion: props.respectReducedMotion,
           onAnimationStart: props.onAnimationStart as (() => void) | undefined,

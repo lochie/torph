@@ -4,6 +4,7 @@ import {
   ATTR_DEBUG,
   ATTR_SLOT,
   ATTR_SR,
+  ATTR_STAGE,
 } from "./constants";
 
 const TORPH_CSS = `
@@ -42,6 +43,19 @@ const TORPH_CSS = `
   white-space: pre;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/*
+ * A steady morph's next value, laid out where it will stand so its boxes can be
+ * read while the old one is still the one drawn. A block, so the root is already
+ * as wide as the wider of the two; no height, so it lies over the old value
+ * instead of under it.
+ */
+[${ATTR_STAGE}] {
+  display: block;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /*

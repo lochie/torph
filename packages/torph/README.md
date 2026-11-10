@@ -218,6 +218,13 @@ All components accept the following props/options:
 - `numbers?: boolean` - Morph numeric words by place value, sliding digits along
   the block axis. Off falls back to the character-level text morph (default:
   `true`)
+- `steady?: boolean` - Hold the box instead of tweening it: it takes the larger
+  of the two sizes at once and the new one when the morph settles, so nothing
+  beside the text slides. Only `transform` and `opacity` animate, on the one
+  duration and ease, and geometry is read after the frame's own layout rather
+  than forcing one. The text sits in the held box by the root's own
+  `text-align`, so give the root the alignment its container places it with —
+  `text-align: center` when flex or grid centres it (default: `false`)
 - `decimals?: number` - Fraction digits to format a numeric value to. Applies
   when the value is a number (React children, or `update(number)`); ignored for
   strings

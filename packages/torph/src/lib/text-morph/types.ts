@@ -7,5 +7,7 @@ export interface TextMorphOptions extends BaseMorphOptions {
   numbers?: boolean;
   /** Fraction digits for a numeric value. Ignored for strings. */
   decimals?: number;
+  /** Hold the box rather than tween it: the larger of the two sizes, then the new one. */
+  steady?: boolean;
   onAnimationCancel?: () => void;
 }

@@ -1,4 +1,8 @@
-import { cancelAnimations } from "../../utils/animate";
+import {
+  type AnimationState,
+  cancelAnimations,
+  fadeTiming,
+} from "../../utils/animate";
 
 // Where characters moving becomes one thing swapped for another. Past this, nothing
 // that survived is near enough to animate from, and the run smears.
@@ -11,7 +15,7 @@ const EXIT_FADE = 0.45;
 const ENTER_FADE = 0.35;
 
 /** A run's centre, restated per member — `transform-origin` is relative to each box. */
-function originsFor(elements: HTMLElement[]): string[] {
+export function originsFor(elements: HTMLElement[]): string[] {
   const rects = elements.map((element) => element.getBoundingClientRect());
   const left = Math.min(...rects.map((r) => r.left));
   const right = Math.max(...rects.map((r) => r.right));
@@ -26,13 +30,18 @@ function originsFor(elements: HTMLElement[]): string[] {
 /** Collapses a wholly-replaced run towards its own centre and fades it out. */
 export function animateGroupExit(
   elements: HTMLElement[],
-  options: { duration: number; ease: string },
+  options: {
+    duration: number;
+    ease: string;
+    steady?: boolean;
+    origins?: string[];
+  },
 ) {
-  const { duration, ease } = options;
-  const origins = originsFor(elements);
+  const { duration, ease, steady } = options;
+  const origins = options.origins ?? originsFor(elements);
 
+  // Nothing to cancel: leaving the flow already stopped whatever these were riding.
   elements.forEach((element, i) => {
-    element.getAnimations().forEach((animation) => animation.cancel());
     element.style.transformOrigin = origins[i]!;
 
     element.animate(
@@ -42,7 +51,7 @@ export function animateGroupExit(
 
     const fade = element.animate(
       { opacity: 0, offset: 1 },
-      { duration: duration * EXIT_FADE, easing: "linear", fill: "both" },
+      fadeTiming(duration, ease, steady, EXIT_FADE),
     );
     fade.onfinish = () => element.remove();
   });
@@ -51,13 +60,19 @@ export function animateGroupExit(
 /** The same gesture in reverse, for the run arriving in its place. */
 export function animateGroupEnter(
   elements: HTMLElement[],
-  options: { duration: number; ease: string },
+  options: {
+    duration: number;
+    ease: string;
+    steady?: boolean;
+    origins?: string[];
+    previous?: AnimationState[];
+  },
 ) {
-  const { duration, ease } = options;
-  const origins = originsFor(elements);
+  const { duration, ease, steady } = options;
+  const origins = options.origins ?? originsFor(elements);
 
   elements.forEach((element, i) => {
-    const prev = cancelAnimations(element);
+    const prev = cancelAnimations(element, options.previous?.[i]);
     element.style.transformOrigin = origins[i]!;
 
     element.animate(
@@ -66,11 +81,10 @@ export function animateGroupEnter(
     );
 
     const startOpacity = prev.opacity >= 1 ? 0 : prev.opacity;
-    element.animate([{ opacity: startOpacity }, { opacity: 1 }], {
-      duration: duration * ENTER_FADE,
-      easing: "linear",
-      fill: "both",
-    });
+    element.animate(
+      [{ opacity: startOpacity }, { opacity: 1 }],
+      fadeTiming(duration, ease, steady, ENTER_FADE),
+    );
   });
 }
 

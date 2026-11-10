@@ -7,6 +7,23 @@ export function fadeDuration(duration: number, fraction: number): number {
   return duration * fraction;
 }
 
+// A fade keeps a clock of its own, a share of the morph — steady, it rides the morph's.
+export function fadeTiming(
+  duration: number,
+  ease: string,
+  steady: boolean | undefined,
+  share: number,
+  delay = 0,
+): KeyframeAnimationOptions {
+  if (steady) return { duration, easing: ease, fill: "both" };
+  return {
+    duration: fadeDuration(duration, share),
+    delay: fadeDuration(duration, delay),
+    easing: "linear",
+    fill: "both",
+  };
+}
+
 export function parseTranslate(element: HTMLElement): {
   tx: number;
   ty: number;
@@ -36,15 +53,34 @@ export function layoutSize(element: HTMLElement): {
   return { width, height };
 }
 
-export function cancelAnimations(element: HTMLElement): {
+/** Where a box had got to, and what was taking it there. */
+export type AnimationState = {
   tx: number;
   ty: number;
   opacity: number;
-} {
+  animations: Animation[];
+};
+
+export const AT_REST: AnimationState = {
+  tx: 0,
+  ty: 0,
+  opacity: 1,
+  animations: [],
+};
+
+export function readAnimationState(element: HTMLElement): AnimationState {
   const { tx, ty } = parseTranslate(element);
   const opacity = Number(getComputedStyle(element).opacity) || 1;
-  element.getAnimations().forEach((a) => a.cancel());
-  return { tx, ty, opacity };
+  return { tx, ty, opacity, animations: element.getAnimations() };
+}
+
+// Handed a state read earlier, this only writes — a steady morph reads nothing once it has written.
+export function cancelAnimations(
+  element: HTMLElement,
+  previous = readAnimationState(element),
+): AnimationState {
+  previous.animations.forEach((a) => a.cancel());
+  return previous;
 }
 
 type PendingTransition = {
@@ -325,6 +361,16 @@ export function transitionContainerSize(
   });
 }
 
+// Pinned, not animated — there is no motion to hand on.
+const held = (value: number): AxisState => ({
+  from: value,
+  to: value,
+  easing: "linear",
+  curve: null,
+  elapsed: null,
+  velocity: 0,
+});
+
 // An emptied value has nothing left to size to, so the container would collapse and
 // drag the exiting text with it when centred.
 export function holdContainerSize(
@@ -347,17 +393,42 @@ export function holdContainerSize(
     onComplete?.();
   }, duration);
 
-  // Pinned, not animated — there is no motion to hand on.
-  const held = (value: number): AxisState => ({
-    from: value,
-    to: value,
-    easing: "linear",
-    curve: null,
-    elapsed: null,
-    velocity: 0,
-  });
   pending.set(element, {
     stop: () => clearTimeout(timer),
+    onCancel,
+    snapshot: () => ({ width: held(width), height: held(height) }),
+  });
+}
+
+// A floor at the drawn size makes the box the larger of the two values with nothing tweened or measured.
+export function floorContainerSize(
+  element: HTMLElement,
+  width: number,
+  height: number,
+  duration: number,
+  onComplete?: () => void,
+  onCancel?: () => void,
+) {
+  abortContainerTransition(element);
+
+  const lift = () => {
+    element.style.minWidth = "";
+    element.style.minHeight = "";
+  };
+  element.style.minWidth = `${width}px`;
+  element.style.minHeight = `${height}px`;
+
+  const timer = setTimeout(() => {
+    pending.delete(element);
+    lift();
+    onComplete?.();
+  }, duration);
+
+  pending.set(element, {
+    stop: () => {
+      clearTimeout(timer);
+      lift();
+    },
     onCancel,
     snapshot: () => ({ width: held(width), height: held(height) }),
   });

@@ -1,5 +1,10 @@
 import type { Segment } from "./types";
-import { layoutSize, parseTranslate } from "./animate";
+import {
+  type AnimationState,
+  cancelAnimations,
+  layoutSize,
+  readAnimationState,
+} from "./animate";
 import {
   ATTR_EXITING,
   ATTR_ID,
@@ -38,36 +43,39 @@ function createItem(tagName: "span" | "br", id: string): HTMLElement {
   return element;
 }
 
+/** The box a child is drawn in, as the `left`/`top`/`width`/`height` that keep it there. */
+export type FlowSnapshot = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  state: AnimationState;
+};
+
+export function snapshotFlow(
+  container: HTMLElement,
+  child: HTMLElement,
+  state = readAnimationState(child),
+): FlowSnapshot {
+  const { x, y } = layoutOffset(child, container);
+  const { width, height } = layoutSize(child);
+  // Where the box had got to, so an interrupt does not jump. Scale is dropped with
+  // the animation, as it is everywhere else a running transform is picked up.
+  return { left: x + state.tx, top: y + state.ty, width, height, state };
+}
+
+/** `read` holds the snapshots taken ahead of time, when nothing may be read by now. */
 export function detachFromFlow(
   container: HTMLElement,
   elements: HTMLElement[],
+  read?: Map<HTMLElement, FlowSnapshot>,
 ) {
-  const snapshots = new Map<
-    HTMLElement,
-    {
-      left: number;
-      top: number;
-      width: number;
-      height: number;
-      opacity: number;
-    }
-  >();
+  const snapshots = new Map<HTMLElement, FlowSnapshot>();
   for (const child of elements) {
     if (child.tagName === "BR") continue;
-    const { x, y } = layoutOffset(child, container);
-    // Where the box had got to, so an interrupt does not jump. Scale is dropped with
-    // the animation, as it is everywhere else a running transform is picked up.
-    const { tx, ty } = parseTranslate(child);
-    const { width, height } = layoutSize(child);
-    const opacity = Number(getComputedStyle(child).opacity) || 1;
-    child.getAnimations().forEach((a) => a.cancel());
-    snapshots.set(child, {
-      left: x + tx,
-      top: y + ty,
-      width,
-      height,
-      opacity,
-    });
+    const snapshot = read?.get(child) ?? snapshotFlow(container, child);
+    cancelAnimations(child, snapshot.state);
+    snapshots.set(child, snapshot);
   }
 
   // BRs can't be animated, so they leave the flow before reconciliation.
@@ -87,7 +95,7 @@ export function detachFromFlow(
     child.style.top = `${snap.top}px`;
     child.style.width = `${snap.width}px`;
     child.style.height = `${snap.height}px`;
-    child.style.opacity = String(snap.opacity);
+    child.style.opacity = String(snap.state.opacity);
   });
 }
 

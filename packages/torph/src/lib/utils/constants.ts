@@ -5,5 +5,6 @@ export const ATTR_KIND = "torph-kind";
 export const ATTR_SLOT = "torph-slot";
 export const ATTR_EXITING = "torph-exiting";
 export const ATTR_SR = "torph-sr"; // Not a segment — every walk of root.children skips it.
+export const ATTR_STAGE = "torph-stage"; // A steady morph's next value, laid out unseen — not a segment either.
 export const ATTR_DEBUG = "torph-debug";
 export const EMPTY_ID = "empty";

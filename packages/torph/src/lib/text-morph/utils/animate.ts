@@ -1,4 +1,8 @@
-import { cancelAnimations, fadeDuration } from "../../utils/animate";
+import {
+  type AnimationState,
+  cancelAnimations,
+  fadeTiming,
+} from "../../utils/animate";
 
 export function animateExit(
   child: HTMLElement,
@@ -8,9 +12,10 @@ export function animateExit(
     duration: number;
     ease: string;
     scale: boolean;
+    steady?: boolean;
   },
 ) {
-  const { dx, dy, duration, ease, scale } = options;
+  const { dx, dy, duration, ease, scale, steady } = options;
 
   child.animate(
     {
@@ -31,11 +36,7 @@ export function animateExit(
       opacity: 0,
       offset: 1,
     },
-    {
-      duration: fadeDuration(duration, 0.25),
-      easing: "linear",
-      fill: "both",
-    },
+    fadeTiming(duration, ease, steady, 0.25),
   );
 
   fadeAnimation.onfinish = () => child.remove();
@@ -49,11 +50,13 @@ export function animateEnterOrPersist(
     isNew: boolean;
     duration: number;
     ease: string;
+    steady?: boolean;
+    previous?: AnimationState;
   },
 ) {
-  const { deltaX, deltaY, isNew, duration, ease } = options;
+  const { deltaX, deltaY, isNew, duration, ease, steady } = options;
 
-  const prev = cancelAnimations(child);
+  const prev = cancelAnimations(child, options.previous);
 
   const startX = deltaX + prev.tx;
   const startY = deltaY + prev.ty;
@@ -74,11 +77,9 @@ export function animateEnterOrPersist(
   );
 
   if (startOpacity < 1) {
-    child.animate([{ opacity: startOpacity }, { opacity: 1 }], {
-      duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
-      delay: isNew ? fadeDuration(duration, 0.25) : 0,
-      easing: "linear",
-      fill: "both",
-    });
+    child.animate(
+      [{ opacity: startOpacity }, { opacity: 1 }],
+      fadeTiming(duration, ease, steady, isNew ? 0.5 : 0.25, isNew ? 0.25 : 0),
+    );
   }
 }

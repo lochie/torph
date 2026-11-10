@@ -1,18 +1,23 @@
-import { ATTR_EXITING, ATTR_ID, ATTR_SR } from "./constants";
+import { ATTR_EXITING, ATTR_ID, ATTR_SR, ATTR_STAGE } from "./constants";
 import { parseTranslate } from "./animate";
 
 export type Measures = {
   [key: string]: { x: number; y: number };
 };
 
-export function measure(element: HTMLElement): Measures {
+/** `origin` is the root when `element` is a stage, whose children are placed for it. */
+export function measure(
+  element: HTMLElement,
+  origin: HTMLElement = element,
+): Measures {
   const children = Array.from(element.children) as HTMLElement[];
   const measures: Measures = {};
-  const rootRect = element.getBoundingClientRect();
+  const rootRect = origin.getBoundingClientRect();
 
   children.forEach((child, index) => {
     if (child.hasAttribute(ATTR_EXITING)) return;
     if (child.hasAttribute(ATTR_SR)) return;
+    if (child.hasAttribute(ATTR_STAGE)) return;
     if (child.tagName === "BR") return;
     const key = child.getAttribute(ATTR_ID) || `child-${index}`;
     const rect = child.getBoundingClientRect();

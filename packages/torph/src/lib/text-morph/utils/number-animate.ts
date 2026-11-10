@@ -1,4 +1,8 @@
-import { parseTranslate, cancelAnimations } from "../../utils/animate";
+import {
+  type AnimationState,
+  cancelAnimations,
+  fadeTiming,
+} from "../../utils/animate";
 import { moverOf } from "../../utils/dom";
 
 // Shares of the morph, not fixed lengths. The outgoing share is larger because a
@@ -19,9 +23,10 @@ export function animateNumberExit(
     slideDistance: number;
     duration: number;
     ease: string;
+    steady?: boolean;
   },
 ) {
-  const { dx, dy, slideDistance, duration, ease } = options;
+  const { dx, dy, slideDistance, duration, ease, steady } = options;
   const mover = moverOf(slot);
 
   slot.animate(
@@ -36,7 +41,7 @@ export function animateNumberExit(
 
   const fadeAnimation = mover.animate(
     { opacity: 0, offset: 1 },
-    { duration: duration * EXIT_FADE, easing: "linear", fill: "both" },
+    fadeTiming(duration, ease, steady, EXIT_FADE),
   );
 
   // The slot goes, not just its contents.
@@ -52,14 +57,24 @@ export function animateNumberEnter(
     kind: "digit" | "symbol";
     duration: number;
     ease: string;
+    steady?: boolean;
+    previous?: AnimationState;
+    moverPrevious?: AnimationState;
   },
 ) {
-  const { deltaX, deltaY, slideDistance, kind, duration, ease } = options;
+  const { deltaX, deltaY, slideDistance, kind, duration, ease, steady } =
+    options;
 
-  animateNumberPersist(slot, { deltaX, deltaY, duration, ease });
+  animateNumberPersist(slot, {
+    deltaX,
+    deltaY,
+    duration,
+    ease,
+    previous: options.previous,
+  });
 
   const mover = moverOf(slot);
-  const prev = cancelAnimations(mover);
+  const prev = cancelAnimations(mover, options.moverPrevious);
 
   // Digits arrive from above, separators from below, so each reads as its own event.
   const from = kind === "digit" ? -slideDistance : slideDistance;
@@ -71,11 +86,10 @@ export function animateNumberEnter(
 
   const startOpacity = prev.opacity >= 1 ? 0 : prev.opacity;
   if (startOpacity < 1) {
-    mover.animate([{ opacity: startOpacity }, { opacity: 1 }], {
-      duration: duration * ENTER_FADE,
-      easing: "linear",
-      fill: "both",
-    });
+    mover.animate(
+      [{ opacity: startOpacity }, { opacity: 1 }],
+      fadeTiming(duration, ease, steady, ENTER_FADE),
+    );
   }
 }
 
@@ -86,12 +100,12 @@ export function animateNumberPersist(
     deltaY: number;
     duration: number;
     ease: string;
+    previous?: AnimationState;
   },
 ) {
   const { deltaX, deltaY, duration, ease } = options;
 
-  const { tx, ty } = parseTranslate(slot);
-  slot.getAnimations().forEach((a) => a.cancel());
+  const { tx, ty } = cancelAnimations(slot, options.previous);
 
   const startX = deltaX + tx;
   const startY = deltaY + ty;

@@ -40,6 +40,7 @@ export class MorphController {
       scale: options.scale,
       numbers: options.numbers,
       decimals: options.decimals,
+      steady: options.steady,
       debug: options.debug,
       disabled: options.disabled,
       respectReducedMotion: options.respectReducedMotion,
