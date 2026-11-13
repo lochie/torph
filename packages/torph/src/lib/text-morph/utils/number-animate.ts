@@ -4,14 +4,47 @@ import { moverOf } from "../../utils/dom";
 import { ATTR_SLIDING } from "../../utils/constants";
 
 const slides = new WeakMap<HTMLElement, Animation>();
+const reveals = new WeakMap<HTMLElement, Animation>();
 
-/** Clears the clip only when the slide that set it ends; a newer one leaves it on. */
-function trackSlide(slot: HTMLElement, slide: Animation) {
+// Past a glyph's overflow at line-height 0.5 plus the fade band, so the edges clear it.
+const REVEAL = "0.75em";
+const SHUT: Keyframe = {
+  clipPath: "inset(0px -100vw)",
+  maskSize: "100% 100%",
+  maskPosition: "0px 0px",
+};
+const OPEN: Keyframe = {
+  clipPath: `inset(-${REVEAL} -100vw)`,
+  maskSize: `100% calc(100% + 2 * ${REVEAL})`,
+  maskPosition: `0px -${REVEAL}`,
+};
+
+/**
+ * Clips the slot for the length of a slide, widening the clip and fade off the
+ * glyph as the digit lands (or onto it as it leaves) so neither end pops.
+ */
+function trackSlide(
+  slot: HTMLElement,
+  slide: Animation,
+  arriving: boolean,
+  timing: { duration: number; ease: string },
+) {
   slot.setAttribute(ATTR_SLIDING, "");
   slides.set(slot, slide);
+  reveals.get(slot)?.cancel();
+  reveals.set(
+    slot,
+    slot.animate(arriving ? [SHUT, OPEN] : [OPEN, SHUT], {
+      duration: timing.duration,
+      easing: timing.ease,
+      fill: "both",
+    }),
+  );
   const settle = () => {
     if (slides.get(slot) !== slide) return;
     slides.delete(slot);
+    reveals.get(slot)?.cancel();
+    reveals.delete(slot);
     slot.removeAttribute(ATTR_SLIDING);
   };
   slide.addEventListener("finish", settle);
@@ -52,6 +85,8 @@ export function animateNumberExit(
       { transform: `translate(0px, ${slideDistance}px)`, offset: 1 },
       { duration, easing: ease, fill: "both" },
     ),
+    false,
+    { duration, ease },
   );
 
   const fadeAnimation = mover.animate(
@@ -98,6 +133,8 @@ export function animateNumberEnter(
       { transform: `translate(0px, ${prev.ty + from}px)`, offset: 0 },
       { duration, easing: ease, fill: "both" },
     ),
+    true,
+    { duration, ease },
   );
 
   const startOpacity = prev.opacity >= 1 ? 0 : prev.opacity;
@@ -123,7 +160,8 @@ export function animateNumberPersist(
   const { deltaX, deltaY, duration, ease } = options;
 
   const { tx, ty } = options.previous ?? readAnimationState(slot);
-  slot.getAnimations().forEach((a) => a.cancel());
+  // The reveal belongs to the slide inside, which a re-placement leaves running.
+  slot.getAnimations().forEach((a) => a !== reveals.get(slot) && a.cancel());
 
   const startX = deltaX + tx;
   const startY = deltaY + ty;

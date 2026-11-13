@@ -332,6 +332,23 @@ describe("the clip a slide happens behind", () => {
     )!;
     expect(arrived.hasAttribute(ATTR_SLIDING)).toBe(true);
 
+    // The clip widens off the glyph with the slide rather than vanishing at its end.
+    const reveal = () =>
+      arrived
+        .getAnimations()
+        .find((a) =>
+          (a.effect as KeyframeEffect).getKeyframes().some((k) => k.clipPath),
+        );
+    const opening = reveal();
+    expect(opening).toBeDefined();
+    const frames = (opening!.effect as KeyframeEffect).getKeyframes();
+    expect(frames[0]!.clipPath).toBe("inset(0px -100vw)");
+    expect(frames.at(-1)!.clipPath).toBe("inset(-0.75em -100vw)");
+
+    // A morph that only moves the digit leaves its reveal running.
+    morph.update("$16");
+    expect(reveal()).toBe(opening);
+
     // happy-dom's `getAnimations({ subtree: true })` comes back empty.
     element
       .querySelectorAll("*")
