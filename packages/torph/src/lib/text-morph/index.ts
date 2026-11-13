@@ -22,7 +22,8 @@ import {
   animateNumberEnter,
   animateNumberExit,
   animateNumberPersist,
-  slotOverflow,
+  slotClip,
+  NO_CLIP,
 } from "./utils/number-animate";
 import {
   detachFromFlow,
@@ -45,8 +46,8 @@ import {
   ATTR_KIND,
   ATTR_SR,
   EMPTY_ID,
-  VAR_CLIP_TOP,
-  VAR_CLIP_BOTTOM,
+  VAR_INK_TOP,
+  VAR_INK_BOTTOM,
 } from "../utils/constants";
 import {
   type ReducedMotionState,
@@ -131,8 +132,8 @@ export class TextMorph {
     // Its own rules keep it out of sight, and those go with the last instance.
     this.srNode?.remove();
     this.srNode = null;
-    this.element.style.removeProperty(VAR_CLIP_TOP);
-    this.element.style.removeProperty(VAR_CLIP_BOTTOM);
+    this.element.style.removeProperty(VAR_INK_TOP);
+    this.element.style.removeProperty(VAR_INK_BOTTOM);
     this.element.removeAttribute(ATTR_ROOT);
     this.element.removeAttribute(ATTR_DEBUG);
     // An instance that never ran setup must not decrement the stylesheet refcount.
@@ -192,9 +193,13 @@ export class TextMorph {
     cursorIndex?: number,
   ) {
     // Before the running transition is aborted below, so an interrupt carries on from screen.
-    const oldSize = this.isInitialRender ? null : layoutSize(element);
+    const style = this.isInitialRender ? null : getComputedStyle(element);
+    const oldSize = style && layoutSize(element, style);
     // Read before any write, and applied before the "before" measure, so both FLIP measures share one padding.
-    const overflow = oldSize ? slotOverflow(element) : null;
+    const hasNumbers =
+      this.options.numbers !== false &&
+      (/\d/.test(value) || this.previousSegments.some((s) => s.kind));
+    const clip = style && (hasNumbers ? slotClip(style) : NO_CLIP);
     const numbers = this.options.numbers !== false;
 
     this.syncAccessibleText(value);
@@ -237,10 +242,12 @@ export class TextMorph {
     }
 
     const { width: oldWidth, height: oldHeight } = oldSize;
-    const clip = overflow!;
-    // Whole pixels: detaching an exit reads offsetTop, which rounds a fractional box edge.
-    setStyleVar(element, VAR_CLIP_TOP, `${Math.ceil(clip.top)}px`);
-    setStyleVar(element, VAR_CLIP_BOTTOM, `${Math.ceil(clip.bottom)}px`);
+    const { inkTop, inkBottom, top: clipTop, bottom: clipBottom } = clip!;
+    // Only a new font changes these, so most morphs write nothing.
+    if (inkTop !== null && inkBottom !== null) {
+      setStyleVar(element, VAR_INK_TOP, `${inkTop.toFixed(4)}em`);
+      setStyleVar(element, VAR_INK_BOTTOM, `${inkBottom.toFixed(4)}em`);
+    }
     splitWordSpans(element, splits);
     this.prevMeasures = measure(this.element);
     // The stand-in has no ID, so the exit path would claim it and animate it away.
@@ -278,8 +285,7 @@ export class TextMorph {
     );
     const lineHeight = (element.offsetHeight || 20 * lineCount) / lineCount;
     // A digit has to clear the whole clip, which can outgrow a tight line.
-    const slideDistance =
-      lineHeight + Math.ceil(clip.top) + Math.ceil(clip.bottom);
+    const slideDistance = lineHeight + clipTop + clipBottom;
 
     // Measured at the old width, not derived — text-align does nothing to overflowing content.
     element.style.width = `${oldWidth}px`;

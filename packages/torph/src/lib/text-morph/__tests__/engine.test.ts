@@ -319,31 +319,35 @@ describe("the clip a slide happens behind", () => {
     expect(element.style.getPropertyValue("mask-image")).toBe("");
   });
 
-  it("clips to the line, or past it to the engine's measured ink", () => {
+  it("sizes the clip in CSS, so a line-height change needs no morph", () => {
     const { morph } = mount();
     morph.update("$5");
 
     const css = document.querySelector("style[data-torph]")!.textContent!;
-    expect(css).toContain("--torph-top: var(--torph-clip-top, 0px);");
-    // Before the first morph measures, a guess keeps a tight line from shaving.
+    // The line-height is applied by the stylesheet; the engine only supplies the ink, in em.
     expect(css).toContain(
-      "--torph-top: var(--torph-clip-top, var(--torph-guess));",
+      "var(--torph-fade, 0.15em) + var(--torph-ink-top, 0.6em) - 0.5lh",
+    );
+    expect(css).toContain(
+      "var(--torph-fade, 0.15em) + var(--torph-ink-bottom, 0.6em) - 0.5lh",
     );
     // The box itself grows, since the mask only acts inside the border box.
     expect(css).toContain(
       "padding-block: var(--torph-top) var(--torph-bottom);",
     );
-    expect(css).toContain(
-      "margin-block: calc(-1 * var(--torph-top)) calc(-1 * var(--torph-bottom));",
-    );
+    // Registering any custom property roughly doubles each morph's restyle in Chrome.
+    expect(css).not.toContain("@property");
+    // Nothing the stylesheet explains ships inside it.
+    expect(css).not.toContain("/*");
   });
 
-  it("grows the clip only as far as the ink, and slides the digit past all of it", () => {
+  it("hands the stylesheet the ink and slides the digit past the clip it draws", () => {
     const { element, morph } = mount();
     element.style.fontSize = "20px";
+    element.style.lineHeight = "20px";
     morph.update("999");
 
-    // A 20px line holding a 20px content area whose digits reach 2px above it.
+    // A 20px content area on a 20px line, its digits reaching 2px above it.
     const getContext = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = (() => ({
       font: "",
@@ -354,17 +358,23 @@ describe("the clip a slide happens behind", () => {
         actualBoundingBoxDescent: 2,
       }),
     })) as unknown as typeof getContext;
+    const supports = CSS.supports;
+    CSS.supports = () => true;
     const { calls, restore } = recordAnimations();
     try {
       morph.update("1,000");
     } finally {
       restore();
       HTMLCanvasElement.prototype.getContext = getContext;
+      CSS.supports = supports;
     }
 
-    // Fade 3px (0.15em): 2px of overhang plus 3px above, 1px short of 3px below.
-    expect(element.style.getPropertyValue("--torph-clip-top")).toBe("5px");
-    expect(element.style.getPropertyValue("--torph-clip-bottom")).toBe("1px");
+    // From the line's centre, 6px above the baseline: 12px up, 8px down.
+    expect(element.style.getPropertyValue("--torph-ink-top")).toBe("0.6000em");
+    expect(element.style.getPropertyValue("--torph-ink-bottom")).toBe(
+      "0.4000em",
+    );
+    // Fade 3px past half a 20px line: 5px above, 1px below.
     expect(slide(calls, live(element)[0]!.id)).toBe(slideFrom(-(SLIDE + 6)));
   });
 

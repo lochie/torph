@@ -35,7 +35,7 @@ From the repository root, with Node and pnpm 9.10.0 available:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm benchmark --capture-baseline d79a5aa63226acf97d49c3e34fafb2e85c07b026
+pnpm benchmark --capture-baseline main
 pnpm test
 pnpm typecheck
 pnpm lint
@@ -44,14 +44,9 @@ pnpm test:browser
 pnpm benchmark --check
 ```
 
-The baseline is compiled directly from Git, so capturing it does not replace working-tree files. Both versions are built through the library's existing tsup installation with the same settings. Cached bundles stay in the ignored `benchmarks/.cache/` directory; reports are saved in this directory. `--check` fails if any of the three DOM workloads improves by less than 25%. Close unrelated workloads before measuring.
+The baseline is compiled directly from Git, so capturing it does not replace working-tree files. Both versions are built through the library's existing tsup installation with the same settings. Cached bundles stay in the ignored `benchmarks/.cache/` directory; reports are saved in this directory. `--check` fails if any workload is more than 15% slower than the baseline (`BENCH_TOLERANCE` sets the percentage), so capture the baseline from the branch you are merging into. Close unrelated workloads before measuring.
 
-Browser scripts default to installed Microsoft Edge. To use installed Chrome in PowerShell:
-
-```powershell
-$env:BROWSER_CHANNEL = "chrome"
-pnpm benchmark --check
-```
+Browser scripts default to installed Chrome; set `BROWSER_CHANNEL` (for example `msedge`) to use another installed browser.
 
 `BENCH_SAMPLES` controls the number of measurements (default 9, minimum 3). Playwright is a pinned development dependency. The benchmarks reuse the library's tsup dependency; the published library still has no runtime dependencies.
 

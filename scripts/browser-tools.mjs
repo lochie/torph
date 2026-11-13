@@ -62,7 +62,7 @@ export async function buildBundle(ref) {
 
 export function launchBrowser() {
   return chromium.launch({
-    channel: process.env.BROWSER_CHANNEL ?? "msedge",
+    channel: process.env.BROWSER_CHANNEL ?? "chrome",
     headless: true,
   });
 }

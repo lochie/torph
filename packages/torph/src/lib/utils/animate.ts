@@ -7,11 +7,14 @@ export function fadeDuration(duration: number, fraction: number): number {
   return duration * fraction;
 }
 
-export function parseTranslate(element: HTMLElement): {
+export function parseTranslate(
+  element: HTMLElement,
+  style: CSSStyleDeclaration = getComputedStyle(element),
+): {
   tx: number;
   ty: number;
 } {
-  return parseTransform(getComputedStyle(element).transform);
+  return parseTransform(style.transform);
 }
 
 function parseTransform(transform: string): { tx: number; ty: number } {
@@ -25,11 +28,13 @@ function parseTransform(transform: string): { tx: number; ty: number } {
 // The box a `width`/`height` write means. `getBoundingClientRect` is the visual box, so
 // a rotated or scaled ancestor inflates it — and the container transition writes what it
 // measures straight back, compounding every morph.
-export function layoutSize(element: HTMLElement): {
+export function layoutSize(
+  element: HTMLElement,
+  style: CSSStyleDeclaration = getComputedStyle(element),
+): {
   width: number;
   height: number;
 } {
-  const style = getComputedStyle(element);
   const width = parseFloat(style.width);
   const height = parseFloat(style.height);
   if (Number.isNaN(width) || Number.isNaN(height)) {

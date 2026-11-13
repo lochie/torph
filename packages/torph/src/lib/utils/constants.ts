@@ -7,5 +7,5 @@ export const ATTR_EXITING = "torph-exiting";
 export const ATTR_SR = "torph-sr"; // Not a segment — every walk of root.children skips it.
 export const ATTR_DEBUG = "torph-debug";
 export const EMPTY_ID = "empty";
-export const VAR_CLIP_TOP = "--torph-clip-top"; // Set by the engine from measured ink; the slot CSS falls back without them.
-export const VAR_CLIP_BOTTOM = "--torph-clip-bottom";
+export const VAR_INK_TOP = "--torph-ink-top"; // The digits' ink reach from the line's centre, in em; set per font by the engine.
+export const VAR_INK_BOTTOM = "--torph-ink-bottom";

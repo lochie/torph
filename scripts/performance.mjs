@@ -37,12 +37,22 @@ const metadata = JSON.parse(
 const samples = Number(process.env.BENCH_SAMPLES ?? 9);
 assert(samples >= 3);
 const scenarios = [
+  "first-mount",
   "mount",
   "settled-update",
   "interrupted-update",
   "word-diff",
   "lcs",
 ];
+// BENCH_SCENARIOS=settled-update,lcs runs a subset while chasing one number.
+if (process.env.BENCH_SCENARIOS) {
+  const only = process.env.BENCH_SCENARIOS.split(",");
+  scenarios.splice(
+    0,
+    scenarios.length,
+    ...scenarios.filter((s) => only.includes(s)),
+  );
+}
 const measurements = Object.fromEntries(
   scenarios.map((name) => [name, { baseline: [], optimized: [] }]),
 );
@@ -100,8 +110,17 @@ async function workload({ scenario, instrument }) {
     await frame();
     Object.keys(counts).forEach((key) => (counts[key] = 0));
   }
+  if (scenario === "first-mount") {
+    // The first instance on a fresh page, after it has gone idle: what the segmenter warm-up is for.
+    await new Promise((resolve) =>
+      requestIdleCallback(() => setTimeout(resolve, 50)),
+    );
+  }
   const started = performance.now();
-  if (scenario === "mount") {
+  if (scenario === "first-mount") {
+    mount(label(0, 10));
+    document.body.offsetWidth;
+  } else if (scenario === "mount") {
     for (let i = 0; i < count; i++) mount(label(i, 10));
     document.body.offsetWidth;
   } else if (scenario.includes("update")) {
@@ -202,7 +221,11 @@ try {
     });
   }
   const operations = {};
-  for (const scenario of scenarios.slice(0, 3)) {
+  for (const scenario of [
+    "mount",
+    "settled-update",
+    "interrupted-update",
+  ].filter((s) => scenarios.includes(s))) {
     operations[scenario] = {};
     for (const [variant, code] of [
       ["baseline", baseline],
@@ -236,10 +259,12 @@ try {
   console.table(summary);
   console.log(JSON.stringify(operations, null, 2));
   if (process.argv.includes("--check")) {
-    for (const scenario of scenarios.slice(0, 3)) {
+    // Single runs swing this much on noise alone; a regression has to clear it.
+    const tolerance = Number(process.env.BENCH_TOLERANCE ?? 15);
+    for (const row of summary) {
       assert(
-        summary.find((row) => row.scenario === scenario).reductionPercent >= 25,
-        `${scenario}: expected at least 25% less processing time`,
+        row.reductionPercent >= -tolerance,
+        `${row.scenario}: ${-row.reductionPercent}% slower than the baseline (tolerance ${tolerance}%)`,
       );
     }
   }

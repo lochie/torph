@@ -51,26 +51,33 @@ export function detachFromFlow(
       width: number;
       height: number;
       opacity: number;
+      scale: string;
     }
   >();
   for (const child of elements) {
     if (child.tagName === "BR") continue;
     const { x, y } = layoutOffset(child, container);
-    // Where the box had got to, so an interrupt does not jump. Scale is dropped with
-    // the animation, as it is everywhere else a running transform is picked up.
-    const { tx, ty } = parseTranslate(child);
-    const { width, height } = layoutSize(child);
+    // Where the box had got to, so an interrupt does not jump: the translation goes
+    // into left/top, the rest of the transform stays on as the exit's starting point.
     const style = getComputedStyle(child);
-    const opacity = Number(style.opacity) || 1;
-    child.getAnimations().forEach((a) => a.cancel());
+    const { tx, ty } = parseTranslate(child, style);
+    const { width, height } = layoutSize(child, style);
+    const opacity = parseFloat(style.opacity);
     // `left`/`top` place the margin edge and offsets measure the border edge, so a margin would shift it.
     snapshots.set(child, {
       left: x + tx - (parseFloat(style.marginLeft) || 0),
       top: y + ty - (parseFloat(style.marginTop) || 0),
       width,
       height,
-      opacity,
+      // A word caught mid-arrival is still transparent; `|| 1` would flash it in.
+      opacity: Number.isFinite(opacity) ? opacity : 1,
+      scale: withoutTranslation(style.transform),
     });
+  }
+
+  // Only once every exit is read: a cancel dirties style, and the next read would recompute it.
+  for (const child of snapshots.keys()) {
+    child.getAnimations().forEach((a) => a.cancel());
   }
 
   // BRs can't be animated, so they leave the flow before reconciliation.
@@ -91,7 +98,17 @@ export function detachFromFlow(
     child.style.width = `${snap.width}px`;
     child.style.height = `${snap.height}px`;
     child.style.opacity = String(snap.opacity);
+    child.style.transform = snap.scale;
   });
+}
+
+function withoutTranslation(transform: string): string {
+  const match = /^matrix\(([^)]+)\)$/.exec(transform);
+  if (!match) return "";
+  const [a, b, c, d] = match[1]!.split(",").map(Number);
+  return a === 1 && b === 0 && c === 0 && d === 1
+    ? ""
+    : `matrix(${a}, ${b}, ${c}, ${d}, 0, 0)`;
 }
 
 export function splitWordSpans(

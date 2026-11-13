@@ -4,11 +4,13 @@ import {
   ATTR_DEBUG,
   ATTR_SLOT,
   ATTR_SR,
-  VAR_CLIP_TOP,
-  VAR_CLIP_BOTTOM,
+  VAR_INK_TOP,
+  VAR_INK_BOTTOM,
 } from "./constants";
 
-const TORPH_CSS = `
+// Comments sit between the strings, not inside them, so the build strips them.
+const TORPH_CSS =
+  `
 [${ATTR_ROOT}] {
   display: inline-block;
   position: relative;
@@ -25,13 +27,14 @@ const TORPH_CSS = `
   transform: none;
   opacity: 1;
 }
-
-/*
- * The value once as plain text — every other child is an aria-hidden fragment.
- * Out of flow, because the engine measures every child of the root. Clipped
- * rather than display: none, which would take it out of the a11y tree as well.
- * user-select: none, or a copied selection pastes the value twice.
- */
+` +
+  /*
+   * The value once as plain text — every other child is an aria-hidden fragment.
+   * Out of flow, because the engine measures every child of the root. Clipped
+   * rather than display: none, which would take it out of the a11y tree as well.
+   * user-select: none, or a copied selection pastes the value twice.
+   */
+  `
 [${ATTR_SR}] {
   position: absolute;
   width: 1px;
@@ -45,27 +48,31 @@ const TORPH_CSS = `
   -webkit-user-select: none;
   user-select: none;
 }
-
-/*
- * A digit slides a whole line box to arrive, so it needs its own box to hide
- * behind. Not the root: that spans every line, so clipping there leaves a digit
- * on a middle line sliding over its neighbour in view. The transform sits on the
- * child, so the slide never touches the slot's rect and the FLIP pass stays
- * oblivious. clip-path, not overflow — an inline-block whose overflow is
- * anything but visible has its baseline synthesized to the bottom margin edge
- * (CSS 2.1 §10.8.1), and engines disagree on whether overflow: clip counts.
- * The inline axis stays open so glyph overhang is not shaved.
- *
- * A line shorter than its glyphs would shave a digit at rest, so the box grows
- * past the line to the measured ink plus the fade band — the engine sets how far
- * on each side. Padding, not a wider clip: the mask only acts inside the border
- * box. The matching negative margin keeps the line box and baseline where they
- * were. Until the engine has measured (the first render reads no layout), a
- * line-height-relative guess at the content area stands in.
- */
+` +
+  /*
+   * A digit slides a whole line box to arrive, so it needs its own box to hide
+   * behind. Not the root: that spans every line, so clipping there leaves a digit
+   * on a middle line sliding over its neighbour in view. The transform sits on the
+   * child, so the slide never touches the slot's rect and the FLIP pass stays
+   * oblivious. clip-path, not overflow — an inline-block whose overflow is
+   * anything but visible has its baseline synthesized to the bottom margin edge
+   * (CSS 2.1 §10.8.1), and engines disagree on whether overflow: clip counts.
+   * The inline axis stays open so glyph overhang is not shaved.
+   *
+   * A line shorter than its glyphs would shave a digit at rest, so the box grows
+   * past the line to the ink plus the fade band. The engine supplies the ink's
+   * reach from the line's centre in em, per font; the line-height is applied here,
+   * so changing it needs no morph. 0.6em each way — a 1.2em content area — stands
+   * in until the engine has measured. Padding, not a wider clip: the mask only acts
+   * inside the border box. The matching negative margin keeps the line box and
+   * baseline where they were. Whole pixels where round() exists, because an exit
+   * is pinned with offsetTop, which rounds. Not @property: registering a custom
+   * property made every morph's restyle about 60% slower in Chrome.
+   */
+  `
 [${ATTR_SLOT}] {
-  --torph-top: var(${VAR_CLIP_TOP}, 0px);
-  --torph-bottom: var(${VAR_CLIP_BOTTOM}, 0px);
+  --torph-top: 0px;
+  --torph-bottom: 0px;
   padding-block: var(--torph-top) var(--torph-bottom);
   margin-block: calc(-1 * var(--torph-top)) calc(-1 * var(--torph-bottom));
   clip-path: inset(0 -100vw);
@@ -73,9 +80,23 @@ const TORPH_CSS = `
 
 @supports (height: 1lh) {
   [${ATTR_SLOT}] {
-    --torph-guess: max(0px, (1.2em + 2 * var(--torph-fade, 0.15em) - 1lh) / 2);
-    --torph-top: var(${VAR_CLIP_TOP}, var(--torph-guess));
-    --torph-bottom: var(${VAR_CLIP_BOTTOM}, var(--torph-guess));
+    --torph-top: max(
+      0px,
+      var(--torph-fade, 0.15em) + var(${VAR_INK_TOP}, 0.6em) - 0.5lh
+    );
+    --torph-bottom: max(
+      0px,
+      var(--torph-fade, 0.15em) + var(${VAR_INK_BOTTOM}, 0.6em) - 0.5lh
+    );
+  }
+}
+
+@supports (height: 1lh) and (width: round(up, 1.5px, 1px)) {
+  [${ATTR_SLOT}] {
+    padding-block: round(up, var(--torph-top), 1px)
+      round(up, var(--torph-bottom), 1px);
+    margin-block: calc(-1 * round(up, var(--torph-top), 1px))
+      calc(-1 * round(up, var(--torph-bottom), 1px));
   }
 }
 
@@ -83,14 +104,15 @@ const TORPH_CSS = `
   display: inline-block;
   will-change: opacity, transform;
 }
-
-/*
- * Softens the clip above into a gradient, positionally rather than on a timer, so
- * it stays in step with the slide at any duration. The band (--torph-fade, 0 for a
- * hard edge) must eat into the box: the clip trims at the border box, so a ramp
- * reaching past it sits in territory already removed and is never seen. no-clip
- * plus repeat-x is what carries the profile across glyph overhang.
- */
+` +
+  /*
+   * Softens the clip above into a gradient, positionally rather than on a timer, so
+   * it stays in step with the slide at any duration. The band (--torph-fade, 0 for a
+   * hard edge) must eat into the box: the clip trims at the border box, so a ramp
+   * reaching past it sits in territory already removed and is never seen. no-clip
+   * plus repeat-x is what carries the profile across glyph overhang.
+   */
+  `
 @supports (mask-clip: no-clip) or (-webkit-mask-clip: no-clip) {
   [${ATTR_SLOT}] {
     --torph-mask: linear-gradient(
