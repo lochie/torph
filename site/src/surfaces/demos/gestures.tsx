@@ -630,7 +630,7 @@ export const TrailingTag = () => {
       ))}
 
       <div className={styles.tag} ref={tagRef}>
-        <TextMorph className={styles.tagLabel}>{ZONES[zone]!}</TextMorph>
+        <TextMorph>{ZONES[zone]!}</TextMorph>
       </div>
     </div>
   );

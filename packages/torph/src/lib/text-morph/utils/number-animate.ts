@@ -113,3 +113,75 @@ export function animateNumberPersist(
     { duration, easing: ease, fill: "both" },
   );
 }
+
+// Every character a slot can hold that reaches far: digits, separators, common affixes.
+const INK = "0123456789$€£¥%,.";
+let canvas: HTMLCanvasElement | undefined;
+
+type Ink = { ascent: number; descent: number; top: number; bottom: number };
+const inks = new Map<string, Ink>();
+let watchingFonts = false;
+
+/** The font's content area and its digits' ink, measured once per font. */
+function measureInk(font: string): Ink | null {
+  const cached = inks.get(font);
+  if (cached) return cached;
+  canvas ??= document.createElement("canvas");
+  const ruler = canvas.getContext("2d");
+  if (!ruler) return null;
+  ruler.font = font;
+  const m = ruler.measureText(INK);
+  if (!m.fontBoundingBoxAscent && !m.fontBoundingBoxDescent) return null;
+  const ink = {
+    ascent: m.fontBoundingBoxAscent,
+    descent: m.fontBoundingBoxDescent,
+    top: m.actualBoundingBoxAscent,
+    bottom: m.actualBoundingBoxDescent,
+  };
+  inks.set(font, ink);
+  // A web font landing keeps the font string but changes every metric.
+  if (!watchingFonts && document.fonts) {
+    watchingFonts = true;
+    document.fonts.addEventListener("loadingdone", () => inks.clear());
+  }
+  return ink;
+}
+
+function lengthOf(value: string, fontSize: number, fallback: number): number {
+  const n = parseFloat(value);
+  if (Number.isNaN(n)) return fallback;
+  return value.trim().endsWith("em") ? n * fontSize : n;
+}
+
+/**
+ * How far a slot's clip must reach past each side of a line so a settled digit's
+ * ink, plus the fade band, sits inside it. Zero wherever the line is tall enough.
+ */
+export function slotOverflow(root: HTMLElement): {
+  top: number;
+  bottom: number;
+} {
+  const style = getComputedStyle(root);
+  const ink = measureInk(
+    `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
+  );
+  if (!ink) return { top: 0, bottom: 0 };
+  const { ascent, descent } = ink;
+
+  const fontSize = parseFloat(style.fontSize) || 0;
+  const fade = lengthOf(
+    style.getPropertyValue("--torph-fade"),
+    fontSize,
+    0.15 * fontSize,
+  );
+  const lineHeight =
+    style.lineHeight === "normal"
+      ? ascent + descent
+      : parseFloat(style.lineHeight);
+  // The content area sits centred in the line box; leading may be negative.
+  const leading = (lineHeight - ascent - descent) / 2;
+  return {
+    top: Math.max(0, fade - (leading + ascent - ink.top)),
+    bottom: Math.max(0, fade - (leading + descent - ink.bottom)),
+  };
+}

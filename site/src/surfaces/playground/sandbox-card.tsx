@@ -1,6 +1,7 @@
 import React from "react";
 import { TextMorph } from "torph/react";
 import styles from "./styles.module.scss";
+import { Scrubber } from "./scrubber";
 import { SPEEDS, EASINGS } from "./config";
 import type { Speed, EasingKey, Align } from "./config";
 
@@ -15,6 +16,7 @@ export function SandboxCard({
   align: Align;
   debug: boolean;
 }) {
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
   const [from, setFrom] = React.useState("hello world");
   const [to, setTo] = React.useState("world hello");
   const [current, setCurrent] = React.useState("hello world");
@@ -60,6 +62,7 @@ export function SandboxCard({
       </div>
 
       <div
+        ref={stageRef}
         className={styles.stage}
         style={{ textAlign: align }}
         // A pointer convenience, not a control — the "Morph" button is that.
@@ -78,6 +81,7 @@ export function SandboxCard({
         <button type="button" className={styles.primaryBtn} onClick={toggle}>
           Morph
         </button>
+        <Scrubber target={stageRef} duration={SPEEDS[speed]} />
       </div>
     </div>
   );

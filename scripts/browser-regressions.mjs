@@ -102,7 +102,11 @@ async function replay(code, fixture) {
         clock += 90;
         snapshots.push(
           [...element.querySelectorAll("[torph-id]")].map((child) => {
-            const rect = child.getBoundingClientRect();
+            // A slot's box may be padded past its line; the glyph inside is what must not move.
+            const glyph = child.hasAttribute("torph-slot")
+              ? child.firstElementChild
+              : child;
+            const rect = glyph.getBoundingClientRect();
             const style = getComputedStyle(child);
             return {
               id: child.getAttribute("torph-id"),

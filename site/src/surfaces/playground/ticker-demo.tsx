@@ -1,6 +1,7 @@
 import React from "react";
 import { TextMorph } from "torph/react";
 import styles from "./styles.module.scss";
+import { Scrubber } from "./scrubber";
 import { SPEEDS, EASINGS, DECIMALS } from "./config";
 import type { Speed, EasingKey, Align, Locale, DecimalsKey } from "./config";
 
@@ -52,6 +53,7 @@ export function TickerDemo({
   decimals: DecimalsKey;
   tabular: boolean;
 }) {
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
   const [value, setValue] = React.useState(1234.56);
   const [kind, setKind] = React.useState<Format>("currency");
   const [gap, setGap] = React.useState(700);
@@ -99,6 +101,7 @@ export function TickerDemo({
       </p>
 
       <div
+        ref={stageRef}
         className={styles.stage}
         style={{
           textAlign: align,
@@ -141,6 +144,7 @@ export function TickerDemo({
           />
           <code>{gap}ms</code>
         </label>
+        <Scrubber target={stageRef} duration={duration} />
         <span className={styles.spacer} />
         <span className={interrupting ? styles.fail : styles.pass}>
           {interrupting ? `interrupting ${duration}ms` : "settles"}

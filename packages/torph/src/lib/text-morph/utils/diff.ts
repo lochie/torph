@@ -101,7 +101,7 @@ export function diffSegments(
   locale: Intl.LocalesArgument,
   options: DiffOptions = {},
 ): DiffResult {
-  const newHasSpaces = newText.includes(" ");
+  const newHasSpaces = /[ \u00A0]/.test(newText);
   const newHasNewlines = newText.includes("\n");
   const oldWords = groupIntoWords(oldSegments);
 
@@ -127,10 +127,10 @@ export function diffSegments(
 
   const newWordStrings: string[] = [];
   const newSeparators: string[][] = []; // separators BEFORE each word
-  const parts = newText.split(/( |\n)/);
+  const parts = newText.split(/( |\u00A0|\n)/);
   let pendingSeps: string[] = [];
   for (const part of parts) {
-    if (part === " " || part === "\n") {
+    if (part === " " || part === "\u00A0" || part === "\n") {
       pendingSeps.push(part);
     } else if (part.length > 0) {
       newSeparators.push(pendingSeps);

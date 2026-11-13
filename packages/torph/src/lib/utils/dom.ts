@@ -60,11 +60,13 @@ export function detachFromFlow(
     // the animation, as it is everywhere else a running transform is picked up.
     const { tx, ty } = parseTranslate(child);
     const { width, height } = layoutSize(child);
-    const opacity = Number(getComputedStyle(child).opacity) || 1;
+    const style = getComputedStyle(child);
+    const opacity = Number(style.opacity) || 1;
     child.getAnimations().forEach((a) => a.cancel());
+    // `left`/`top` place the margin edge and offsets measure the border edge, so a margin would shift it.
     snapshots.set(child, {
-      left: x + tx,
-      top: y + ty,
+      left: x + tx - (parseFloat(style.marginLeft) || 0),
+      top: y + ty - (parseFloat(style.marginTop) || 0),
       width,
       height,
       opacity,

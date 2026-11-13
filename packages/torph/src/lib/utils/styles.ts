@@ -4,6 +4,8 @@ import {
   ATTR_DEBUG,
   ATTR_SLOT,
   ATTR_SR,
+  VAR_CLIP_TOP,
+  VAR_CLIP_BOTTOM,
 } from "./constants";
 
 const TORPH_CSS = `
@@ -53,9 +55,28 @@ const TORPH_CSS = `
  * anything but visible has its baseline synthesized to the bottom margin edge
  * (CSS 2.1 §10.8.1), and engines disagree on whether overflow: clip counts.
  * The inline axis stays open so glyph overhang is not shaved.
+ *
+ * A line shorter than its glyphs would shave a digit at rest, so the box grows
+ * past the line to the measured ink plus the fade band — the engine sets how far
+ * on each side. Padding, not a wider clip: the mask only acts inside the border
+ * box. The matching negative margin keeps the line box and baseline where they
+ * were. Until the engine has measured (the first render reads no layout), a
+ * line-height-relative guess at the content area stands in.
  */
 [${ATTR_SLOT}] {
+  --torph-top: var(${VAR_CLIP_TOP}, 0px);
+  --torph-bottom: var(${VAR_CLIP_BOTTOM}, 0px);
+  padding-block: var(--torph-top) var(--torph-bottom);
+  margin-block: calc(-1 * var(--torph-top)) calc(-1 * var(--torph-bottom));
   clip-path: inset(0 -100vw);
+}
+
+@supports (height: 1lh) {
+  [${ATTR_SLOT}] {
+    --torph-guess: max(0px, (1.2em + 2 * var(--torph-fade, 0.15em) - 1lh) / 2);
+    --torph-top: var(${VAR_CLIP_TOP}, var(--torph-guess));
+    --torph-bottom: var(${VAR_CLIP_BOTTOM}, var(--torph-guess));
+  }
 }
 
 [${ATTR_SLOT}] > span {

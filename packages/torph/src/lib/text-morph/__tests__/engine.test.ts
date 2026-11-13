@@ -319,6 +319,55 @@ describe("the clip a slide happens behind", () => {
     expect(element.style.getPropertyValue("mask-image")).toBe("");
   });
 
+  it("clips to the line, or past it to the engine's measured ink", () => {
+    const { morph } = mount();
+    morph.update("$5");
+
+    const css = document.querySelector("style[data-torph]")!.textContent!;
+    expect(css).toContain("--torph-top: var(--torph-clip-top, 0px);");
+    // Before the first morph measures, a guess keeps a tight line from shaving.
+    expect(css).toContain(
+      "--torph-top: var(--torph-clip-top, var(--torph-guess));",
+    );
+    // The box itself grows, since the mask only acts inside the border box.
+    expect(css).toContain(
+      "padding-block: var(--torph-top) var(--torph-bottom);",
+    );
+    expect(css).toContain(
+      "margin-block: calc(-1 * var(--torph-top)) calc(-1 * var(--torph-bottom));",
+    );
+  });
+
+  it("grows the clip only as far as the ink, and slides the digit past all of it", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("999");
+
+    // A 20px line holding a 20px content area whose digits reach 2px above it.
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ({
+      font: "",
+      measureText: () => ({
+        fontBoundingBoxAscent: 16,
+        fontBoundingBoxDescent: 4,
+        actualBoundingBoxAscent: 18,
+        actualBoundingBoxDescent: 2,
+      }),
+    })) as unknown as typeof getContext;
+    const { calls, restore } = recordAnimations();
+    try {
+      morph.update("1,000");
+    } finally {
+      restore();
+      HTMLCanvasElement.prototype.getContext = getContext;
+    }
+
+    // Fade 3px (0.15em): 2px of overhang plus 3px above, 1px short of 3px below.
+    expect(element.style.getPropertyValue("--torph-clip-top")).toBe("5px");
+    expect(element.style.getPropertyValue("--torph-clip-bottom")).toBe("1px");
+    expect(slide(calls, live(element)[0]!.id)).toBe(slideFrom(-(SLIDE + 6)));
+  });
+
   it("clips and fades the slot from the stylesheet, not per element", () => {
     const { element, morph } = mount();
     morph.update("$5");

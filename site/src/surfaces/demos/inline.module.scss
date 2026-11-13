@@ -1272,6 +1272,11 @@
   border-radius: 0.625rem;
   corner-shape: superellipse(1.25);
   background: var(--primary);
+  // Type here, not on the morph: the label sits in this line, and a taller one leaves a chin.
+  font-family: var(--font-secondary);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #000000;
   // The pivot is where the string is tied, which is the point being chased.
   transform-origin: 50% -8px;
   pointer-events: none;
@@ -1285,13 +1290,6 @@
     height: 8px;
     background: var(--primary);
   }
-}
-
-.tagLabel {
-  font-family: var(--font-secondary);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #000000;
 }
 
 // ── A figure you squash ──

@@ -2,6 +2,7 @@ import React from "react";
 import { TextMorph } from "torph/react";
 import { decimalSeparator } from "torph";
 import styles from "./styles.module.scss";
+import { Scrubber } from "./scrubber";
 import { SPEEDS, EASINGS, DECIMALS } from "./config";
 import type { Speed, EasingKey, Align, Locale, DecimalsKey } from "./config";
 import { AlignmentInspector } from "./alignment-inspector";
@@ -85,6 +86,7 @@ export function NumberSandbox({
   decimals: DecimalsKey;
   tabular: boolean;
 }) {
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
   const [value, setValue] = React.useState("$1,234.50");
   const [previous, setPrevious] = React.useState("$1,234.50");
   const [cursor, setCursor] = React.useState<number | undefined>(undefined);
@@ -148,6 +150,7 @@ export function NumberSandbox({
       </div>
 
       <div
+        ref={stageRef}
         className={styles.stage}
         style={{
           textAlign: align,
@@ -186,6 +189,7 @@ export function NumberSandbox({
         >
           random
         </button>
+        <Scrubber target={stageRef} duration={SPEEDS[speed]} />
         <span className={styles.spacer} />
         <button
           type="button"

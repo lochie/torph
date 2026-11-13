@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { parseEasing, slopeAt } from "../easing";
 import { carry, sampleEasing } from "../animate";
-import { spring } from "../spring";
+import { resolveEase, spring } from "../spring";
 
 const DEFAULT_EASE = "cubic-bezier(0.19, 1, 0.22, 1)";
 const CARRY_MAX = 8; // mirrors animate.ts
@@ -157,5 +157,31 @@ describe("a container size interrupted every frame", () => {
     const before = spin(DEFAULT_EASE, 400, false);
     const after = spin(DEFAULT_EASE, 400, true);
     expect(after).toBeLessThanOrEqual(before + 0.01);
+  });
+});
+
+describe("an easing the browser can't parse", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to the default curve and keeps the spring's duration", () => {
+    vi.stubGlobal("CSS", {
+      supports: (_property: string, value: string) =>
+        !value.startsWith("linear("),
+    });
+    const params = { stiffness: 150, damping: 19, mass: 1.2 };
+    expect(resolveEase(params, 400)).toEqual({
+      ease: DEFAULT_EASE,
+      duration: spring(params).duration,
+    });
+  });
+
+  it("leaves a supported easing alone", () => {
+    vi.stubGlobal("CSS", { supports: () => true });
+    expect(resolveEase("ease-in", 300)).toEqual({
+      ease: "ease-in",
+      duration: 300,
+    });
   });
 });
