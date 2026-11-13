@@ -38,6 +38,21 @@ describe("engine work budgets", () => {
     ).toHaveLength(1);
   });
 
+  it("drops a digit's slide box when its element is reused as plain text", () => {
+    const element = document.createElement("span");
+    document.body.append(element);
+    const morph = new TextMorph({ element, respectReducedMotion: false });
+    mounted.push(morph);
+    morph.update("12");
+    morph.update("12px");
+    const live = Array.from(element.children).filter(
+      (child) =>
+        !child.hasAttribute(ATTR_SR) && !child.hasAttribute(ATTR_EXITING),
+    );
+    expect(live.map((child) => child.textContent).join("")).toBe("12px");
+    expect(live.filter((child) => child.firstElementChild)).toHaveLength(0);
+  });
+
   it("renders the initial value without reading layout or creating animations", () => {
     const element = document.createElement("span");
     element.textContent = "server placeholder";

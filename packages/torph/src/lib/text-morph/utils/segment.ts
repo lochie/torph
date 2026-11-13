@@ -1,5 +1,5 @@
 export type { Segment } from "../../utils/types";
-import type { Segment } from "../../utils/types";
+import { BASE_DEFAULTS, type Segment } from "../../utils/types";
 import { isNumericWord, segmentNumber } from "./number";
 
 // A collision makes two segments fight over one element and one silently loses its
@@ -122,6 +122,32 @@ export function segmentText(
   return numbers ? expandNumbers(segments) : segments;
 }
 
+const segmenters = new Map<string, Intl.Segmenter>();
+
+function getSegmenter(
+  locale: Intl.LocalesArgument,
+  granularity: "word" | "grapheme",
+): Intl.Segmenter {
+  const key = `${String(locale)}|${granularity}`;
+  let segmenter = segmenters.get(key);
+  if (!segmenter) {
+    segmenter = new Intl.Segmenter(locale, { granularity });
+    segmenters.set(key, segmenter);
+  }
+  return segmenter;
+}
+
+// The first Segmenter on a page loads ICU break data (~23 ms at 4× CPU); pay that while idle, not inside an interaction.
+if (
+  typeof requestIdleCallback === "function" &&
+  typeof Intl.Segmenter === "function"
+) {
+  requestIdleCallback(() => {
+    getSegmenter(BASE_DEFAULTS.locale, "word").segment("a");
+    getSegmenter(BASE_DEFAULTS.locale, "grapheme").segment("a");
+  });
+}
+
 function segmentLine(
   line: string,
   locale: Intl.LocalesArgument,
@@ -130,11 +156,10 @@ function segmentLine(
   alloc: IdAllocator,
 ): Segment[] {
   if (typeof Intl.Segmenter !== "undefined") {
-    const segmenter = new Intl.Segmenter(locale, {
-      granularity: byWord ? "word" : "grapheme",
-    });
     return segmentsFromIntl(
-      segmenter.segment(line)[Symbol.iterator](),
+      getSegmenter(locale, byWord ? "word" : "grapheme")
+        .segment(line)
+        [Symbol.iterator](),
       offset,
       alloc,
     );
