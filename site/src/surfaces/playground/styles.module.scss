@@ -577,6 +577,33 @@ $fail: rgb(248, 113, 113);
   text-align: center;
 }
 
+// ── Line height ──
+
+.comparison {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  font-size: 4rem;
+}
+
+.specimen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.specimenLabel {
+  font-size: 0.6rem;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.lineBox {
+  outline: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
 // ── Ticker ──
 
 .range {

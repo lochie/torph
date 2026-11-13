@@ -14,6 +14,7 @@ import { NumberSandbox } from "./number-sandbox";
 import { ChartPlayground } from "./chart-demo";
 import { InputPlayground } from "./input-demo";
 import { TickerDemo } from "./ticker-demo";
+import { LineHeightDemo } from "./line-height-demo";
 import type { Result } from "@torph/test-cases";
 
 // Negative ids sit outside the corpus — they select a panel, not a case.
@@ -21,6 +22,7 @@ const SANDBOX = -1;
 const CHART_DEMO = -2;
 const INPUT_DEMO = -3;
 const TICKER_DEMO = -4;
+const LINE_HEIGHT_DEMO = -5;
 
 const MODES = ["text", "numbers"] as const;
 type Mode = (typeof MODES)[number];
@@ -33,12 +35,13 @@ const PANELS: Record<Mode, { id: number; label: string }[]> = {
     { id: TICKER_DEMO, label: "Ticker" },
     { id: CHART_DEMO, label: "Chart" },
     { id: INPUT_DEMO, label: "Input" },
+    { id: LINE_HEIGHT_DEMO, label: "Line height" },
   ],
 };
 
 // Demos that style their own numbers, so the shared controls do nothing there.
 const SELF_STYLED: number[] = [CHART_DEMO, INPUT_DEMO];
-const DEMOS: number[] = [CHART_DEMO, INPUT_DEMO, TICKER_DEMO];
+const DEMOS: number[] = [CHART_DEMO, INPUT_DEMO, TICKER_DEMO, LINE_HEIGHT_DEMO];
 
 type BundleSize = {
   name: string;
@@ -358,6 +361,14 @@ export const Playground = ({
           <ChartPlayground />
         ) : selected === INPUT_DEMO ? (
           <InputPlayground />
+        ) : selected === LINE_HEIGHT_DEMO ? (
+          <LineHeightDemo
+            speed={speed}
+            easing={easing}
+            locale={locale}
+            decimals={decimals}
+            tabular={tabular}
+          />
         ) : selected === TICKER_DEMO ? (
           <TickerDemo
             speed={speed}
