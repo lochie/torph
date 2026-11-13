@@ -9,7 +9,6 @@ import {
   ATTR_ITEM,
   ATTR_KIND,
   ATTR_ROOT,
-  ATTR_SLIDING,
   ATTR_SLOT,
   ATTR_SR,
 } from "../../utils/constants";
@@ -320,44 +319,53 @@ describe("the clip a slide happens behind", () => {
     expect(element.style.getPropertyValue("mask-image")).toBe("");
   });
 
-  it("clips only while a digit slides, so a settled one keeps its full glyph", async () => {
-    const { element, morph } = mount();
+  it("clips to the line, or past it to the engine's measured ink", () => {
+    const { morph } = mount();
     morph.update("$5");
-    const slot = element.querySelector(`[${ATTR_SLOT}]`)!;
-    expect(slot.hasAttribute(ATTR_SLIDING)).toBe(false);
-
-    morph.update("$6");
-    const arrived = Array.from(element.querySelectorAll(`[${ATTR_SLOT}]`)).find(
-      (s) => s.textContent === "6" && !s.hasAttribute(ATTR_EXITING),
-    )!;
-    expect(arrived.hasAttribute(ATTR_SLIDING)).toBe(true);
-
-    // The clip widens off the glyph with the slide rather than vanishing at its end.
-    const reveal = () =>
-      arrived
-        .getAnimations()
-        .find((a) =>
-          (a.effect as KeyframeEffect).getKeyframes().some((k) => k.clipPath),
-        );
-    const opening = reveal();
-    expect(opening).toBeDefined();
-    const frames = (opening!.effect as KeyframeEffect).getKeyframes();
-    expect(frames[0]!.clipPath).toBe("inset(0px -100vw)");
-    expect(frames.at(-1)!.clipPath).toBe("inset(-0.75em -100vw)");
-
-    // A morph that only moves the digit leaves its reveal running.
-    morph.update("$16");
-    expect(reveal()).toBe(opening);
-
-    // happy-dom's `getAnimations({ subtree: true })` comes back empty.
-    element
-      .querySelectorAll("*")
-      .forEach((node) => node.getAnimations().forEach((a) => a.finish()));
-    await new Promise((resolve) => setTimeout(resolve));
-    expect(arrived.hasAttribute(ATTR_SLIDING)).toBe(false);
 
     const css = document.querySelector("style[data-torph]")!.textContent!;
-    expect(css).toContain(`[${ATTR_SLOT}][${ATTR_SLIDING}] {\n  clip-path`);
+    expect(css).toContain("--torph-top: var(--torph-clip-top, 0px);");
+    // Before the first morph measures, a guess keeps a tight line from shaving.
+    expect(css).toContain(
+      "--torph-top: var(--torph-clip-top, var(--torph-guess));",
+    );
+    // The box itself grows, since the mask only acts inside the border box.
+    expect(css).toContain(
+      "padding-block: var(--torph-top) var(--torph-bottom);",
+    );
+    expect(css).toContain(
+      "margin-block: calc(-1 * var(--torph-top)) calc(-1 * var(--torph-bottom));",
+    );
+  });
+
+  it("grows the clip only as far as the ink, and slides the digit past all of it", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("999");
+
+    // A 20px line holding a 20px content area whose digits reach 2px above it.
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ({
+      font: "",
+      measureText: () => ({
+        fontBoundingBoxAscent: 16,
+        fontBoundingBoxDescent: 4,
+        actualBoundingBoxAscent: 18,
+        actualBoundingBoxDescent: 2,
+      }),
+    })) as unknown as typeof getContext;
+    const { calls, restore } = recordAnimations();
+    try {
+      morph.update("1,000");
+    } finally {
+      restore();
+      HTMLCanvasElement.prototype.getContext = getContext;
+    }
+
+    // Fade 3px (0.15em): 2px of overhang plus 3px above, 1px short of 3px below.
+    expect(element.style.getPropertyValue("--torph-clip-top")).toBe("5px");
+    expect(element.style.getPropertyValue("--torph-clip-bottom")).toBe("1px");
+    expect(slide(calls, live(element)[0]!.id)).toBe(slideFrom(-(SLIDE + 6)));
   });
 
   it("clips and fades the slot from the stylesheet, not per element", () => {

@@ -1,6 +1,7 @@
 import React from "react";
 import { TextMorph } from "torph/react";
 import styles from "./styles.module.scss";
+import { Scrubber } from "./scrubber";
 import { SPEEDS, EASINGS, DECIMALS } from "./config";
 import type { Speed, EasingKey, Locale, DecimalsKey } from "./config";
 
@@ -12,7 +13,7 @@ function nextValue(value: number): number {
 /**
  * A digit slides inside its own clipped box, and that box is one line tall. Below
  * a line-height of about 1 the glyph is taller than its box, so the clip and fade
- * must come off once the slide lands — the plain copy beside it is the reference.
+ * must come off once the slide lands.
  */
 export function LineHeightDemo({
   speed,
@@ -27,6 +28,7 @@ export function LineHeightDemo({
   decimals: DecimalsKey;
   tabular: boolean;
 }) {
+  const stageRef = React.useRef<HTMLDivElement | null>(null);
   const [value, setValue] = React.useState(1234.56);
   const [lineHeight, setLineHeight] = React.useState(0.8);
   const [showBox, setShowBox] = React.useState(true);
@@ -50,35 +52,27 @@ export function LineHeightDemo({
 
       <p className={styles.detailDescription}>
         A tight line-height makes each digit taller than its line box. While a
-        digit slides it is clipped to that box; once it lands it should match
-        the plain copy exactly, with no shaved or faded edges.
+        digit slides it is clipped to that box; once it lands there should be no
+        shaved or faded edges.
       </p>
 
       <div
+        ref={stageRef}
         className={styles.stage}
         role="presentation"
         onClick={() => setValue(nextValue)}
       >
         <div className={styles.comparison}>
-          <div className={styles.specimen}>
-            <span className={styles.specimenLabel}>torph</span>
-            <span className={box} style={specimen}>
-              <TextMorph
-                duration={SPEEDS[speed]}
-                ease={EASINGS[easing]}
-                locale={locale}
-                decimals={DECIMALS[decimals]}
-              >
-                {text}
-              </TextMorph>
-            </span>
-          </div>
-          <div className={styles.specimen}>
-            <span className={styles.specimenLabel}>plain</span>
-            <span className={box} style={specimen}>
+          <span className={box} style={specimen}>
+            <TextMorph
+              duration={SPEEDS[speed]}
+              ease={EASINGS[easing]}
+              locale={locale}
+              decimals={DECIMALS[decimals]}
+            >
               {text}
-            </span>
-          </div>
+            </TextMorph>
+          </span>
         </div>
       </div>
 
@@ -108,6 +102,7 @@ export function LineHeightDemo({
         >
           line box
         </button>
+        <Scrubber target={stageRef} duration={SPEEDS[speed]} />
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React from "react";
 import { TextMorph } from "torph/react";
 import { decimalSeparator } from "torph";
 import styles from "./styles.module.scss";
+import { Scrubber } from "./scrubber";
 import { formatValue } from "./number-tests";
 import type { NumberBenchCase } from "./number-tests";
 import { buildNumberIssueReport, copyText } from "./issue";
@@ -255,6 +256,7 @@ export function NumberDetail({
         >
           DOM
         </button>
+        <Scrubber target={stageRef} duration={SPEEDS[speed]} />
         <span className={styles.spacer} />
         <span className={result?.pass ? styles.pass : styles.fail}>
           {result ? (result.pass ? "PASS" : "FAIL") : "…"}
