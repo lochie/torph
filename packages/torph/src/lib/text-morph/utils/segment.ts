@@ -122,6 +122,21 @@ export function segmentText(
   return numbers ? expandNumbers(segments) : segments;
 }
 
+const segmenters = new Map<string, Intl.Segmenter>();
+
+function getSegmenter(
+  locale: Intl.LocalesArgument,
+  granularity: "word" | "grapheme",
+): Intl.Segmenter {
+  const key = `${String(locale)}|${granularity}`;
+  let segmenter = segmenters.get(key);
+  if (!segmenter) {
+    segmenter = new Intl.Segmenter(locale, { granularity });
+    segmenters.set(key, segmenter);
+  }
+  return segmenter;
+}
+
 function segmentLine(
   line: string,
   locale: Intl.LocalesArgument,
@@ -130,11 +145,10 @@ function segmentLine(
   alloc: IdAllocator,
 ): Segment[] {
   if (typeof Intl.Segmenter !== "undefined") {
-    const segmenter = new Intl.Segmenter(locale, {
-      granularity: byWord ? "word" : "grapheme",
-    });
     return segmentsFromIntl(
-      segmenter.segment(line)[Symbol.iterator](),
+      getSegmenter(locale, byWord ? "word" : "grapheme")
+        .segment(line)
+        [Symbol.iterator](),
       offset,
       alloc,
     );

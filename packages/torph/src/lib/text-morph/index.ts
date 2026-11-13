@@ -176,6 +176,11 @@ export class TextMorph {
     element: HTMLElement,
     cursorIndex?: number,
   ) {
+    if (this.isInitialRender) {
+      this.renderInitial(value, element);
+      return;
+    }
+
     // Before the running transition is aborted below, so an interrupt carries on from screen.
     const { width: oldWidth, height: oldHeight } = layoutSize(element);
     const numbers = this.options.numbers !== false;
@@ -250,9 +255,7 @@ export class TextMorph {
     this.updateStyles(segments, firstFrameMeasures, slideDistance);
 
     // A run with no survivors inside it recedes as one shape.
-    const leavingRuns = this.isInitialRender
-      ? []
-      : replacedRuns(oldChildren, new Set(exiting));
+    const leavingRuns = replacedRuns(oldChildren, new Set(exiting));
     const leavingTogether = new Set(leavingRuns.flat());
 
     for (const run of leavingRuns) {
@@ -263,7 +266,7 @@ export class TextMorph {
     }
 
     exiting.forEach((child) => {
-      if (this.isInitialRender || child.getAttribute(ATTR_ID) === EMPTY_ID) {
+      if (child.getAttribute(ATTR_ID) === EMPTY_ID) {
         child.remove();
         return;
       }
@@ -295,13 +298,6 @@ export class TextMorph {
 
     this.previousSegments = segments;
 
-    if (this.isInitialRender) {
-      this.isInitialRender = false;
-      element.style.width = "";
-      element.style.height = "";
-      return;
-    }
-
     if (isEmptyTransition) {
       holdContainerSize(
         element,
@@ -324,13 +320,35 @@ export class TextMorph {
     }
   }
 
+  // Nothing animates on the first pass, so it reads no layout: a forced layout per mounted instance is what made mounts long tasks.
+  private renderInitial(value: string, element: HTMLElement) {
+    this.syncAccessibleText(value);
+
+    let segments = segmentText(
+      value,
+      this.options.locale!,
+      this.options.numbers !== false,
+    );
+    if (segments.length === 0) {
+      segments = [{ id: EMPTY_ID, string: "\u200B" }];
+    }
+
+    for (const child of Array.from(element.children)) {
+      if (!child.hasAttribute(ATTR_SR)) child.remove();
+    }
+    reconcileChildren(element, [], new Set(), segments);
+
+    element.style.width = "";
+    element.style.height = "";
+    this.previousSegments = segments;
+    this.isInitialRender = false;
+  }
+
   private updateStyles(
     segments: Segment[],
     firstFrameMeasures: Measures,
     slideDistance: number,
   ) {
-    if (this.isInitialRender) return;
-
     const children = (
       Array.from(this.element.children) as HTMLElement[]
     ).filter((child) => !child.hasAttribute(ATTR_SR));
