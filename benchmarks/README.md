@@ -1,7 +1,7 @@
 # Torph performance
 
 Baseline: upstream commit `d79a5aa63226acf97d49c3e34fafb2e85c07b026`.
-Branch: `swift`. See `results.json` for the browser version, hardware, bundle hashes, operation counts, and every timing sample.
+Branch: `swift`. Each run writes `results.json` here, with the browser version, hardware, bundle hashes, operation counts, and every timing sample. It is ignored by git, since it records the machine that produced it.
 
 ## Results
 
