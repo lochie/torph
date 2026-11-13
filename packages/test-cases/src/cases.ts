@@ -296,6 +296,20 @@ export const CASES: TestCase[] = [
       ]),
   },
   {
+    label: "No-break space before a symbol",
+    description:
+      "Intl.NumberFormat puts a no-break space (U+00A0) between a figure and its currency or percent sign in most locales. It separates words just like a space, so the figure still morphs by place and the euro sign holds.",
+    tags: ["number", "place", "space"],
+    values: ["1,156.11\u00A0€", "1,198.40\u00A0€", "987.65\u00A0€"],
+    verify: (t) =>
+      verifyTextPlaces(t, "1,156.11\u00A0€", "1,198.40\u00A0€", [
+        [0, 0],
+        [2, 2],
+        [3, null],
+        [9, 9],
+      ]),
+  },
+  {
     label: "Emptying a number to its affix",
     description:
       'Backspacing the last digit out of "$4" leaves a token with no digits left to be a number by. The dollar sign is still the same dollar sign, so it holds rather than re-entering.',

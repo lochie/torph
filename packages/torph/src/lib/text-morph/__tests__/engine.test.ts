@@ -9,6 +9,7 @@ import {
   ATTR_ITEM,
   ATTR_KIND,
   ATTR_ROOT,
+  ATTR_SLIDING,
   ATTR_SLOT,
   ATTR_SR,
 } from "../../utils/constants";
@@ -317,6 +318,29 @@ describe("the clip a slide happens behind", () => {
     // middle line would slide over its neighbour in plain view.
     expect(element.style.overflowY).toBe("");
     expect(element.style.getPropertyValue("mask-image")).toBe("");
+  });
+
+  it("clips only while a digit slides, so a settled one keeps its full glyph", async () => {
+    const { element, morph } = mount();
+    morph.update("$5");
+    const slot = element.querySelector(`[${ATTR_SLOT}]`)!;
+    expect(slot.hasAttribute(ATTR_SLIDING)).toBe(false);
+
+    morph.update("$6");
+    const arrived = Array.from(element.querySelectorAll(`[${ATTR_SLOT}]`)).find(
+      (s) => s.textContent === "6" && !s.hasAttribute(ATTR_EXITING),
+    )!;
+    expect(arrived.hasAttribute(ATTR_SLIDING)).toBe(true);
+
+    // happy-dom's `getAnimations({ subtree: true })` comes back empty.
+    element
+      .querySelectorAll("*")
+      .forEach((node) => node.getAnimations().forEach((a) => a.finish()));
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(arrived.hasAttribute(ATTR_SLIDING)).toBe(false);
+
+    const css = document.querySelector("style[data-torph]")!.textContent!;
+    expect(css).toContain(`[${ATTR_SLOT}][${ATTR_SLIDING}] {\n  clip-path`);
   });
 
   it("clips and fades the slot from the stylesheet, not per element", () => {

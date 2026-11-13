@@ -1,3 +1,5 @@
+import { BASE_DEFAULTS } from "./types";
+
 export interface SpringParams {
   stiffness?: number;
   damping?: number;
@@ -53,15 +55,26 @@ function computeDuration(
   return Math.ceil(maxDuration * 1000);
 }
 
+// `animate()` throws on an easing the engine can't parse — `linear()` needs Chrome 113 / Safari 17.2.
+function isSupportedEasing(ease: string): boolean {
+  if (typeof CSS === "undefined" || typeof CSS.supports !== "function") {
+    return true;
+  }
+  return CSS.supports("transition-timing-function", ease);
+}
+
 export function resolveEase(
   ease: string | SpringParams,
   fallbackDuration: number,
 ): { ease: string; duration: number } {
-  if (typeof ease === "object") {
-    const resolved = spring(ease);
-    return { ease: resolved.easing, duration: resolved.duration };
-  }
-  return { ease, duration: fallbackDuration };
+  const { easing, duration } =
+    typeof ease === "object"
+      ? spring(ease)
+      : { easing: ease, duration: fallbackDuration };
+  return {
+    ease: isSupportedEasing(easing) ? easing : BASE_DEFAULTS.ease,
+    duration,
+  };
 }
 
 const cache = new Map<string, SpringResult>();

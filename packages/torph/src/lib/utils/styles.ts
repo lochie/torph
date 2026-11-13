@@ -3,6 +3,7 @@ import {
   ATTR_ITEM,
   ATTR_DEBUG,
   ATTR_SLOT,
+  ATTR_SLIDING,
   ATTR_SR,
 } from "./constants";
 
@@ -54,7 +55,7 @@ const TORPH_CSS = `
  * (CSS 2.1 §10.8.1), and engines disagree on whether overflow: clip counts.
  * The inline axis stays open so glyph overhang is not shaved.
  */
-[${ATTR_SLOT}] {
+[${ATTR_SLOT}][${ATTR_SLIDING}] {
   clip-path: inset(0 -100vw);
 }
 
@@ -71,7 +72,7 @@ const TORPH_CSS = `
  * plus repeat-x is what carries the profile across glyph overhang.
  */
 @supports (mask-clip: no-clip) or (-webkit-mask-clip: no-clip) {
-  [${ATTR_SLOT}] {
+  [${ATTR_SLOT}][${ATTR_SLIDING}] {
     --torph-mask: linear-gradient(
       to bottom,
       transparent,

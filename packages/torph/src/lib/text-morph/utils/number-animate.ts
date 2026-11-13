@@ -1,6 +1,22 @@
 import { readAnimationState, cancelAnimations } from "../../utils/animate";
 import type { AnimationState } from "../../utils/animate";
 import { moverOf } from "../../utils/dom";
+import { ATTR_SLIDING } from "../../utils/constants";
+
+const slides = new WeakMap<HTMLElement, Animation>();
+
+/** Clears the clip only when the slide that set it ends; a newer one leaves it on. */
+function trackSlide(slot: HTMLElement, slide: Animation) {
+  slot.setAttribute(ATTR_SLIDING, "");
+  slides.set(slot, slide);
+  const settle = () => {
+    if (slides.get(slot) !== slide) return;
+    slides.delete(slot);
+    slot.removeAttribute(ATTR_SLIDING);
+  };
+  slide.addEventListener("finish", settle);
+  slide.addEventListener("cancel", settle);
+}
 
 // Shares of the morph, not fixed lengths. The outgoing share is larger because a
 // digit that has already left is a hole in the number.
@@ -30,9 +46,12 @@ export function animateNumberExit(
     { duration, easing: ease, fill: "both" },
   );
 
-  mover.animate(
-    { transform: `translate(0px, ${slideDistance}px)`, offset: 1 },
-    { duration, easing: ease, fill: "both" },
+  trackSlide(
+    slot,
+    mover.animate(
+      { transform: `translate(0px, ${slideDistance}px)`, offset: 1 },
+      { duration, easing: ease, fill: "both" },
+    ),
   );
 
   const fadeAnimation = mover.animate(
@@ -73,9 +92,12 @@ export function animateNumberEnter(
   // Digits arrive from above, separators from below, so each reads as its own event.
   const from = kind === "digit" ? -slideDistance : slideDistance;
 
-  mover.animate(
-    { transform: `translate(0px, ${prev.ty + from}px)`, offset: 0 },
-    { duration, easing: ease, fill: "both" },
+  trackSlide(
+    slot,
+    mover.animate(
+      { transform: `translate(0px, ${prev.ty + from}px)`, offset: 0 },
+      { duration, easing: ease, fill: "both" },
+    ),
   );
 
   const startOpacity = prev.opacity >= 1 ? 0 : prev.opacity;
