@@ -1,5 +1,36 @@
 # torph
 
+## 0.1.4
+
+### Patch Changes
+
+- aee41df: Faster first morph on a page.
+
+  #### Improved
+  - The first `TextMorph` on a page no longer pays the browser's text-segmentation startup cost during an interaction.
+
+- 1cab464: Fixes for reported issues.
+
+  #### Fixed
+  - Spring easing no longer crashes browsers without CSS `linear()` support, such as older Android WebViews.
+  - Numbers formatted with a no-break space before their symbol, as most non-English locales do, roll instead of fading.
+  - Settled digits are no longer clipped or faded with a tight `line-height`.
+
+- b1c26f3: Smoother interruptions and line-height changes.
+
+  #### Fixed
+  - A word interrupted while animating in now leaves from where it had got to, instead of popping to full opacity and size first.
+  - Digits stay unclipped when the line-height or font size changes between updates.
+
+  #### Improved
+  - Smaller bundle.
+
+- b1e2a93: Improve rendering and update performance.
+
+  #### Improved
+  - Faster initial rendering and frequent text updates, especially with many components.
+  - Reduced memory allocation when matching long text sequences.
+
 ## 0.1.3
 
 ### Patch Changes
