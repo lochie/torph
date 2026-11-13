@@ -56,9 +56,9 @@ export const TextMorph = ({
   const value = childrenToValue(children);
   const cursorRef = React.useRef(cursorIndex);
   cursorRef.current = cursorIndex;
-  const initialHTML = React.useRef({
+  const [initialHTML] = React.useState(() => ({
     __html: escapeHTML(String(value)).replace(/\n/g, "<br>"),
-  });
+  }));
 
   React.useEffect(() => {
     update(value, cursorRef.current);
@@ -71,14 +71,14 @@ export const TextMorph = ({
       ref={ref}
       className={className}
       style={style}
-      dangerouslySetInnerHTML={initialHTML.current}
+      dangerouslySetInnerHTML={initialHTML}
     />
   );
 };
 
 export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
   const ref = React.useRef<HTMLElement | null>(null);
-  const controllerRef = React.useRef(new MorphController());
+  const [controller] = React.useState(() => new MorphController());
 
   const configKey = MorphController.serializeConfig(props);
 
@@ -88,7 +88,6 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
   handlers.current = props;
 
   React.useEffect(() => {
-    const controller = controllerRef.current;
     if (ref.current) {
       controller.attach(ref.current, {
         ...props,
@@ -106,9 +105,9 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
 
   const update = React.useCallback(
     (value: string | number, cursorIndex?: number) => {
-      controllerRef.current.update(value, cursorIndex);
+      controller.update(value, cursorIndex);
     },
-    [],
+    [controller],
   );
 
   return { ref, update };

@@ -2,8 +2,8 @@
 "torph": patch
 ---
 
-Lighter first render.
+Faster first morph on a page.
 
 #### Improved
 
-- Mounting a `TextMorph` no longer forces a layout, so pages with many of them stay responsive.
+- The first `TextMorph` on a page no longer pays the browser's text-segmentation startup cost during an interaction.

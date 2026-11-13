@@ -128,7 +128,7 @@ function syncSlot(element: HTMLElement, segment: Segment) {
     element.removeAttribute(ATTR_KIND);
     element.removeAttribute(ATTR_SLOT);
     // Also discards the inner span, if this element had one.
-    if (element.textContent !== segment.string)
+    if (element.firstElementChild || element.textContent !== segment.string)
       element.textContent = segment.string;
     return;
   }

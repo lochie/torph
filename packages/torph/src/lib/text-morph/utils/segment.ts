@@ -1,5 +1,5 @@
 export type { Segment } from "../../utils/types";
-import type { Segment } from "../../utils/types";
+import { BASE_DEFAULTS, type Segment } from "../../utils/types";
 import { isNumericWord, segmentNumber } from "./number";
 
 // A collision makes two segments fight over one element and one silently loses its
@@ -135,6 +135,17 @@ function getSegmenter(
     segmenters.set(key, segmenter);
   }
   return segmenter;
+}
+
+// The first Segmenter on a page loads ICU break data (~23 ms at 4× CPU); pay that while idle, not inside an interaction.
+if (
+  typeof requestIdleCallback === "function" &&
+  typeof Intl.Segmenter === "function"
+) {
+  requestIdleCallback(() => {
+    getSegmenter(BASE_DEFAULTS.locale, "word").segment("a");
+    getSegmenter(BASE_DEFAULTS.locale, "grapheme").segment("a");
+  });
 }
 
 function segmentLine(

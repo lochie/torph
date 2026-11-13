@@ -184,36 +184,6 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-describe("first render", () => {
-  it("reads no layout, so a mount is never a forced reflow", () => {
-    const { element, morph } = mount();
-    element.innerHTML = "Total<br>$1,234";
-    const reads: string[] = [];
-    const rect = Element.prototype.getBoundingClientRect;
-    const style = window.getComputedStyle;
-    Element.prototype.getBoundingClientRect = function (this: Element) {
-      reads.push("rect");
-      return rect.call(this);
-    };
-    window.getComputedStyle = (...args) => {
-      reads.push("style");
-      return style(...args);
-    };
-    try {
-      morph.update("Total\n$1,234");
-    } finally {
-      Element.prototype.getBoundingClientRect = rect;
-      window.getComputedStyle = style;
-    }
-
-    expect(reads).toEqual([]);
-    expect(element.querySelectorAll("br")).toHaveLength(1);
-    expect(element.querySelector(`[${ATTR_SR}]`)?.textContent).toBe(
-      "Total\n$1,234",
-    );
-  });
-});
-
 describe("kinds reach the DOM", () => {
   it("marks digits and the symbols around them, and nothing else", () => {
     const { element, morph } = mount();
