@@ -1,6 +1,8 @@
 .DS_Store
 node_modules
 benchmarks/.cache/
+# Records the machine that ran it — CPU model, platform, Node version.
+benchmarks/results.json
 apps/*/dist
 
 # This is a pnpm workspace — other lockfiles only ever drift.

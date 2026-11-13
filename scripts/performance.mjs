@@ -14,6 +14,10 @@ import {
 await mkdir(cache, { recursive: true });
 const captureIndex = process.argv.indexOf("--capture-baseline");
 const baselineRef = process.argv[captureIndex + 1] ?? "HEAD";
+// It reaches `git show <ref>:<path>`, where a leading dash would be read as an option.
+if (captureIndex >= 0 && baselineRef.startsWith("-")) {
+  throw new Error(`--capture-baseline needs a git ref, got ${baselineRef}`);
+}
 const current = await buildBundle(captureIndex >= 0 ? baselineRef : undefined);
 if (captureIndex >= 0) {
   await writeFile(path.join(cache, "baseline.js"), current);
