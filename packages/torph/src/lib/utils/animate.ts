@@ -11,7 +11,10 @@ export function parseTranslate(element: HTMLElement): {
   tx: number;
   ty: number;
 } {
-  const transform = getComputedStyle(element).transform;
+  return parseTransform(getComputedStyle(element).transform);
+}
+
+function parseTransform(transform: string): { tx: number; ty: number } {
   if (!transform || transform === "none") return { tx: 0, ty: 0 };
   const match = transform.match(/matrix\(([^)]+)\)/);
   if (!match) return { tx: 0, ty: 0 };
@@ -36,15 +39,23 @@ export function layoutSize(element: HTMLElement): {
   return { width, height };
 }
 
-export function cancelAnimations(element: HTMLElement): {
-  tx: number;
-  ty: number;
-  opacity: number;
-} {
-  const { tx, ty } = parseTranslate(element);
-  const opacity = Number(getComputedStyle(element).opacity) || 1;
+export type AnimationState = { tx: number; ty: number; opacity: number };
+
+/** Snapshot numeric values before writes; computed-style objects themselves remain live. */
+export function readAnimationState(element: HTMLElement): AnimationState {
+  const style = getComputedStyle(element);
+  const { tx, ty } = parseTransform(style.transform);
+  const opacity = parseFloat(style.opacity);
+  return { tx, ty, opacity: Number.isFinite(opacity) ? opacity : 1 };
+}
+
+/** Accept a snapshot from the same update's read phase to avoid interleaving reads and writes. */
+export function cancelAnimations(
+  element: HTMLElement,
+  previous = readAnimationState(element),
+): AnimationState {
   element.getAnimations().forEach((a) => a.cancel());
-  return { tx, ty, opacity };
+  return previous;
 }
 
 type PendingTransition = {

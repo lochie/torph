@@ -14,6 +14,8 @@ import {
   holdContainerSize,
   layoutSize,
   transitionContainerSize,
+  readAnimationState,
+  type AnimationState,
 } from "../utils/animate";
 import { animateExit, animateEnterOrPersist } from "./utils/animate";
 import {
@@ -25,6 +27,7 @@ import {
   detachFromFlow,
   splitWordSpans,
   reconcileChildren,
+  moverOf,
 } from "../utils/dom";
 import {
   animateGroupEnter,
@@ -177,7 +180,7 @@ export class TextMorph {
     cursorIndex?: number,
   ) {
     // Before the running transition is aborted below, so an interrupt carries on from screen.
-    const { width: oldWidth, height: oldHeight } = layoutSize(element);
+    const oldSize = this.isInitialRender ? null : layoutSize(element);
     const numbers = this.options.numbers !== false;
 
     this.syncAccessibleText(value);
@@ -205,14 +208,30 @@ export class TextMorph {
       segments = [{ id: EMPTY_ID, string: "\u200B" }];
     }
 
-    splitWordSpans(element, splits);
+    const newIds = new Set(segments.map((b) => b.id));
 
+    if (!oldSize) {
+      for (const child of Array.from(element.children)) {
+        if (!child.hasAttribute(ATTR_SR)) child.remove();
+      }
+      reconcileChildren(element, [], newIds, segments);
+      this.previousSegments = segments;
+      this.isInitialRender = false;
+      element.style.width = "";
+      element.style.height = "";
+      return;
+    }
+
+    const { width: oldWidth, height: oldHeight } = oldSize;
+    splitWordSpans(element, splits);
     this.prevMeasures = measure(this.element);
     // The stand-in has no ID, so the exit path would claim it and animate it away.
     const oldChildren = (Array.from(element.children) as HTMLElement[]).filter(
       (child) => !child.hasAttribute(ATTR_SR),
     );
-    const newIds = new Set(segments.map((b) => b.id));
+    const inFlow = oldChildren.filter(
+      (child) => !child.hasAttribute(ATTR_EXITING),
+    );
 
     const exiting = oldChildren.filter(
       (child) =>
@@ -221,9 +240,9 @@ export class TextMorph {
     );
 
     const exitingSet = new Set(exiting);
-    const oldIds = oldChildren.map((c) => c.getAttribute(ATTR_ID) as string);
+    const oldIds = inFlow.map((c) => c.getAttribute(ATTR_ID) as string);
     const exitingAnchorId = resolveExitingAnchors(
-      oldChildren,
+      inFlow,
       exitingSet,
       oldIds,
       newIds,
@@ -250,9 +269,7 @@ export class TextMorph {
     this.updateStyles(segments, firstFrameMeasures, slideDistance);
 
     // A run with no survivors inside it recedes as one shape.
-    const leavingRuns = this.isInitialRender
-      ? []
-      : replacedRuns(oldChildren, new Set(exiting));
+    const leavingRuns = replacedRuns(inFlow, new Set(exiting));
     const leavingTogether = new Set(leavingRuns.flat());
 
     for (const run of leavingRuns) {
@@ -263,7 +280,7 @@ export class TextMorph {
     }
 
     exiting.forEach((child) => {
-      if (this.isInitialRender || child.getAttribute(ATTR_ID) === EMPTY_ID) {
+      if (child.getAttribute(ATTR_ID) === EMPTY_ID) {
         child.remove();
         return;
       }
@@ -295,13 +312,6 @@ export class TextMorph {
 
     this.previousSegments = segments;
 
-    if (this.isInitialRender) {
-      this.isInitialRender = false;
-      element.style.width = "";
-      element.style.height = "";
-      return;
-    }
-
     if (isEmptyTransition) {
       holdContainerSize(
         element,
@@ -329,8 +339,6 @@ export class TextMorph {
     firstFrameMeasures: Measures,
     slideDistance: number,
   ) {
-    if (this.isInitialRender) return;
-
     const children = (
       Array.from(this.element.children) as HTMLElement[]
     ).filter((child) => !child.hasAttribute(ATTR_SR));
@@ -350,12 +358,25 @@ export class TextMorph {
       ),
     );
     const arrivingTogether = new Set<HTMLElement>();
+    // Snapshot every moving box before starting animations, so writes cannot invalidate later reads.
+    const previous = new Map<HTMLElement, AnimationState>();
+    for (const child of settled) {
+      previous.set(child, readAnimationState(child));
+      if (arriving.has(child) && child.hasAttribute(ATTR_KIND)) {
+        const mover = moverOf(child);
+        if (mover !== child) previous.set(mover, readAnimationState(mover));
+      }
+    }
     for (const run of replacedRuns(settled, arriving)) {
       run.forEach((child) => arrivingTogether.add(child));
-      animateGroupEnter(run, {
-        duration: this.options.duration!,
-        ease: this.options.ease!,
-      });
+      animateGroupEnter(
+        run,
+        {
+          duration: this.options.duration!,
+          ease: this.options.ease!,
+        },
+        previous,
+      );
     }
 
     const persistentIds = new Set(
@@ -390,11 +411,14 @@ export class TextMorph {
           deltaY,
           slideDistance,
           kind,
+          previous: previous.get(child),
+          moverPrevious: previous.get(moverOf(child)),
           duration: this.options.duration!,
           ease: this.options.ease!,
         });
       } else if (kind) {
         animateNumberPersist(child, {
+          previous: previous.get(child),
           deltaX,
           deltaY,
           duration: this.options.duration!,
@@ -402,6 +426,7 @@ export class TextMorph {
         });
       } else {
         animateEnterOrPersist(child, {
+          previous: previous.get(child),
           deltaX,
           deltaY,
           isNew,

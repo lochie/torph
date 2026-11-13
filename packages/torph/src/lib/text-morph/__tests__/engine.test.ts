@@ -124,7 +124,6 @@ function slide(calls: Recorded[], id: string): string | null {
 const slideFrom = (dy: number) => `translate(0px, ${dy}px) @0`;
 const slideOut = `translate(0px, ${SLIDE}px) @1`;
 const textEnter = "translate(0px, 0px) scale(0.95) → none";
-const textPersist = "translate(0px, 0px) scale(1) → none";
 const textExit = "translate(0px, 0px) scale(0.95) @1";
 
 type Child = {
@@ -261,7 +260,7 @@ describe("animation dispatch", () => {
     morph.update("hello there");
     restore();
 
-    expect(motion(calls, idOf(element, "hello"))).toBe(textPersist);
+    expect(motion(calls, idOf(element, "hello"))).toBeNull();
     expect(motion(calls, idOf(element, "there"))).toBe(textEnter);
   });
 

@@ -5,31 +5,42 @@
 export function lcsIndices(a: string[], b: string[]): [number[], number[]] {
   const m = a.length;
   const n = b.length;
-  // dp[i][j] = length of the LCS of a[i..] and b[j..]
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array(n + 1).fill(0),
-  );
+  const ai: number[] = [];
+  const bi: number[] = [];
+  let prefix = 0;
+  while (prefix < m && prefix < n && a[prefix] === b[prefix]) {
+    ai.push(prefix);
+    bi.push(prefix++);
+  }
+  if (prefix === m || prefix === n) return [ai, bi];
 
-  for (let i = m - 1; i >= 0; i--) {
-    for (let j = n - 1; j >= 0; j--) {
-      dp[i]![j] =
+  const columns = n - prefix + 1;
+  const dp = new Uint32Array((m - prefix + 1) * columns);
+
+  for (let i = m - 1; i >= prefix; i--) {
+    const row = (i - prefix) * columns;
+    const next = row + columns;
+    for (let j = n - 1; j >= prefix; j--) {
+      const column = j - prefix;
+      dp[row + column] =
         a[i] === b[j]
-          ? dp[i + 1]![j + 1]! + 1
-          : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+          ? dp[next + column + 1]! + 1
+          : Math.max(dp[next + column]!, dp[row + column + 1]!);
     }
   }
 
-  const ai: number[] = [];
-  const bi: number[] = [];
-  let i = 0;
-  let j = 0;
+  let i = prefix;
+  let j = prefix;
   while (i < m && j < n) {
     if (a[i] === b[j]) {
       ai.push(i);
       bi.push(j);
       i++;
       j++;
-    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
+    } else if (
+      dp[(i - prefix + 1) * columns + j - prefix]! >=
+      dp[(i - prefix) * columns + j - prefix + 1]!
+    ) {
       i++;
     } else {
       j++;
