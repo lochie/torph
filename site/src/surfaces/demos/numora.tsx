@@ -1,7 +1,7 @@
 import styles from "./inline.module.scss";
 
 import React from "react";
-import { FormatOn, NumoraInput, ThousandStyle } from "numora";
+import { FormatOn, NumoraInput } from "numora";
 import { TextMorph } from "torph/react";
 
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -32,12 +32,11 @@ export const NumoraField = () => {
     const numora = new NumoraInput(host, {
       formatOn: FormatOn.Change,
       decimalMaxLength: 2,
-      thousandStyle: ThousandStyle.Thousand,
-      rawValueMode: true,
-      onChange: () => sync(numora.getElement()),
+      locale: true,
+      onValueChange: () => sync(numora.element),
     });
 
-    const input = numora.getElement();
+    const input = numora.element;
     input.setAttribute("aria-label", "Amount");
     input.setAttribute("inputmode", "decimal");
     numoraRef.current = numora;
@@ -51,7 +50,7 @@ export const NumoraField = () => {
     const numora = numoraRef.current;
     if (!numora || taken) return;
     numora.setValue(shown);
-    sync(numora.getElement());
+    sync(numora.element);
   }, [shown, taken, sync]);
 
   React.useEffect(() => {
@@ -71,6 +70,8 @@ export const NumoraField = () => {
         <TextMorph
           className={styles.numoraDisplay}
           cursorIndex={caret}
+          // Numora's `locale: true` is the runtime's locale; torph assumes "en".
+          locale={Intl.NumberFormat().resolvedOptions().locale}
           aria-hidden
           style={{
             opacity: value ? 1 : 0.5,
