@@ -142,10 +142,13 @@ async function replay(code, fixture) {
 
 try {
   const report = [];
+  const failed = [];
   for (const fixture of cases) {
     const before = await replay(baseline, fixture);
     const after = await replay(optimized, fixture);
     let largestDelta = 0;
+    // Every difference in the case, not just the first, so one diff can't hide the rest.
+    const differences = [];
     for (let i = 0; i < before.snapshots.length; i++) {
       const keyed = (items) => {
         const seen = new Map();
@@ -160,43 +163,57 @@ try {
       };
       const oldItems = keyed(before.snapshots[i]);
       const newItems = keyed(after.snapshots[i]);
-      assert.equal(
-        newItems.size,
-        oldItems.size,
-        `${fixture.name} item count at step ${i}`,
-      );
+      if (newItems.size !== oldItems.size) {
+        differences.push(
+          `step ${i} item count: ${oldItems.size} -> ${newItems.size}`,
+        );
+      }
       for (const [id, old] of oldItems) {
         const next = newItems.get(id);
-        assert(next, `${fixture.name} missing ${id}`);
-        assert.equal(next.text, old.text);
-        assert.equal(next.exiting, old.exiting);
+        if (!next) {
+          differences.push(`step ${i} missing ${id}`);
+          continue;
+        }
+        if (next.text !== old.text || next.exiting !== old.exiting) {
+          differences.push(`step ${i} ${id} text or exiting state changed`);
+        }
         for (const property of ["x", "y", "width", "height", "opacity"]) {
           const delta = Math.abs(next[property] - old[property]);
           largestDelta = Math.max(largestDelta, delta);
-          assert(
-            delta < 0.05,
-            `${fixture.name} step ${i} ${JSON.stringify(old.text)} ${property}: ${old[property]} -> ${next[property]}`,
-          );
+          if (delta >= 0.05) {
+            differences.push(
+              `step ${i} ${JSON.stringify(old.text)}${old.exiting ? " (exiting)" : ""} ${property}: ${old[property]} -> ${next[property]}`,
+            );
+          }
         }
       }
     }
-    assert(
-      Math.abs(before.final.width - after.final.width) < 0.05,
-      `${fixture.name} final width`,
-    );
-    assert(
-      Math.abs(before.final.height - after.final.height) < 0.05,
-      `${fixture.name} final height`,
-    );
+    for (const side of ["width", "height"]) {
+      if (Math.abs(before.final[side] - after.final[side]) >= 0.05) {
+        differences.push(
+          `final ${side}: ${before.final[side]} -> ${after.final[side]}`,
+        );
+      }
+    }
     report.push({
       name: fixture.name,
       steps: fixture.values.length,
       largestDelta,
     });
-    console.log(
-      `PASS ${fixture.name} (maximum geometry/opacity delta ${largestDelta.toFixed(5)})`,
-    );
+    if (differences.length > 0) {
+      failed.push(fixture.name);
+      console.log(`FAIL ${fixture.name}`);
+      for (const line of differences.slice(0, 5)) console.log(`  ${line}`);
+      if (differences.length > 5) {
+        console.log(`  …and ${differences.length - 5} more`);
+      }
+    } else {
+      console.log(
+        `PASS ${fixture.name} (maximum geometry/opacity delta ${largestDelta.toFixed(5)})`,
+      );
+    }
   }
+  assert.equal(failed.length, 0, `Failed: ${failed.join(", ")}`);
   await writeFile(
     path.join(root, "benchmarks/browser-regressions.json"),
     JSON.stringify({ browser: browser.version(), cases: report }, null, 2) +
