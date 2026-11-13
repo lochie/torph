@@ -118,6 +118,35 @@ export function animateNumberPersist(
 const INK = "0123456789$€£¥%,.";
 let canvas: HTMLCanvasElement | undefined;
 
+type Ink = { ascent: number; descent: number; top: number; bottom: number };
+const inks = new Map<string, Ink>();
+let watchingFonts = false;
+
+/** The font's content area and its digits' ink, measured once per font. */
+function measureInk(font: string): Ink | null {
+  const cached = inks.get(font);
+  if (cached) return cached;
+  canvas ??= document.createElement("canvas");
+  const ruler = canvas.getContext("2d");
+  if (!ruler) return null;
+  ruler.font = font;
+  const m = ruler.measureText(INK);
+  if (!m.fontBoundingBoxAscent && !m.fontBoundingBoxDescent) return null;
+  const ink = {
+    ascent: m.fontBoundingBoxAscent,
+    descent: m.fontBoundingBoxDescent,
+    top: m.actualBoundingBoxAscent,
+    bottom: m.actualBoundingBoxDescent,
+  };
+  inks.set(font, ink);
+  // A web font landing keeps the font string but changes every metric.
+  if (!watchingFonts && document.fonts) {
+    watchingFonts = true;
+    document.fonts.addEventListener("loadingdone", () => inks.clear());
+  }
+  return ink;
+}
+
 function lengthOf(value: string, fontSize: number, fallback: number): number {
   const n = parseFloat(value);
   if (Number.isNaN(n)) return fallback;
@@ -132,15 +161,12 @@ export function slotOverflow(root: HTMLElement): {
   top: number;
   bottom: number;
 } {
-  canvas ??= document.createElement("canvas");
-  const ruler = canvas.getContext("2d");
-  if (!ruler) return { top: 0, bottom: 0 };
   const style = getComputedStyle(root);
-  ruler.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-  const ink = ruler.measureText(INK);
-  const ascent = ink.fontBoundingBoxAscent;
-  const descent = ink.fontBoundingBoxDescent;
-  if (!ascent && !descent) return { top: 0, bottom: 0 };
+  const ink = measureInk(
+    `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
+  );
+  if (!ink) return { top: 0, bottom: 0 };
+  const { ascent, descent } = ink;
 
   const fontSize = parseFloat(style.fontSize) || 0;
   const fade = lengthOf(
@@ -155,10 +181,7 @@ export function slotOverflow(root: HTMLElement): {
   // The content area sits centred in the line box; leading may be negative.
   const leading = (lineHeight - ascent - descent) / 2;
   return {
-    top: Math.max(0, fade - (leading + ascent - ink.actualBoundingBoxAscent)),
-    bottom: Math.max(
-      0,
-      fade - (leading + descent - ink.actualBoundingBoxDescent),
-    ),
+    top: Math.max(0, fade - (leading + ascent - ink.top)),
+    bottom: Math.max(0, fade - (leading + descent - ink.bottom)),
   };
 }
