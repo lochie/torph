@@ -4,6 +4,7 @@ import {
   ATTR_DEBUG,
   ATTR_SLOT,
   ATTR_SR,
+  ATTR_TEXT,
   VAR_INK_TOP,
   VAR_INK_BOTTOM,
 } from "./constants";
@@ -18,6 +19,10 @@ const TORPH_CSS =
   will-change: width, height;
   white-space: nowrap;
   text-align: inherit;
+}
+
+[${ATTR_TEXT}] {
+  white-space: pre;
 }
 
 [${ATTR_ITEM}]:not(br) {

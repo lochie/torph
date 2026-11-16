@@ -11,6 +11,7 @@ import {
   ATTR_ROOT,
   ATTR_SLOT,
   ATTR_SR,
+  ATTR_TEXT,
 } from "../../utils/constants";
 
 // The segmentation and diff suites assert what a morph *should* be. This one
@@ -163,6 +164,12 @@ const shape = (element: HTMLElement) =>
 const idOf = (element: HTMLElement, text: string) =>
   live(element).find((c) => c.text === text)!.id;
 
+/** At rest the value is one run of text; only a morph draws it as boxes. */
+function drawn(morph: TextMorph, value: string) {
+  morph.update("\u2026");
+  morph.update(value);
+}
+
 const mounted: TextMorph[] = [];
 
 function mount(options: Partial<TextMorphOptions> = {}) {
@@ -187,7 +194,7 @@ afterEach(() => {
 describe("kinds reach the DOM", () => {
   it("marks digits and the symbols around them, and nothing else", () => {
     const { element, morph } = mount();
-    morph.update("$1,234");
+    drawn(morph, "$1,234");
 
     expect(shape(element)).toEqual([
       "$:symbol",
@@ -201,7 +208,7 @@ describe("kinds reach the DOM", () => {
 
   it("leaves a sentence's words alone", () => {
     const { element, morph } = mount();
-    morph.update("3 unread messages");
+    drawn(morph, "3 unread messages");
 
     expect(shape(element)).toEqual([
       "3:digit",
@@ -267,12 +274,12 @@ describe("animation dispatch", () => {
   it("dispatches exits on the kind the element left with", () => {
     const { element, morph } = mount();
     morph.update("$5 hello");
-    const digit = idOf(element, "5");
-    const word = idOf(element, "hello");
 
     const { calls, restore } = recordAnimations();
     morph.update("$5");
     restore();
+    const digit = idOf(element, "5");
+    const word = leaving(element).find((c) => c.text === "hello")!.id;
 
     expect(leaving(element).map((c) => c.text)).toContain("hello");
     expect(motion(calls, word)).toBe(textExit);
@@ -282,11 +289,14 @@ describe("animation dispatch", () => {
   it("slides a departing digit out", () => {
     const { element, morph } = mount();
     morph.update("42");
-    const digits = live(element).map((c) => c.id);
 
     const { calls, restore } = recordAnimations();
     morph.update("hello");
     restore();
+    const digits = leaving(element)
+      .filter((c) => c.kind)
+      .map((c) => c.id);
+    expect(digits).toHaveLength(2);
 
     for (const id of digits) expect(slide(calls, id)).toBe(slideOut);
   });
@@ -295,7 +305,7 @@ describe("animation dispatch", () => {
 describe("the clip a slide happens behind", () => {
   it("gives every numeric character its own box, and nothing else one", () => {
     const { element, morph } = mount();
-    morph.update("3 apples");
+    drawn(morph, "3 apples");
 
     const slots = Array.from(element.children).filter((child) =>
       child.hasAttribute(ATTR_SLOT),
@@ -380,7 +390,7 @@ describe("the clip a slide happens behind", () => {
 
   it("clips and fades the slot from the stylesheet, not per element", () => {
     const { element, morph } = mount();
-    morph.update("$5");
+    drawn(morph, "$5");
 
     const slot = element.querySelector(`[${ATTR_SLOT}]`)!;
     expect(slot.getAttribute("style")).toBeNull();
@@ -424,6 +434,7 @@ describe("numbers across line changes", () => {
 
   it("keeps the figure a number on every line", () => {
     const { element, morph } = mount();
+    morph.update("\u2026");
 
     for (const value of steps) {
       morph.update(value);
@@ -470,12 +481,12 @@ describe("numbers across line changes", () => {
   it("never hands the lines around the figure a slide", () => {
     const { element, morph } = mount();
     morph.update("a\n1,234\nb");
-    const above = idOf(element, "a");
-    const below = idOf(element, "b");
 
     const { calls, restore } = recordAnimations();
     morph.update("a\n5,678\nb");
     restore();
+    const above = idOf(element, "a");
+    const below = idOf(element, "b");
 
     // Whether they *moved* is a layout question happy-dom cannot answer — every
     // rect here is zero, so every delta is too. What it can answer is whether
@@ -541,13 +552,13 @@ describe("wholesale replacement", () => {
   it("collapses a long replaced run instead of moving it character by character", () => {
     const { element, morph } = mount();
     morph.update("abcdefghijklmnop");
-    const survivors = ["a", "b", "c", "m", "n", "o", "p"].map((c) =>
-      idOf(element, c),
-    );
 
     const { calls, restore } = recordAnimations();
     morph.update("abcmnopqrstuvwx");
     restore();
+    const survivors = ["a", "b", "c", "m", "n", "o", "p"].map((c) =>
+      idOf(element, c),
+    );
 
     // "defghijkl" leaves together and "qrstuvwx" arrives together — nine and
     // eight characters with nothing surviving between them.
@@ -599,11 +610,11 @@ describe("wholesale replacement", () => {
   it("replaces a figure that jumped orders of magnitude", () => {
     const { element, morph } = mount();
     morph.update("$999.50");
-    const dollar = idOf(element, "$");
 
     const { calls, restore } = recordAnimations();
     morph.update("$1,000,000.00");
     restore();
+    const dollar = idOf(element, "$");
 
     const ids = new Set(grouped(calls).map((call) => call.id));
     expect(ids.size).toBeGreaterThan(GROUP_MIN);
@@ -800,98 +811,132 @@ describe("what a screen reader gets", () => {
   });
 });
 
-describe("kerning across item boundaries", () => {
-  // Every glyph 10px wide, and "Co" pulled 2px tighter, as a font's kern table would.
-  function fakeRuler() {
-    const getContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = (() => ({
-      font: "",
-      measureText: (text: string) => ({
-        width: [...text].length * 10 - (text.includes("Co") ? 2 : 0),
-      }),
-    })) as unknown as typeof getContext;
-    return () => (HTMLCanvasElement.prototype.getContext = getContext);
+describe("plain text at rest", () => {
+  const text = (element: HTMLElement) =>
+    element.querySelector<HTMLElement>(`[${ATTR_TEXT}]`);
+  const items = (element: HTMLElement) =>
+    element.querySelectorAll(`[${ATTR_ITEM}]`);
+
+  it("renders the first value as one run of text, with no boxes", () => {
+    const { element, morph } = mount();
+    morph.update("Total\n$1,234");
+    expect(items(element)).toHaveLength(0);
+    expect(text(element)?.textContent).toBe("Total$1,234");
+    expect(text(element)?.querySelectorAll("br")).toHaveLength(1);
+    expect(text(element)?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("keeps the boxes while anything is still moving", async () => {
+    const { element, morph } = mount({ duration: 50 });
+    morph.update("Copy");
+    morph.update("Copied");
+    await Promise.resolve();
+    expect(text(element)).toBeNull();
+    expect(items(element).length).toBeGreaterThan(0);
+  });
+
+  it("goes back to one run of text once everything has settled", async () => {
+    const { element, morph } = mount({ duration: 20 });
+    morph.update("Copy");
+    morph.update("Copied");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(items(element)).toHaveLength(0);
+    expect(text(element)?.textContent).toBe("Copied");
+  });
+
+  it("draws an interrupting morph on the boxes already there", () => {
+    const { element, morph } = mount();
+    morph.update("Copy");
+    morph.update("Copied");
+    const first = Array.from(items(element)).find((i) => i.textContent === "C");
+    morph.update("Copier");
+    expect(text(element)).toBeNull();
+    expect(Array.from(items(element)).find((i) => i.textContent === "C")).toBe(
+      first,
+    );
+  });
+});
+
+describe("boxes sized to the text", () => {
+  // Every glyph 10px wide and "Co" kerned 2px tighter, as the browser would lay the run out.
+  // `scale` stands in for a transformed ancestor: every rect on screen grows, the layout does not.
+  function fakeLayout(scale = 1) {
+    const range = Range.prototype.getBoundingClientRect;
+    const element = Element.prototype.getBoundingClientRect;
+    Range.prototype.getBoundingClientRect = function (this: Range) {
+      const at = (i: number) => i * 10 - (i >= 1 ? 2 : 0);
+      const data = (this.startContainer as Text).data ?? "";
+      const kerned = data.startsWith("Co");
+      const x = (i: number) => (kerned ? at(i) : i * 10) * scale;
+      return new DOMRect(
+        x(this.startOffset),
+        0,
+        x(this.endOffset) - x(this.startOffset),
+        20 * scale,
+      );
+    };
+    // The engine's probe: a 100px line with no height.
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      return this.tagName === "I"
+        ? new DOMRect(0, 0, 100 * scale, 0)
+        : element.call(this);
+    };
+    return () => {
+      Range.prototype.getBoundingClientRect = range;
+      Element.prototype.getBoundingClientRect = element;
+    };
   }
 
-  const margins = (element: HTMLElement) =>
+  const widths = (element: HTMLElement) =>
     Array.from(
       element.querySelectorAll<HTMLElement>(
         `[${ATTR_ITEM}]:not([${ATTR_EXITING}])`,
       ),
-    ).map((child) => child.style.marginInlineEnd);
+    ).map((child) => child.style.width);
 
-  it("puts the pair's kerning back between the boxes", () => {
-    const restore = fakeRuler();
+  it("gives each box the advance its segment has in the text", () => {
+    const restore = fakeLayout();
     try {
       const { element, morph } = mount();
-      element.style.fontSize = "20px";
       morph.update("Copy");
       morph.update("Copied");
-      expect(margins(element)).toEqual(["-0.1em", "", "", "", "", ""]);
+      expect(widths(element)).toEqual([
+        "8px",
+        "10px",
+        "10px",
+        "10px",
+        "10px",
+        "10px",
+      ]);
     } finally {
       restore();
     }
   });
 
-  it("kerns the first render before the frame paints", async () => {
-    const restore = fakeRuler();
+  it("takes an ancestor's scale back out", () => {
+    const restore = fakeLayout(1.5);
     try {
       const { element, morph } = mount();
-      element.style.fontSize = "20px";
       morph.update("Copy");
-      await new Promise(requestAnimationFrame);
-      expect(margins(element)).toEqual(["-0.1em", "", "", ""]);
+      morph.update("Copied");
+      expect(widths(element)).toEqual([
+        "8px",
+        "10px",
+        "10px",
+        "10px",
+        "10px",
+        "10px",
+      ]);
     } finally {
       restore();
     }
   });
 
-  it("re-kerns once a web font lands", async () => {
-    let restore = fakeRuler();
-    // happy-dom has no FontFaceSet; the engine only listens on it.
-    const fonts = new EventTarget();
-    Object.defineProperty(document, "fonts", {
-      value: fonts,
-      configurable: true,
-    });
-    try {
-      const { element, morph } = mount();
-      element.style.fontSize = "20px";
-      morph.update("Copy");
-      await new Promise(requestAnimationFrame);
-      restore();
-
-      // The landed font kerns "op" instead.
-      const getContext = HTMLCanvasElement.prototype.getContext;
-      HTMLCanvasElement.prototype.getContext = (() => ({
-        font: "",
-        measureText: (text: string) => ({
-          width: [...text].length * 10 - (text === "op" ? 4 : 0),
-        }),
-      })) as unknown as typeof getContext;
-      restore = () => (HTMLCanvasElement.prototype.getContext = getContext);
-
-      fonts.dispatchEvent(new Event("loadingdone"));
-      await new Promise(requestAnimationFrame);
-      expect(margins(element)).toEqual(["", "-0.2em", "", ""]);
-    } finally {
-      restore();
-      delete (document as { fonts?: unknown }).fonts;
-    }
-  });
-
-  it("leaves kerning alone where the page turned it off", () => {
-    const restore = fakeRuler();
-    try {
-      const { element, morph } = mount();
-      element.style.fontSize = "20px";
-      element.style.fontKerning = "none";
-      morph.update("Cop");
-      morph.update("Copy");
-      expect(margins(element)).toEqual(["", "", "", ""]);
-    } finally {
-      restore();
-    }
+  it("leaves the boxes unsized where the text has no layout", () => {
+    const { element, morph } = mount();
+    morph.update("Copy");
+    morph.update("Copied");
+    expect(widths(element).every((width) => width === "")).toBe(true);
   });
 });
 
@@ -926,13 +971,12 @@ describe("ligatures across item boundaries", () => {
   beforeEach(() => (restore = arrowRuler()));
   afterEach(() => restore());
 
-  it("forms the ligature on the first render, before the frame paints", async () => {
+  it("leaves the first render's ligatures to the browser", () => {
     const { element, morph } = mount();
     element.style.fontSize = "20px";
     morph.update("a->b");
-    expect(texts(element)).toEqual(["a", "-", ">", "b"]);
-    await new Promise(requestAnimationFrame);
-    expect(texts(element)).toEqual(["a", "->", "b"]);
+    expect(texts(element)).toEqual([]);
+    expect(element.querySelector(`[${ATTR_TEXT}]`)?.textContent).toBe("a->b");
   });
 
   it("keeps the ligature's box while its parts persist", () => {
@@ -1037,10 +1081,12 @@ describe("direction", () => {
     expect(element.getAttribute("dir")).toBe("rtl");
   });
 
-  it("draws an Arabic word as one box from the first render", () => {
+  it("draws an Arabic word as one box in a morph", () => {
     const { element, morph } = mount();
-    morph.update("مرحبا");
-    const items = element.querySelectorAll(`[${ATTR_ITEM}]`);
+    drawn(morph, "مرحبا");
+    const items = element.querySelectorAll(
+      `[${ATTR_ITEM}]:not([${ATTR_EXITING}])`,
+    );
     expect(Array.from(items, (item) => item.textContent)).toEqual(["مرحبا"]);
   });
 });

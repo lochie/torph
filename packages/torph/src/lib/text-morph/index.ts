@@ -40,13 +40,7 @@ import {
   replacedRuns,
 } from "./utils/replace-animate";
 import { diffSegments } from "./utils/diff";
-import {
-  type Kerning,
-  kernSegments,
-  ligate,
-  readKerning,
-  watchFonts,
-} from "./utils/kerning";
+import { type Kerning, ligate, readKerning } from "./utils/kerning";
 import { addStyles, removeStyles } from "../utils/styles";
 import {
   ATTR_ROOT,
@@ -55,6 +49,7 @@ import {
   ATTR_ID,
   ATTR_KIND,
   ATTR_SR,
+  ATTR_TEXT,
   EMPTY_ID,
   VAR_INK_TOP,
   VAR_INK_BOTTOM,
@@ -93,9 +88,86 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
   numbers: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
-// Weak, so an instance whose element is dropped without destroy() can still be collected.
-const live = new Set<WeakRef<TextMorph>>();
-let queued: Set<TextMorph> | null = null;
+const PROBE = 100; // px — a known layout length, to read an ancestor transform off the screen.
+
+/** The value as text, one node per line — empty ones included, so a line index finds its node. */
+function textOf(value: string): HTMLElement {
+  const text = document.createElement("span");
+  text.setAttribute(ATTR_TEXT, "");
+  text.setAttribute("aria-hidden", "true");
+  const probe = document.createElement("i");
+  probe.style.cssText = `position: absolute; left: 0; top: 0; width: ${PROBE}px; height: 0`;
+  text.append(probe);
+  // A zero-width space keeps an empty value's line box, as the boxes' stand-in does.
+  (value || "\u200B").split("\n").forEach((line, i) => {
+    if (i > 0) text.append(document.createElement("br"));
+    text.append(document.createTextNode(line));
+  });
+  return text;
+}
+
+type Layout = {
+  rects: (DOMRect | null)[];
+  /** A layout pixel along the line, on screen: scale times cos and |sin| of any rotation. */
+  along: number;
+  across: number;
+};
+
+/** Where each segment sits in the text — null for a line break. */
+function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
+  const unit = text.firstElementChild!.getBoundingClientRect();
+  const lines = Array.from(text.childNodes).filter(
+    (node): node is Text => node.nodeType === Node.TEXT_NODE,
+  );
+  const range = document.createRange();
+  let line = 0;
+  let offset = 0;
+  const rects = segments.map((segment) => {
+    if (segment.string === "\n") {
+      line++;
+      offset = 0;
+      return null;
+    }
+    const node = lines[line];
+    const end = offset + segment.string.length;
+    if (!node || end > node.length) return null;
+    range.setStart(node, offset);
+    range.setEnd(node, end);
+    offset = end;
+    return range.getBoundingClientRect();
+  });
+  return { rects, along: unit.width / PROBE, across: unit.height / PROBE };
+}
+
+/**
+ * Sizes each box to the advance its segment has in the text — up to where the next one
+ * starts, so the kerning between them comes with it and the boxes lay out as the text does.
+ * Rects are on screen, so a transformed ancestor's scale and rotation are taken back out.
+ */
+function fitBoxes(boxes: HTMLElement[], { rects, along, across }: Layout) {
+  const scale = Math.hypot(along, across);
+  const squash = along * along - across * across;
+  // No layout (display: none), or turned past 45°, where a bounding box no longer gives a width back.
+  if (!(scale > 0) || !(squash > 0)) return;
+  boxes.forEach((box, i) => {
+    const rect = rects[i];
+    if (!rect || box.tagName === "BR") return;
+    const next = rects[i + 1];
+    const advance = next
+      ? Math.hypot(next.left - rect.left, next.top - rect.top) / scale
+      : (rect.width * along - rect.height * across) / squash;
+    const width = `${+advance.toFixed(3)}px`;
+    if (box.style.width !== width) box.style.width = width;
+  });
+}
+
+const inFlowBoxes = (element: HTMLElement) =>
+  (Array.from(element.children) as HTMLElement[]).filter(
+    (child) =>
+      !child.hasAttribute(ATTR_SR) &&
+      !child.hasAttribute(ATTR_EXITING) &&
+      !child.hasAttribute(ATTR_TEXT),
+  );
 
 export class TextMorph {
   private element: HTMLElement;
@@ -113,11 +185,12 @@ export class TextMorph {
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
   private srNode: HTMLElement | null = null;
-  private hasSetup = false;
+  // Set at rest: the value as one run of text, laid out by the browser rather than in boxes.
+  private textNode: HTMLElement | null = null;
   private generation = 0;
+  private hasSetup = false;
   // From a morph's start until it settles: exactly one of complete and cancel ends it.
   private morphing = false;
-  private self = new WeakRef(this);
   private ownsDir = false;
 
   constructor(options: TextMorphOptions) {
@@ -156,76 +229,14 @@ export class TextMorph {
     // A box per letter has no direction of its own, so the root's orders them; it comes from the text.
     this.ownsDir = !this.element.hasAttribute("dir");
     addStyles();
-    live.add(this.self);
-    watchFonts(TextMorph.refontAll);
-  }
-
-  // Static, not a closure made in setup(): that would hold the first instance as `this` for good.
-  private static refontAll() {
-    live.forEach((ref) => {
-      const morph = ref.deref();
-      if (morph) morph.queueKerning();
-      else live.delete(ref);
-    });
-  }
-
-  /** A first render reads no style, so its kerning waits for the frame — one batch for every instance. */
-  private queueKerning() {
-    if (!queued) {
-      queued = new Set();
-      requestAnimationFrame(TextMorph.flushKerning);
-    }
-    queued.add(this);
-  }
-
-  private static flushKerning() {
-    const batch = Array.from(queued ?? []).filter(
-      (morph) => morph.hasSetup && morph.element.isConnected,
-    );
-    queued = null;
-    const reads = batch.map(
-      (morph) => [morph, readKerning(getComputedStyle(morph.element))] as const,
-    );
-    for (const [morph, kerning] of reads) {
-      morph.applyLigatures(ligate(morph.previousSegments, kerning));
-      morph.applyKerning(morph.renderedSegments, kerning);
-    }
-  }
-
-  /** Outside a morph a ligature forming or breaking has nothing to animate, so it swaps in place. */
-  private applyLigatures(segments: Segment[]) {
-    const ids = segments.map((s) => s.id);
-    if (ids.join("\n") === this.renderedSegments.map((s) => s.id).join("\n"))
-      return;
-    const newIds = new Set(ids);
-    const inFlow = (Array.from(this.element.children) as HTMLElement[]).filter(
-      (child) =>
-        !child.hasAttribute(ATTR_SR) && !child.hasAttribute(ATTR_EXITING),
-    );
-    for (const child of inFlow) {
-      if (!newIds.has(child.getAttribute(ATTR_ID)!)) child.remove();
-    }
-    reconcileChildren(this.element, inFlow, newIds, segments);
-    this.renderedSegments = segments;
-  }
-
-  private applyKerning(segments: Segment[], kerning: Kerning | null) {
-    const gaps = kernSegments(segments, kerning);
-    for (const child of Array.from(this.element.children) as HTMLElement[]) {
-      if (child.hasAttribute(ATTR_SR) || child.hasAttribute(ATTR_EXITING))
-        continue;
-      const gap = gaps.get(child.getAttribute(ATTR_ID)!);
-      const value = gap ? `${+gap.toFixed(4)}em` : "";
-      if (child.style.marginInlineEnd !== value)
-        child.style.marginInlineEnd = value;
-    }
   }
 
   destroy() {
-    live.delete(this.self);
-    queued?.delete(this);
     this.generation++;
     this.morphing = false;
+    // With the stand-in gone, the text is the only copy left to read.
+    this.textNode?.removeAttribute("aria-hidden");
+    this.textNode = null;
     this.reducedMotion?.destroy();
     clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
@@ -270,6 +281,7 @@ export class TextMorph {
       if (typeof formatted === "string") {
         // Plain text is already the whole accessible value.
         this.srNode = null;
+        this.textNode = null;
         this.generation++;
         this.morphing = false;
         this.element.textContent = formatted;
@@ -352,14 +364,10 @@ export class TextMorph {
     const newIds = new Set(segments.map((b) => b.id));
 
     if (!oldSize) {
-      for (const child of Array.from(element.children)) {
-        if (!child.hasAttribute(ATTR_SR)) child.remove();
-      }
-      reconcileChildren(element, [], newIds, segments);
+      this.rest(value);
       this.previousSegments = diffed;
-      this.renderedSegments = segments;
+      this.renderedSegments = diffed;
       this.isInitialRender = false;
-      this.queueKerning();
       element.style.width = "";
       element.style.height = "";
       return;
@@ -372,8 +380,17 @@ export class TextMorph {
       setStyleVar(element, VAR_INK_TOP, `${inkTop.toFixed(4)}em`);
       setStyleVar(element, VAR_INK_BOTTOM, `${inkBottom.toFixed(4)}em`);
     }
-    splitWordSpans(element, splits);
+    // Sized to the text they replace, so the measure below reads where the text had them.
+    if (this.textNode) this.split(splits, kerning);
+    else splitWordSpans(element, splits);
+    // Out of flow and unseen: the new value laid out by the browser, for the boxes to match.
+    const twin = textOf(value);
+    twin.style.cssText =
+      "position: absolute; left: 0; top: 0; visibility: hidden";
+    element.append(twin);
     this.prevMeasures = measure(this.element);
+    const target = layoutOf(twin, segments);
+    twin.remove();
     // The stand-in has no ID, so the exit path would claim it and animate it away.
     const oldChildren = (Array.from(element.children) as HTMLElement[]).filter(
       (child) => !child.hasAttribute(ATTR_SR),
@@ -399,7 +416,7 @@ export class TextMorph {
 
     detachFromFlow(element, exiting);
     reconcileChildren(element, oldChildren, newIds, segments);
-    this.applyKerning(segments, kerning);
+    fitBoxes(inFlowBoxes(element), target);
 
     this.currentMeasures = measure(this.element);
 
@@ -476,24 +493,61 @@ export class TextMorph {
         this.options.ease!,
       );
     }
+
     this.settle();
   }
 
-  /** Waits out every animation under the root and the container, then completes the morph. */
+  /** Swaps the boxes for one run of text — the browser's own layout, kerning and shaping. */
+  private rest(value: string) {
+    for (const node of Array.from(this.element.childNodes)) {
+      if (node !== this.srNode) node.remove();
+    }
+    this.textNode = textOf(value);
+    this.element.append(this.textNode);
+  }
+
+  /** Reads where each outgoing segment sits in the text, then draws them as boxes there. */
+  private split(splits: Map<string, Segment[]>, kerning: Kerning | null) {
+    const text = this.textNode!;
+    const segments = ligate(this.previousSegments, kerning).flatMap(
+      (segment) => splits.get(segment.id) ?? [segment],
+    );
+    const layout = layoutOf(text, segments);
+
+    text.remove();
+    this.textNode = null;
+    reconcileChildren(
+      this.element,
+      [],
+      new Set(segments.map((s) => s.id)),
+      segments,
+    );
+    fitBoxes(inFlowBoxes(this.element), layout);
+    this.renderedSegments = segments;
+  }
+
+  /** Waits out every animation and the container, then goes back to plain text. */
   private settle() {
     const generation = ++this.generation;
     const check = () => {
       if (generation !== this.generation || !this.hasSetup) return;
-      const busy = this.element
-        .getAnimations({ subtree: true })
+      // Element by element: not every engine honours `subtree`.
+      const busy = [
+        this.element,
+        ...Array.from(this.element.querySelectorAll("*")),
+      ]
+        .flatMap((el) => el.getAnimations())
         .filter((a) => a.playState === "running" || a.playState === "paused");
       if (busy.length > 0) {
         Promise.allSettled(busy.map((a) => a.finished)).then(check);
       } else if (isContainerSettling(this.element)) {
         requestAnimationFrame(check);
-      } else if (this.morphing) {
-        this.morphing = false;
-        this.options.onAnimationComplete?.();
+      } else {
+        this.rest(this.data as string);
+        if (this.morphing) {
+          this.morphing = false;
+          this.options.onAnimationComplete?.();
+        }
       }
     };
     queueMicrotask(check);
