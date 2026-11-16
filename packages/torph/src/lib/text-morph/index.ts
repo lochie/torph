@@ -12,6 +12,7 @@ import {
 import {
   clearContainerTransition,
   holdContainerSize,
+  isContainerSettling,
   layoutSize,
   transitionContainerSize,
   readAnimationState,
@@ -113,6 +114,9 @@ export class TextMorph {
   private reducedMotion: ReducedMotionState | null = null;
   private srNode: HTMLElement | null = null;
   private hasSetup = false;
+  private generation = 0;
+  // From a morph's start until it settles: exactly one of complete and cancel ends it.
+  private morphing = false;
   private self = new WeakRef(this);
   private ownsDir = false;
 
@@ -220,6 +224,8 @@ export class TextMorph {
   destroy() {
     live.delete(this.self);
     queued?.delete(this);
+    this.generation++;
+    this.morphing = false;
     this.reducedMotion?.destroy();
     clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
@@ -264,6 +270,8 @@ export class TextMorph {
       if (typeof formatted === "string") {
         // Plain text is already the whole accessible value.
         this.srNode = null;
+        this.generation++;
+        this.morphing = false;
         this.element.textContent = formatted;
         // A later diff against these would animate from elements no longer in the DOM.
         this.previousSegments = [];
@@ -279,8 +287,10 @@ export class TextMorph {
       // TODO: handle HTMLElement case
       throw new Error("HTMLElement not yet supported");
     } else {
-      if (this.options.onAnimationStart && !this.isInitialRender) {
-        this.options.onAnimationStart();
+      if (!this.isInitialRender) {
+        if (this.morphing) this.options.onAnimationCancel?.();
+        this.morphing = true;
+        this.options.onAnimationStart?.();
       }
       try {
         this.createTextGroup(this.data, this.element, cursorIndex);
@@ -456,14 +466,7 @@ export class TextMorph {
     this.renderedSegments = segments;
 
     if (isEmptyTransition) {
-      holdContainerSize(
-        element,
-        oldWidth,
-        oldHeight,
-        this.options.duration!,
-        this.options.onAnimationComplete,
-        this.options.onAnimationCancel,
-      );
+      holdContainerSize(element, oldWidth, oldHeight, this.options.duration!);
     } else {
       transitionContainerSize(
         element,
@@ -471,10 +474,29 @@ export class TextMorph {
         oldHeight,
         this.options.duration!,
         this.options.ease!,
-        this.options.onAnimationComplete,
-        this.options.onAnimationCancel,
       );
     }
+    this.settle();
+  }
+
+  /** Waits out every animation under the root and the container, then completes the morph. */
+  private settle() {
+    const generation = ++this.generation;
+    const check = () => {
+      if (generation !== this.generation || !this.hasSetup) return;
+      const busy = this.element
+        .getAnimations({ subtree: true })
+        .filter((a) => a.playState === "running" || a.playState === "paused");
+      if (busy.length > 0) {
+        Promise.allSettled(busy.map((a) => a.finished)).then(check);
+      } else if (isContainerSettling(this.element)) {
+        requestAnimationFrame(check);
+      } else if (this.morphing) {
+        this.morphing = false;
+        this.options.onAnimationComplete?.();
+      }
+    };
+    queueMicrotask(check);
   }
 
   private updateStyles(
