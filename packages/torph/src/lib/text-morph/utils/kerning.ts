@@ -155,13 +155,16 @@ export function ligate(
   if (segments.length < 2) return segments;
   // Joining letters need no font to know about, so they share a box from the first render.
   const pair = kerning?.ligatures ? pairRuler(kerning.font) : null;
+  // One test of the whole value, so text with no joining letters skips the pair-by-pair check.
+  const joining = CURSIVE.test(segments.map((s) => s.string).join(""));
+  if (!pair && !joining) return segments;
 
   // A digit slides inside its own slot, so it never shares a box.
   const joins = (i: number) => {
     const a = segments[i]!;
     const b = segments[i + 1];
     if (!b || a.kind || b.kind) return false;
-    if (cursive(a, LAST) && cursive(b, FIRST)) return true;
+    if (joining && cursive(a, LAST) && cursive(b, FIRST)) return true;
     return pair?.(a, b) === null;
   };
 

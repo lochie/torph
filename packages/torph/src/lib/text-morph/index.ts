@@ -67,6 +67,16 @@ export { MorphController } from "./controller";
 
 export const DEFAULT_AS = "span";
 
+const STRONG = /\p{L}/u;
+const RTL =
+  /[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}\p{Script=Hanifi_Rohingya}]/u;
+
+/** The first strong letter's direction, as `dir="auto"` finds it — which rescans on every child the root gains. */
+function directionOf(value: string): "rtl" | "ltr" {
+  const first = STRONG.exec(value)?.[0];
+  return first && RTL.test(first) ? "rtl" : "ltr";
+}
+
 // An unchanged write would still restyle every slot.
 function setStyleVar(element: HTMLElement, name: string, value: string) {
   if (element.style.getPropertyValue(name) !== value) {
@@ -137,11 +147,8 @@ export class TextMorph {
 
     this.element.setAttribute(ATTR_ROOT, "");
     if (this.options.debug) this.element.setAttribute(ATTR_DEBUG, "");
-    // A box per letter has no direction of its own, so the root's orders them; take it from the text.
-    if (!this.element.hasAttribute("dir")) {
-      this.element.setAttribute("dir", "auto");
-      this.ownsDir = true;
-    }
+    // A box per letter has no direction of its own, so the root's orders them; it comes from the text.
+    this.ownsDir = !this.element.hasAttribute("dir");
     addStyles();
     live.add(this.self);
     watchFonts(TextMorph.refontAll);
@@ -294,6 +301,11 @@ export class TextMorph {
     const kerning = style && readKerning(style);
 
     this.syncAccessibleText(value);
+    if (this.ownsDir) {
+      const dir = directionOf(value);
+      if (this.element.getAttribute("dir") !== dir)
+        this.element.setAttribute("dir", dir);
+    }
 
     let segments: Segment[];
     let splits: Map<string, Segment[]>;

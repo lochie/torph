@@ -1017,7 +1017,12 @@ describe("direction", () => {
   it("lets the text set the root's direction, so a box per letter reads in order", () => {
     const { element, morph } = mount();
     morph.update("AVATAR");
-    expect(element.getAttribute("dir")).toBe("auto");
+    expect(element.getAttribute("dir")).toBe("ltr");
+    morph.update("שלום AVATAR");
+    expect(element.getAttribute("dir")).toBe("rtl");
+    // Digits and punctuation have no direction; the first letter decides.
+    morph.update("12: مرحبا");
+    expect(element.getAttribute("dir")).toBe("rtl");
     morph.destroy();
     expect(element.hasAttribute("dir")).toBe(false);
   });
