@@ -613,3 +613,56 @@ $fail: rgb(248, 113, 113);
   background: rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.85);
 }
+
+// ── Kerning ──
+
+.kerningCompare {
+  display: grid;
+  // Fixed tracks: sized to content, a column would shift whenever the plain text beside it changed width.
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.25rem 2rem;
+  font-size: 2.25rem;
+  line-height: 1.2;
+}
+
+.kerningColumn {
+  font-family: monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+// The reference sits in the same spot as the morph, so any gap between them shows red.
+.kerningRow {
+  display: grid;
+
+  > * {
+    grid-area: 1 / 1;
+    width: fit-content;
+  }
+}
+
+// Fixed tracks, for the same reason as the columns: no cell shifts when another changes width.
+.kerningPairs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.25rem 0.7rem;
+  margin-top: 0.75rem;
+  font-size: 1.5rem;
+}
+
+.kerningSplit > span {
+  display: inline-block;
+}
+
+.kerningPlain {
+  white-space: pre;
+}
+
+.kerningGhost {
+  color: $fail;
+  white-space: pre;
+  transition: opacity 0.15s;
+}

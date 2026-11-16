@@ -799,3 +799,98 @@ describe("what a screen reader gets", () => {
     expect(srNode(element)).toBe(null);
   });
 });
+
+describe("kerning across item boundaries", () => {
+  // Every glyph 10px wide, and "Co" pulled 2px tighter, as a font's kern table would.
+  function fakeRuler() {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ({
+      font: "",
+      measureText: (text: string) => ({
+        width: [...text].length * 10 - (text.includes("Co") ? 2 : 0),
+      }),
+    })) as unknown as typeof getContext;
+    return () => (HTMLCanvasElement.prototype.getContext = getContext);
+  }
+
+  const margins = (element: HTMLElement) =>
+    Array.from(
+      element.querySelectorAll<HTMLElement>(
+        `[${ATTR_ITEM}]:not([${ATTR_EXITING}])`,
+      ),
+    ).map((child) => child.style.marginInlineEnd);
+
+  it("puts the pair's kerning back between the boxes", () => {
+    const restore = fakeRuler();
+    try {
+      const { element, morph } = mount();
+      element.style.fontSize = "20px";
+      morph.update("Copy");
+      morph.update("Copied");
+      expect(margins(element)).toEqual(["-0.1em", "", "", "", "", ""]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("kerns the first render before the frame paints", async () => {
+    const restore = fakeRuler();
+    try {
+      const { element, morph } = mount();
+      element.style.fontSize = "20px";
+      morph.update("Copy");
+      await new Promise(requestAnimationFrame);
+      expect(margins(element)).toEqual(["-0.1em", "", "", ""]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("re-kerns once a web font lands", async () => {
+    let restore = fakeRuler();
+    // happy-dom has no FontFaceSet; the engine only listens on it.
+    const fonts = new EventTarget();
+    Object.defineProperty(document, "fonts", {
+      value: fonts,
+      configurable: true,
+    });
+    try {
+      const { element, morph } = mount();
+      element.style.fontSize = "20px";
+      morph.update("Copy");
+      await new Promise(requestAnimationFrame);
+      restore();
+
+      // The landed font kerns "op" instead.
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = (() => ({
+        font: "",
+        measureText: (text: string) => ({
+          width: [...text].length * 10 - (text === "op" ? 4 : 0),
+        }),
+      })) as unknown as typeof getContext;
+      restore = () => (HTMLCanvasElement.prototype.getContext = getContext);
+
+      fonts.dispatchEvent(new Event("loadingdone"));
+      await new Promise(requestAnimationFrame);
+      expect(margins(element)).toEqual(["", "-0.2em", "", ""]);
+    } finally {
+      restore();
+      delete (document as { fonts?: unknown }).fonts;
+    }
+  });
+
+  it("leaves kerning alone where the page turned it off", () => {
+    const restore = fakeRuler();
+    try {
+      const { element, morph } = mount();
+      element.style.fontSize = "20px";
+      element.style.fontKerning = "none";
+      morph.update("Cop");
+      morph.update("Copy");
+      expect(margins(element)).toEqual(["", "", "", ""]);
+    } finally {
+      restore();
+    }
+  });
+});

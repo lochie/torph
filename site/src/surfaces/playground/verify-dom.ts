@@ -585,3 +585,29 @@ export function verifyTabularDigits(root: HTMLElement): {
     detail: `${digits.length} digits share a ${max.toFixed(2)}px column`,
   };
 }
+
+/** The morphed text spans the same width as the same string set as one run. */
+export function verifyKerning(
+  root: HTMLElement,
+  reference: HTMLElement,
+  tolerance = 0.5,
+): Result & { off: number } {
+  const items = Array.from(
+    root.querySelectorAll<HTMLElement>(
+      "[torph-item]:not([torph-exiting]):not(br)",
+    ),
+  );
+  if (items.length === 0)
+    return { pass: true, detail: "nothing rendered", off: 0 };
+
+  const rects = items.map((item) => item.getBoundingClientRect());
+  const left = Math.min(...rects.map((r) => r.left));
+  const right = Math.max(...rects.map((r) => r.right));
+  const morphed = right - left;
+  const expected = reference.getBoundingClientRect().width;
+  const naive = rects.reduce((sum, r) => sum + r.width, 0);
+  const off = morphed - expected;
+  const detail = `${morphed.toFixed(2)}px vs ${expected.toFixed(2)}px as one run (${off >= 0 ? "+" : ""}${off.toFixed(2)}px; unkerned boxes ${naive.toFixed(2)}px)`;
+
+  return { pass: Math.abs(off) <= tolerance, detail, off };
+}
