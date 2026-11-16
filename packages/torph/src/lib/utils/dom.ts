@@ -54,14 +54,32 @@ export function detachFromFlow(
       scale: string;
     }
   >();
+  const frame = elements.length ? container.getBoundingClientRect() : null;
+  const box = frame && layoutSize(container);
+  // Undistorted, the screen is layout: unlike offsets, it keeps the fraction, so a box leaves from exactly where it stood.
+  const flat =
+    !!frame &&
+    !!box &&
+    Math.abs(frame.width - box.width) < 0.5 &&
+    Math.abs(frame.height - box.height) < 0.5;
   for (const child of elements) {
     if (child.tagName === "BR") continue;
-    const { x, y } = layoutOffset(child, container);
     // Where the box had got to, so an interrupt does not jump: the translation goes
     // into left/top, the rest of the transform stays on as the exit's starting point.
     const style = getComputedStyle(child);
     const { tx, ty } = parseTranslate(child, style);
     const { width, height } = layoutSize(child, style);
+    const rect = flat ? child.getBoundingClientRect() : null;
+    const { x, y } =
+      rect &&
+      !withoutTranslation(style.transform) &&
+      Math.abs(rect.width - width) < 0.5 &&
+      Math.abs(rect.height - height) < 0.5
+        ? {
+            x: rect.left - frame!.left - container.clientLeft - tx,
+            y: rect.top - frame!.top - container.clientTop - ty,
+          }
+        : layoutOffset(child, container);
     const opacity = parseFloat(style.opacity);
     // `left`/`top` place the margin edge and offsets measure the border edge, so a margin would shift it.
     snapshots.set(child, {
