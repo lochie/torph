@@ -927,6 +927,36 @@ describe("boxes sized to the text", () => {
     }
   });
 
+  it("measures between leading edges when the text runs right to left", () => {
+    // The same advances mirrored: the first letter at the right, each next one to its left.
+    const range = Range.prototype.getBoundingClientRect;
+    Range.prototype.getBoundingClientRect = function (this: Range) {
+      const at = (i: number) => i * 10 - (i >= 1 ? 2 : 0);
+      return new DOMRect(
+        200 - at(this.endOffset),
+        0,
+        at(this.endOffset) - at(this.startOffset),
+        20,
+      );
+    };
+    const element = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = function (this: Element) {
+      return this.tagName === "I"
+        ? new DOMRect(0, 0, 100, 0)
+        : element.call(this);
+    };
+    try {
+      const { element: root, morph } = mount();
+      root.style.direction = "rtl";
+      morph.update("שלום");
+      morph.update("שלומי");
+      expect(widths(root).slice(0, 4)).toEqual(["8px", "10px", "10px", "10px"]);
+    } finally {
+      Range.prototype.getBoundingClientRect = range;
+      Element.prototype.getBoundingClientRect = element;
+    }
+  });
+
   it("takes an ancestor's scale back out", () => {
     const restore = fakeLayout(1.5);
     try {

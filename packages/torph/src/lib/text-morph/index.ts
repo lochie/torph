@@ -111,6 +111,7 @@ type Layout = {
   /** A layout pixel along the line, on screen: scale times cos and |sin| of any rotation. */
   along: number;
   across: number;
+  rtl: boolean;
 };
 
 /** Where each segment sits in the text — null for a line break. */
@@ -136,7 +137,12 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
     offset = end;
     return range.getBoundingClientRect();
   });
-  return { rects, along: unit.width / PROBE, across: unit.height / PROBE };
+  return {
+    rects,
+    along: unit.width / PROBE,
+    across: unit.height / PROBE,
+    rtl: getComputedStyle(text).direction === "rtl",
+  };
 }
 
 /**
@@ -144,19 +150,32 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
  * starts, so the kerning between them comes with it and the boxes lay out as the text does.
  * Rects are on screen, so a transformed ancestor's scale and rotation are taken back out.
  */
-function fitBoxes(boxes: HTMLElement[], { rects, along, across }: Layout) {
+function fitBoxes(boxes: HTMLElement[], { rects, along, across, rtl }: Layout) {
   const scale = Math.hypot(along, across);
   const squash = along * along - across * across;
   // No layout (display: none), or turned past 45°, where a bounding box no longer gives a width back.
   if (!(scale > 0) || !(squash > 0)) return;
+  let line: DOMRect | null = null;
+  // Measured between leading edges: right to left, each segment starts on its right.
+  const from = (rect: DOMRect) =>
+    Math.hypot(
+      rtl ? line!.right - rect.right : rect.left - line!.left,
+      rect.top - line!.top,
+    ) / scale;
   boxes.forEach((box, i) => {
     const rect = rects[i];
-    if (!rect || box.tagName === "BR") return;
+    if (!rect || box.tagName === "BR") {
+      line = null;
+      return;
+    }
+    line ??= rect;
     const next = rects[i + 1];
-    const advance = next
-      ? Math.hypot(next.left - rect.left, next.top - rect.top) / scale
-      : (rect.width * along - rect.height * across) / squash;
-    const width = `${+advance.toFixed(3)}px`;
+    const start = from(rect);
+    const end = next
+      ? from(next)
+      : start + (rect.width * along - rect.height * across) / squash;
+    // Each edge snapped to the 1/64px layout unit, not each width: rounded widths add up along the line.
+    const width = `${(Math.round(end * 64) - Math.round(start * 64)) / 64}px`;
     if (box.style.width !== width) box.style.width = width;
   });
 }
@@ -540,6 +559,7 @@ export class TextMorph {
         requestAnimationFrame(check);
       } else {
         this.rest(this.data as string);
+        // Complete means at rest — after the join, not when the container stops.
         if (this.morphing) {
           this.morphing = false;
           this.options.onAnimationComplete?.();

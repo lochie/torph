@@ -696,3 +696,34 @@ $fail: rgb(248, 113, 113);
   font-size: 0.75rem;
   resize: vertical;
 }
+
+// ── Plain text at rest ──
+
+.restRows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 0.35rem 1.5rem;
+  font-size: 2.25rem;
+  line-height: 1.2;
+}
+
+.restCell {
+  display: grid;
+}
+
+.restText,
+.restBoxes {
+  font-family: monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.restText {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.restBoxes {
+  color: $pass;
+}

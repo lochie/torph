@@ -28,7 +28,6 @@ const TORPH_CSS =
 [${ATTR_ITEM}]:not(br) {
   display: inline-block;
   position: relative;
-  will-change: opacity, transform;
   transform: none;
   opacity: 1;
 }
@@ -107,7 +106,6 @@ const TORPH_CSS =
 
 [${ATTR_SLOT}] > span {
   display: inline-block;
-  will-change: opacity, transform;
 }
 ` +
   /*
