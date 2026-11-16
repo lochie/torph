@@ -1,4 +1,4 @@
-import { cancelAnimations } from "../../utils/animate";
+import { ARRIVE, cancelAll, cancelAnimations } from "../../utils/animate";
 import type { AnimationState } from "../../utils/animate";
 
 // Where characters moving becomes one thing swapped for another. Past this, nothing
@@ -33,7 +33,7 @@ export function animateGroupExit(
   const origins = originsFor(elements);
 
   elements.forEach((element, i) => {
-    element.getAnimations().forEach((animation) => animation.cancel());
+    cancelAll(element);
     element.style.transformOrigin = origins[i]!;
 
     element.animate(
@@ -64,14 +64,14 @@ export function animateGroupEnter(
 
     element.animate(
       { transform: `scale(${GROUP_SCALE})`, offset: 0 },
-      { duration, easing: ease, fill: "both" },
+      { duration, easing: ease, fill: ARRIVE },
     );
 
     const startOpacity = prev.opacity >= 1 ? 0 : prev.opacity;
     element.animate([{ opacity: startOpacity }, { opacity: 1 }], {
       duration: duration * ENTER_FADE,
       easing: "linear",
-      fill: "both",
+      fill: ARRIVE,
     });
   });
 }

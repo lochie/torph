@@ -1,8 +1,5 @@
 import type { AnimationState } from "../../utils/animate";
-import {
-  cancelAnimations,
-  fadeDuration,
-} from "../../utils/animate";
+import { ARRIVE, cancelAnimations, fadeDuration } from "../../utils/animate";
 
 export function animateExit(
   child: HTMLElement,
@@ -76,7 +73,7 @@ export function animateEnterOrPersist(
     {
       duration,
       easing: ease,
-      fill: "both",
+      fill: ARRIVE,
     },
   );
 
@@ -85,7 +82,7 @@ export function animateEnterOrPersist(
       duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
       delay: isNew ? fadeDuration(duration, 0.25) : 0,
       easing: "linear",
-      fill: "both",
+      fill: ARRIVE,
     });
   }
 }

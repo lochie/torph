@@ -110,4 +110,38 @@ describe("engine work budgets", () => {
       records.some((record) => Array.from(record.removedNodes).includes(word)),
     ).toBe(false);
   });
+
+  it("reads running animations once per update, not once per item", () => {
+    const element = document.createElement("span");
+    document.body.append(element);
+    const morph = new TextMorph({ element, respectReducedMotion: false });
+    mounted.push(morph);
+    morph.update("the quick brown fox jumps over the lazy dog");
+    morph.update("the quick brown cat jumps over the lazy dog");
+    const reads = vi.spyOn(Element.prototype, "getAnimations");
+    morph.update("the quick brown cat leaps over the lazy dog");
+    expect(reads).toHaveBeenCalledTimes(1);
+    expect(reads).toHaveBeenCalledWith({ subtree: true });
+  });
+
+  it("lets an arriving animation go once it ends, rather than hold its last frame", () => {
+    const element = document.createElement("span");
+    document.body.append(element);
+    const morph = new TextMorph({ element, respectReducedMotion: false });
+    mounted.push(morph);
+    morph.update("12 apples");
+    const animate = vi.spyOn(Element.prototype, "animate");
+    morph.update("13 pears and plums");
+    const arriving = animate.mock.calls.filter(
+      ([, options], i) =>
+        !(animate.mock.contexts[i] as Element).closest(`[${ATTR_EXITING}]`) &&
+        (animate.mock.contexts[i] as Element) !== element &&
+        typeof options === "object",
+    );
+    expect(arriving.length).toBeGreaterThan(0);
+    // Every one ends where the element rests, so a `both` fill would only linger.
+    for (const [, options] of arriving) {
+      expect((options as KeyframeAnimationOptions).fill).toBe("backwards");
+    }
+  });
 });

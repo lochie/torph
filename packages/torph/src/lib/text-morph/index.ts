@@ -15,6 +15,8 @@ import {
   layoutSize,
   transitionContainerSize,
   readAnimationState,
+  releaseAnimations,
+  snapshotAnimations,
   type AnimationState,
 } from "../utils/animate";
 import { animateExit, animateEnterOrPersist } from "./utils/animate";
@@ -280,7 +282,11 @@ export class TextMorph {
       if (this.options.onAnimationStart && !this.isInitialRender) {
         this.options.onAnimationStart();
       }
-      this.createTextGroup(this.data, this.element, cursorIndex);
+      try {
+        this.createTextGroup(this.data, this.element, cursorIndex);
+      } finally {
+        releaseAnimations();
+      }
     }
   }
 
@@ -297,6 +303,7 @@ export class TextMorph {
       this.options.numbers !== false &&
       (/\d/.test(value) || this.previousSegments.some((s) => s.kind));
     const clip = style && (hasNumbers ? slotClip(style) : NO_CLIP);
+    if (style) snapshotAnimations(element);
     const numbers = this.options.numbers !== false;
     const kerning = style && readKerning(style);
 

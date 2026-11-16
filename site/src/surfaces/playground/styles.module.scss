@@ -666,3 +666,33 @@ $fail: rgb(248, 113, 113);
   white-space: pre;
   transition: opacity 0.15s;
 }
+
+// ── Long text ──
+
+// Scrolls rather than clips: the document is meant to be read and edited.
+.longStage {
+  max-height: 22rem;
+  overflow-y: auto;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  background: var(--body-light);
+  color: #fff;
+}
+
+.longText {
+  font-family: var(--font-secondary);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.longInput {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit;
+  font-size: 0.75rem;
+  resize: vertical;
+}
