@@ -26,24 +26,25 @@ export type DiffOptions = {
 // Numbers share too few characters to pair with each other, so they all collapse to one token.
 const NUMBER_TOKEN = "\u0000#";
 
-/** Per-character segments of an old word, cutting it up first if it is still one span. */
-function splitIfWhole(
+/**
+ * Per-character segments of an old word, cutting up every piece still longer than
+ * one — the character LCS indexes these by character, so a piece left whole would
+ * hand its ID, and its element, to whatever character lands on its index.
+ */
+function splitIntoChars(
   oldGroup: { word: string; segments: Segment[] },
   splits: Map<string, Segment[]>,
 ): Segment[] {
-  // Cutting a one-character word mints a new ID for a character that never moved.
-  if (oldGroup.segments.length !== 1 || oldGroup.word.length <= 1) {
-    return oldGroup.segments;
-  }
-
-  const wordSeg = oldGroup.segments[0]!;
-  const charSegs = oldGroup.word.split("").map((char, i) => ({
-    id: `${wordSeg.id}:${i}`,
-    string: char,
-  }));
-  splits.set(wordSeg.id, charSegs);
-
-  return charSegs;
+  return oldGroup.segments.flatMap((seg) => {
+    // Cutting a one-character piece mints a new ID for a character that never moved.
+    if (seg.string.length <= 1) return [seg];
+    const charSegs = seg.string.split("").map((char, i) => ({
+      id: `${seg.id}:${i}`,
+      string: char,
+    }));
+    splits.set(seg.id, charSegs);
+    return charSegs;
+  });
 }
 
 /** Fills in kinds an older, non-numeric segmentation of the same word lacked. */
@@ -286,7 +287,7 @@ export function diffSegments(
       segments.push(
         ...segmentNumber(
           newWord,
-          asNumberSegments(splitIfWhole(oldGroup, splits)),
+          asNumberSegments(splitIntoChars(oldGroup, splits)),
           cursorIndex === undefined ? undefined : cursorIndex - charOffset,
           decimalChar,
         ),
@@ -294,7 +295,7 @@ export function diffSegments(
     } else if (plan.mode === "morph") {
       const oldGroup = oldWords[plan.oi]!;
       const oldWord = oldGroup.word;
-      const oldCharSegs = splitIfWhole(oldGroup, splits);
+      const oldCharSegs = splitIntoChars(oldGroup, splits);
 
       const oldChars = oldWord.split("");
       const newChars = newWord.split("");

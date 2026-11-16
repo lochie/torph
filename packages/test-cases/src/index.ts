@@ -7,6 +7,7 @@ export {
   verifyCharMorph,
   verifyCycleStability,
   verifyGraphemeMorph,
+  verifyIdsKeepText,
   verifyKinds,
   verifyKindsAfterMorph,
   verifyNoMorph,
