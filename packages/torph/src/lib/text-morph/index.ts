@@ -531,12 +531,8 @@ export class TextMorph {
     const generation = ++this.generation;
     const check = () => {
       if (generation !== this.generation || !this.hasSetup) return;
-      // Element by element: not every engine honours `subtree`.
-      const busy = [
-        this.element,
-        ...Array.from(this.element.querySelectorAll("*")),
-      ]
-        .flatMap((el) => el.getAnimations())
+      const busy = this.element
+        .getAnimations({ subtree: true })
         .filter((a) => a.playState === "running" || a.playState === "paused");
       if (busy.length > 0) {
         Promise.allSettled(busy.map((a) => a.finished)).then(check);

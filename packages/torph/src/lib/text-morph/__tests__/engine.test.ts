@@ -42,6 +42,20 @@ beforeAll(() => {
   } as typeof Element.prototype.animate;
 });
 
+// happy-dom ignores `subtree`, and the engine waits on every animation under the root.
+beforeAll(() => {
+  const original = Element.prototype.getAnimations;
+  Element.prototype.getAnimations = function (
+    this: Element,
+    options?: GetAnimationsOptions,
+  ) {
+    if (!options?.subtree) return original.call(this);
+    return [this, ...Array.from(this.querySelectorAll("*"))].flatMap((el) =>
+      original.call(el),
+    );
+  };
+});
+
 type Recorded = {
   id: string | null;
   onMover: boolean;
