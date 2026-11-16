@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Segment } from "../../../utils/types";
-import { kernSegments, readKerning, type Kerning } from "../kerning";
+import { kernSegments, ligate, readKerning, type Kerning } from "../kerning";
 import { segmentText } from "../segment";
 
 // Every glyph 10px; these pairs kern as a font's table would.
@@ -52,6 +52,7 @@ const kerning = (over: Partial<Kerning> = {}): Kerning => ({
   fontSize: 20,
   numerals: true,
   kern: true,
+  ligatures: true,
   ...over,
 });
 
@@ -123,6 +124,57 @@ describe("kernSegments", () => {
   });
 });
 
+describe("ligate", () => {
+  const strings = (segments: Segment[]) => segments.map((s) => s.string);
+
+  it.each(["kept", "dropped"] as const)(
+    "gives a ligature one box when spacing has it %s",
+    (mode) => {
+      ligatures = mode;
+      expect(strings(ligate(segmentText("a=>b", "en"), kerning()))).toEqual([
+        "a",
+        "=>",
+        "b",
+      ]);
+    },
+  );
+
+  it("leaves kerned pairs in their own boxes", () => {
+    const segments = segmentText("AVA", "en");
+    expect(ligate(segments, kerning())).toEqual(segments);
+  });
+
+  it("joins a run of overlapping ligatures into one box", () => {
+    expect(strings(ligate(segmentText("x<->y", "en"), kerning()))).toEqual([
+      "x",
+      "<->",
+      "y",
+    ]);
+  });
+
+  it("names the box after its parts, so the same parts keep it", () => {
+    const before = ligate(segmentText("a->b", "en"), kerning());
+    const after = ligate(segmentText("c->d", "en"), kerning());
+    expect(before[1]!.id).toBe("\u0000l-\u0000>");
+    expect(after[1]!.id).toBe(before[1]!.id);
+  });
+
+  it("keeps digits in their slots", () => {
+    const segments = [seg("a", "-"), seg("d", ">", "symbol")];
+    expect(ligate(segments, kerning())).toEqual(segments);
+  });
+
+  it("does not join across a line break", () => {
+    const segments = segmentText("-\n>", "en");
+    expect(ligate(segments, kerning())).toEqual(segments);
+  });
+
+  it("joins nothing where the page turned ligatures off", () => {
+    const segments = segmentText("a=>b", "en");
+    expect(ligate(segments, kerning({ ligatures: false }))).toBe(segments);
+  });
+});
+
 describe("readKerning", () => {
   const style = (props: Partial<CSSStyleDeclaration>) =>
     ({
@@ -142,11 +194,20 @@ describe("readKerning", () => {
       fontSize: 20,
       numerals: true,
       kern: true,
+      ligatures: true,
     });
   });
 
-  it("stands down where the page turned kerning off", () => {
+  it("stands down where the page turned kerning or ligatures off", () => {
     expect(readKerning(style({ fontKerning: "none" }))?.kern).toBe(false);
+    expect(
+      readKerning(style({ fontVariantLigatures: "none" }))?.ligatures,
+    ).toBe(false);
+    expect(
+      readKerning(
+        style({ fontVariantLigatures: "no-common-ligatures no-contextual" }),
+      )?.ligatures,
+    ).toBe(false);
   });
 
   it("stands down where a canvas can't draw the page's glyphs", () => {
@@ -178,5 +239,15 @@ describe("the pair cache", () => {
     measured = [];
     kernSegments(segmentText("AV", "en"), kerning({ font: "40px Fluid" }));
     expect(measured).toHaveLength(0);
+  });
+});
+
+describe("kerning beside a ligature", () => {
+  it("measures the joined glyph, not the letter it started as", () => {
+    const joined = ligate(segmentText("a->b", "en"), kerning());
+    measured = [];
+    kernSegments(joined, kerning());
+    expect(measured).toContain("a->");
+    expect(measured).not.toContain("a-");
   });
 });

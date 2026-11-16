@@ -8,21 +8,17 @@ import { verifyKerning } from "./verify-dom";
 import { SPEEDS, EASINGS } from "./config";
 import type { Speed, EasingKey, Align } from "./config";
 
-// Whole words, and an arrow Inter and Playfair draw as one glyph.
+// Whole words, arrows Inter and Playfair draw as one glyph, and Playfair's fi/ffi
+// ligatures — each of which needs one box to form.
 const WORDS = [
   ["AVATAR", "AVAST"],
   ["Typo", "Type"],
   ["Copy", "Copied"],
   ["WAVE", "Wavy"],
   ["7.5", "7.25"],
-  ["a=>b", "a->b"],
+  ["a=>b", "a->b", "a<->b"],
+  ["office", "fifty"],
 ] as const;
-// Split boxes can't form the arrow, so its reference is plain text without one —
-// and the arrow must not be mistaken for a pair to kern.
-const ARROW = WORDS.length - 1;
-const UNSUBSTITUTED: React.CSSProperties = {
-  fontVariantLigatures: "no-common-ligatures no-contextual",
-};
 
 // The deepest and furthest-reaching pairs in a typical kern table, and the common
 // ones. Each is its own morph — a space would make them words, and a word kerns
@@ -128,10 +124,7 @@ export function KerningDemo({
     };
   }, [step, font, kerning, duration]);
 
-  const ghostStyle = (i: number): React.CSSProperties => ({
-    opacity: ghost ? 1 : 0,
-    ...(i === ARROW && UNSUBSTITUTED),
-  });
+  const ghostStyle = { opacity: ghost ? 1 : 0 };
 
   const renderSpecimen = (i: number, className: string) => (
     <div
@@ -148,7 +141,7 @@ export function KerningDemo({
           refs.current[i] = el;
         }}
         className={styles.kerningGhost}
-        style={ghostStyle(i)}
+        style={ghostStyle}
         aria-hidden
       >
         {texts[i]}
@@ -162,7 +155,7 @@ export function KerningDemo({
   const renderTorph = (i: number) => renderSpecimen(i, styles.kerningRow!);
 
   const ghostOf = (i: number) => (
-    <span className={styles.kerningGhost} style={ghostStyle(i)} aria-hidden>
+    <span className={styles.kerningGhost} style={ghostStyle} aria-hidden>
       {texts[i]}
     </span>
   );
@@ -226,7 +219,7 @@ export function KerningDemo({
         shown as plain text, through torph, and split into a box per letter the
         way torph drew it before. The plain text sits in red behind the other
         two: torph should cover it exactly, while the split version shows red
-        wherever a pair has lost its kerning.
+        wherever a pair has lost its kerning or a ligature has failed to form.
       </p>
 
       <div

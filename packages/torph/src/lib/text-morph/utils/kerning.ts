@@ -15,21 +15,29 @@ export type Kerning = {
   fontSize: number;
   numerals: boolean;
   kern: boolean;
+  ligatures: boolean;
 };
 
-/** What kerning needs from the root's style, or null where a canvas can't stand in for it. */
+/** What shaping needs from the root's style, or null where a canvas can't stand in for it. */
 export function readKerning(style: CSSStyleDeclaration): Kerning | null {
   const fontSize = parseFloat(style.fontSize);
   if (!fontSize) return null;
-  // A canvas can't apply feature settings, so it would kern glyphs the page isn't drawing.
+  // A canvas can't apply feature settings, so it would shape glyphs the page isn't drawing.
   if (style.fontFeatureSettings && style.fontFeatureSettings !== "normal")
     return null;
+  const ligatures = style.fontVariantLigatures || "normal";
   return {
     font: fontOf(style),
     fontSize,
     numerals:
       !style.fontVariantNumeric || style.fontVariantNumeric === "normal",
     kern: style.fontKerning !== "none",
+    ligatures:
+      ligatures !== "none" &&
+      !(
+        ligatures.includes("no-common-ligatures") &&
+        ligatures.includes("no-contextual")
+      ),
   };
 }
 
@@ -47,8 +55,8 @@ function pairWidth(ruler: CanvasRenderingContext2D, a: string, b: string) {
 }
 
 /**
- * A ligature or contextual alternate narrows a pair too, but separate boxes never
- * form one. Letter-spacing tells them apart: it drops the substitution (Chromium) or one
+ * A ligature or contextual alternate narrows a pair too, but only one box can form
+ * it. Letter-spacing tells them apart: it drops the substitution (Chromium) or one
  * glyph's worth of spacing with it (WebKit, Firefox), and leaves kerning be.
  */
 function measurePair(
@@ -67,6 +75,13 @@ function measurePair(
   return Math.abs(spaced - kern) < 0.01 ? kern : null;
 }
 
+const LIGATURE = "\u0000l"; // NUL never occurs in text, and `l` keeps it off a number's `\u0000n`.
+
+const edge = (segment: Segment, side: RegExp) =>
+  segment.id.startsWith(LIGATURE)
+    ? segment.string
+    : side.exec(segment.string)?.[0];
+
 /** Measures a segment against the next — undefined where the two can't touch. */
 function pairRuler(font: string) {
   canvas ??= document.createElement("canvas");
@@ -83,8 +98,9 @@ function pairRuler(font: string) {
 
   return (a: Segment, b: Segment | undefined): number | null | undefined => {
     if (!b || a.string === "\n" || b.string === "\n") return undefined;
-    const left = LAST.exec(a.string)?.[0]?.replace("\u00A0", " ");
-    const right = FIRST.exec(b.string)?.[0]?.replace("\u00A0", " ");
+    // A ligature's neighbour meets the joined glyph, not the letter it started as.
+    const left = edge(a, LAST)?.replace("\u00A0", " ");
+    const right = edge(b, FIRST)?.replace("\u00A0", " ");
     if (!left || !right) return undefined;
     const key = `${left}\n${right}`;
     let kern = known.get(key);
@@ -118,6 +134,42 @@ export function kernSegments(
   }
 
   return gaps;
+}
+
+/**
+ * Joins every run of segments the font draws as one glyph into a single segment,
+ * since separate boxes can't form it. The ID is built from the parts', so the same
+ * parts keep the same box from one morph to the next.
+ */
+export function ligate(
+  segments: Segment[],
+  kerning: Kerning | null,
+): Segment[] {
+  if (!kerning?.ligatures || segments.length < 2) return segments;
+  const pair = pairRuler(kerning.font);
+  if (!pair) return segments;
+
+  // A digit slides inside its own slot, so it never shares a box.
+  const joins = (i: number) =>
+    !segments[i]!.kind &&
+    !segments[i + 1]?.kind &&
+    pair(segments[i]!, segments[i + 1]) === null;
+
+  const out: Segment[] = [];
+  for (let i = 0; i < segments.length; i++) {
+    const start = i;
+    while (joins(i)) i++;
+    if (i === start) {
+      out.push(segments[i]!);
+      continue;
+    }
+    const run = segments.slice(start, i + 1);
+    out.push({
+      id: LIGATURE + run.map((s) => s.id).join("\u0000"),
+      string: run.map((s) => s.string).join(""),
+    });
+  }
+  return out;
 }
 
 let watching = false;

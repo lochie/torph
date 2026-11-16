@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, afterEach, beforeAll } from "vitest";
+import { describe, it, expect, afterEach, beforeAll, beforeEach } from "vitest";
 import { TextMorph } from "../index";
 import type { TextMorphOptions } from "../types";
 import { GROUP_MIN } from "../utils/replace-animate";
@@ -892,5 +892,123 @@ describe("kerning across item boundaries", () => {
     } finally {
       restore();
     }
+  });
+});
+
+describe("ligatures across item boundaries", () => {
+  // "->" is one arrow glyph, which letter-spacing breaks apart as Chromium does.
+  function arrowRuler() {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ({
+      font: "",
+      letterSpacing: "0px",
+      measureText(this: { letterSpacing: string }, text: string) {
+        const spacing = parseFloat(this.letterSpacing);
+        const glyphs = [...text].length - (text === "->" && !spacing ? 1 : 0);
+        return { width: glyphs * (10 + spacing) };
+      },
+    })) as unknown as typeof getContext;
+    return () => (HTMLCanvasElement.prototype.getContext = getContext);
+  }
+
+  const items = (element: HTMLElement, exiting = false) =>
+    Array.from(
+      element.querySelectorAll<HTMLElement>(
+        `[${ATTR_ITEM}]${exiting ? "" : `:not([${ATTR_EXITING}])`}`,
+      ),
+    );
+  const texts = (element: HTMLElement) =>
+    items(element).map((item) => item.textContent);
+  const arrowOf = (element: HTMLElement) =>
+    items(element, true).find((item) => item.textContent === "->");
+
+  let restore: () => void;
+  beforeEach(() => (restore = arrowRuler()));
+  afterEach(() => restore());
+
+  it("forms the ligature on the first render, before the frame paints", async () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("a->b");
+    expect(texts(element)).toEqual(["a", "-", ">", "b"]);
+    await new Promise(requestAnimationFrame);
+    expect(texts(element)).toEqual(["a", "->", "b"]);
+  });
+
+  it("keeps the ligature's box while its parts persist", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("a->b");
+    morph.update("a->c");
+    const arrow = arrowOf(element)!;
+    morph.update("x->c");
+    expect(texts(element)).toEqual(["x", "->", "c"]);
+    expect(arrowOf(element)).toBe(arrow);
+    expect(arrow.hasAttribute(ATTR_EXITING)).toBe(false);
+  });
+
+  it("swaps the parts for the ligature when it forms", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("a-b");
+    morph.update("a-c");
+    morph.update("a->c");
+    expect(texts(element)).toEqual(["a", "->", "c"]);
+    // The lone hyphen leaves; nothing but the arrow draws an arrowhead.
+    const leaving = items(element, true)
+      .filter((item) => item.hasAttribute(ATTR_EXITING))
+      .map((item) => item.textContent);
+    expect(leaving).toContain("-");
+    expect(leaving.some((text) => text!.includes(">"))).toBe(false);
+  });
+
+  it("lets the ligature leave whole when it breaks", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("a->b");
+    morph.update("a->c");
+    morph.update("a-c");
+    expect(texts(element)).toEqual(["a", "-", "c"]);
+    expect(arrowOf(element)?.hasAttribute(ATTR_EXITING)).toBe(true);
+  });
+
+  it("forms between words, and keeps its box as the words around it change", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("go a->b now");
+    morph.update("go a->b later");
+    expect(texts(element)).toContain("->");
+    const arrow = arrowOf(element)!;
+    morph.update("then a->b later");
+    expect(arrowOf(element)).toBe(arrow);
+    expect(arrow.hasAttribute(ATTR_EXITING)).toBe(false);
+  });
+
+  it("forms on every line, each in a box of its own", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("a->b\nc->d");
+    morph.update("a->b\nc->e");
+    const arrows = items(element).filter((item) => item.textContent === "->");
+    expect(arrows).toHaveLength(2);
+    expect(new Set(arrows.map((a) => a.getAttribute(ATTR_ID))).size).toBe(2);
+    expect(element.querySelectorAll("br")).toHaveLength(1);
+    morph.update("a->b\nc->f");
+    const kept = items(element).filter((item) => item.textContent === "->");
+    expect(kept).toEqual(arrows);
+  });
+
+  it("re-forms cleanly when a break is interrupted", () => {
+    const { element, morph } = mount();
+    element.style.fontSize = "20px";
+    morph.update("a->b");
+    morph.update("a->c");
+    morph.update("a-c");
+    morph.update("a->c");
+    expect(texts(element)).toEqual(["a", "->", "c"]);
+    // In flow, only the one arrow — no stray half of it left behind.
+    expect(
+      new Set(items(element).map((item) => item.getAttribute(ATTR_ID))).size,
+    ).toBe(3);
   });
 });
