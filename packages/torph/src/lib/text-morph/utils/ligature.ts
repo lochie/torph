@@ -1,37 +1,27 @@
 import type { Segment } from "../../utils/types";
 
 let canvas: HTMLCanvasElement | undefined;
-// A pair's kerning in px, or null where the font substitutes a glyph for it.
-const pairs = new Map<string, Map<string, number | null>>();
+// Whether the font draws a pair as one glyph, per font string.
+const pairs = new Map<string, Map<string, boolean>>();
 const MAX_FONTS = 32; // A fluid font size is a new font string on every resize.
+let watching = false;
 
 /** The canvas font for a computed style. */
 export function fontOf(style: CSSStyleDeclaration): string {
   return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
 }
 
-export type Kerning = {
-  font: string;
-  fontSize: number;
-  numerals: boolean;
-  kern: boolean;
-  ligatures: boolean;
-};
+export type Shaping = { font: string; ligatures: boolean };
 
-/** What shaping needs from the root's style, or null where a canvas can't stand in for it. */
-export function readKerning(style: CSSStyleDeclaration): Kerning | null {
-  const fontSize = parseFloat(style.fontSize);
-  if (!fontSize) return null;
+/** What ligature detection needs from the root's style, or null where a canvas can't stand in for it. */
+export function readShaping(style: CSSStyleDeclaration): Shaping | null {
+  if (!parseFloat(style.fontSize)) return null;
   // A canvas can't apply feature settings, so it would shape glyphs the page isn't drawing.
   if (style.fontFeatureSettings && style.fontFeatureSettings !== "normal")
     return null;
   const ligatures = style.fontVariantLigatures || "normal";
   return {
     font: fontOf(style),
-    fontSize,
-    numerals:
-      !style.fontVariantNumeric || style.fontVariantNumeric === "normal",
-    kern: style.fontKerning !== "none",
     ligatures:
       ligatures !== "none" &&
       !(
@@ -55,40 +45,33 @@ function pairWidth(ruler: CanvasRenderingContext2D, a: string, b: string) {
 }
 
 /**
- * A ligature or contextual alternate narrows a pair too, but only one box can form
- * it. Letter-spacing tells them apart: it drops the substitution (Chromium) or one
- * glyph's worth of spacing with it (WebKit, Firefox), and leaves kerning be.
+ * A ligature or contextual alternate narrows a pair, but so does kerning. Letter-spacing
+ * tells them apart: it drops the substitution (Chromium) or one glyph's worth of spacing
+ * with it (WebKit, Firefox), and leaves kerning be.
  */
-function measurePair(
-  ruler: CanvasRenderingContext2D,
-  a: string,
-  b: string,
-): number | null {
-  const kern = pairWidth(ruler, a, b);
+function substitutes(ruler: CanvasRenderingContext2D, a: string, b: string) {
+  const plain = pairWidth(ruler, a, b);
   // Unkerned pairs come back as float noise, not zero.
-  if (Math.abs(kern) < 0.01) return 0;
-  if (!("letterSpacing" in ruler)) return kern;
+  if (Math.abs(plain) < 0.01 || !("letterSpacing" in ruler)) return false;
   ruler.letterSpacing = `${SPACING}px`;
   const spaced = pairWidth(ruler, a, b);
   // The canvas is shared with the ink ruler.
   ruler.letterSpacing = "0px";
-  return Math.abs(spaced - kern) < 0.01 ? kern : null;
+  return Math.abs(spaced - plain) >= 0.01;
 }
 
-const LIGATURE = "\u0000l"; // NUL never occurs in text, and `l` keeps it off a number's `\u0000n`.
-
-const edge = (segment: Segment, side: RegExp) =>
-  segment.id.startsWith(LIGATURE)
-    ? segment.string
-    : side.exec(segment.string)?.[0];
-
-/** Measures a segment against the next — undefined where the two can't touch. */
+/** Whether a segment and the next are drawn as one glyph — false where the two can't touch. */
 function pairRuler(font: string) {
   canvas ??= document.createElement("canvas");
   const ruler = canvas.getContext("2d");
   if (!ruler) return null;
   ruler.font = font;
 
+  // A web font landing keeps the font string but changes every pair.
+  if (!watching && typeof document !== "undefined" && document.fonts) {
+    watching = true;
+    document.fonts.addEventListener("loadingdone", () => pairs.clear());
+  }
   let cache = pairs.get(font);
   if (!cache) {
     if (pairs.size >= MAX_FONTS) pairs.clear();
@@ -96,45 +79,22 @@ function pairRuler(font: string) {
   }
   const known = cache;
 
-  return (a: Segment, b: Segment | undefined): number | null | undefined => {
-    if (!b || a.string === "\n" || b.string === "\n") return undefined;
-    // A ligature's neighbour meets the joined glyph, not the letter it started as.
-    const left = edge(a, LAST)?.replace("\u00A0", " ");
-    const right = edge(b, FIRST)?.replace("\u00A0", " ");
-    if (!left || !right) return undefined;
+  return (a: Segment, b: Segment | undefined): boolean => {
+    if (!b || a.string === "\n" || b.string === "\n") return false;
+    const left = LAST.exec(a.string)?.[0]?.replace(" ", " ");
+    const right = FIRST.exec(b.string)?.[0]?.replace(" ", " ");
+    if (!left || !right) return false;
     const key = `${left}\n${right}`;
-    let kern = known.get(key);
-    if (kern === undefined) {
-      kern = measurePair(ruler, left, right);
-      known.set(key, kern);
+    let joined = known.get(key);
+    if (joined === undefined) {
+      joined = substitutes(ruler, left, right);
+      known.set(key, joined);
     }
-    return kern;
+    return joined;
   };
 }
 
-/**
- * Each segment's kerning against the one after it on its line, in em, keyed by ID —
- * the adjustment a single text run applies and separate boxes lose.
- */
-export function kernSegments(
-  segments: Segment[],
-  kerning: Kerning | null,
-): Map<string, number> {
-  const gaps = new Map<string, number>();
-  if (!kerning?.kern || segments.length < 2) return gaps;
-  const pair = pairRuler(kerning.font);
-  if (!pair) return gaps;
-
-  for (let i = 0; i < segments.length - 1; i++) {
-    const a = segments[i]!;
-    const b = segments[i + 1]!;
-    if (!kerning.numerals && (a.kind || b.kind)) continue;
-    const kern = pair(a, b);
-    if (kern) gaps.set(a.id, kern / kerning.fontSize);
-  }
-
-  return gaps;
-}
+const LIGATURE = "\u0000l"; // NUL never occurs in text, and `l` keeps it off a number's `\u0000n`.
 
 // Joining scripts shape every letter by its neighbours — a one-for-one swap no measurement can see.
 const CURSIVE =
@@ -150,11 +110,11 @@ const cursive = (segment: Segment, side: RegExp) =>
  */
 export function ligate(
   segments: Segment[],
-  kerning: Kerning | null,
+  shaping: Shaping | null,
 ): Segment[] {
   if (segments.length < 2) return segments;
   // Joining letters need no font to know about, so they share a box from the first render.
-  const pair = kerning?.ligatures ? pairRuler(kerning.font) : null;
+  const pair = shaping?.ligatures ? pairRuler(shaping.font) : null;
   // One test of the whole value, so text with no joining letters skips the pair-by-pair check.
   const joining = CURSIVE.test(segments.map((s) => s.string).join(""));
   if (!pair && !joining) return segments;
@@ -165,7 +125,7 @@ export function ligate(
     const b = segments[i + 1];
     if (!b || a.kind || b.kind) return false;
     if (joining && cursive(a, LAST) && cursive(b, FIRST)) return true;
-    return pair?.(a, b) === null;
+    return pair ? pair(a, b) : false;
   };
 
   const out: Segment[] = [];
@@ -183,16 +143,4 @@ export function ligate(
     });
   }
   return out.length === segments.length ? segments : out;
-}
-
-let watching = false;
-
-/** A web font landing keeps the font string but changes every pair. */
-export function watchFonts(onLoad: () => void) {
-  if (watching || typeof document === "undefined" || !document.fonts) return;
-  watching = true;
-  document.fonts.addEventListener("loadingdone", () => {
-    pairs.clear();
-    onLoad();
-  });
 }

@@ -40,7 +40,7 @@ import {
   replacedRuns,
 } from "./utils/replace-animate";
 import { diffSegments } from "./utils/diff";
-import { type Kerning, ligate, readKerning } from "./utils/kerning";
+import { type Shaping, ligate, readShaping } from "./utils/ligature";
 import { addStyles, removeStyles } from "../utils/styles";
 import {
   ATTR_ROOT,
@@ -346,7 +346,7 @@ export class TextMorph {
     const clip = style && (hasNumbers ? slotClip(style) : NO_CLIP);
     if (style) snapshotAnimations(element);
     const numbers = this.options.numbers !== false;
-    const kerning = style && readKerning(style);
+    const shaping = style && readShaping(style);
 
     this.syncAccessibleText(value);
     if (this.ownsDir) {
@@ -378,7 +378,7 @@ export class TextMorph {
       segments = [{ id: EMPTY_ID, string: "\u200B" }];
     }
     const diffed = segments;
-    segments = ligate(diffed, kerning);
+    segments = ligate(diffed, shaping);
 
     const newIds = new Set(segments.map((b) => b.id));
 
@@ -400,7 +400,7 @@ export class TextMorph {
       setStyleVar(element, VAR_INK_BOTTOM, `${inkBottom.toFixed(4)}em`);
     }
     // Sized to the text they replace, so the measure below reads where the text had them.
-    if (this.textNode) this.split(splits, kerning);
+    if (this.textNode) this.split(splits, shaping);
     else splitWordSpans(element, splits);
     // Out of flow and unseen: the new value laid out by the browser, for the boxes to match.
     const twin = textOf(value);
@@ -526,9 +526,9 @@ export class TextMorph {
   }
 
   /** Reads where each outgoing segment sits in the text, then draws them as boxes there. */
-  private split(splits: Map<string, Segment[]>, kerning: Kerning | null) {
+  private split(splits: Map<string, Segment[]>, shaping: Shaping | null) {
     const text = this.textNode!;
-    const segments = ligate(this.previousSegments, kerning).flatMap(
+    const segments = ligate(this.previousSegments, shaping).flatMap(
       (segment) => splits.get(segment.id) ?? [segment],
     );
     const layout = layoutOf(text, segments);

@@ -6,7 +6,7 @@ import {
 } from "../../utils/animate";
 import type { AnimationState } from "../../utils/animate";
 import { moverOf } from "../../utils/dom";
-import { fontOf } from "./kerning";
+import { fontOf } from "./ligature";
 
 // Shares of the morph, not fixed lengths. The outgoing share is larger because a
 // digit that has already left is a hole in the number.
