@@ -136,6 +136,13 @@ export function kernSegments(
   return gaps;
 }
 
+// Joining scripts shape every letter by its neighbours — a one-for-one swap no measurement can see.
+const CURSIVE =
+  /[\p{Script=Arabic}\p{Script=Syriac}\p{Script=Nko}\p{Script=Mongolian}\p{Script=Adlam}\p{Script=Mandaic}\p{Script=Hanifi_Rohingya}]/u;
+
+const cursive = (segment: Segment, side: RegExp) =>
+  segment.string !== "\n" && CURSIVE.test(side.exec(segment.string)?.[0] ?? "");
+
 /**
  * Joins every run of segments the font draws as one glyph into a single segment,
  * since separate boxes can't form it. The ID is built from the parts', so the same
@@ -145,15 +152,21 @@ export function ligate(
   segments: Segment[],
   kerning: Kerning | null,
 ): Segment[] {
-  if (!kerning?.ligatures || segments.length < 2) return segments;
-  const pair = pairRuler(kerning.font);
-  if (!pair) return segments;
+  if (segments.length < 2) return segments;
+  // Joining letters need no font to know about, so they share a box from the first render.
+  const pair = kerning?.ligatures ? pairRuler(kerning.font) : null;
+  // One test of the whole value, so text with no joining letters skips the pair-by-pair check.
+  const joining = CURSIVE.test(segments.map((s) => s.string).join(""));
+  if (!pair && !joining) return segments;
 
   // A digit slides inside its own slot, so it never shares a box.
-  const joins = (i: number) =>
-    !segments[i]!.kind &&
-    !segments[i + 1]?.kind &&
-    pair(segments[i]!, segments[i + 1]) === null;
+  const joins = (i: number) => {
+    const a = segments[i]!;
+    const b = segments[i + 1];
+    if (!b || a.kind || b.kind) return false;
+    if (joining && cursive(a, LAST) && cursive(b, FIRST)) return true;
+    return pair?.(a, b) === null;
+  };
 
   const out: Segment[] = [];
   for (let i = 0; i < segments.length; i++) {
@@ -169,7 +182,7 @@ export function ligate(
       string: run.map((s) => s.string).join(""),
     });
   }
-  return out;
+  return out.length === segments.length ? segments : out;
 }
 
 let watching = false;

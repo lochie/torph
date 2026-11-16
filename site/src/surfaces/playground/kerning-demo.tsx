@@ -8,8 +8,8 @@ import { verifyKerning } from "./verify-dom";
 import { SPEEDS, EASINGS } from "./config";
 import type { Speed, EasingKey, Align } from "./config";
 
-// Whole words, arrows Inter and Playfair draw as one glyph, and Playfair's fi/ffi
-// ligatures — each of which needs one box to form.
+// Whole words, arrows Inter and Playfair draw as one glyph, Playfair's fi/ffi
+// ligatures, and right-to-left text: Hebrew with kerned pairs, Arabic that joins.
 const WORDS = [
   ["AVATAR", "AVAST"],
   ["Typo", "Type"],
@@ -18,6 +18,8 @@ const WORDS = [
   ["7.5", "7.25"],
   ["a=>b", "a->b", "a<->b"],
   ["office", "fifty"],
+  ["במבט", "בכבס"],
+  ["مرحبا", "سلام"],
 ] as const;
 
 // The deepest and furthest-reaching pairs in a typical kern table, and the common

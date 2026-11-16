@@ -67,6 +67,16 @@ export { MorphController } from "./controller";
 
 export const DEFAULT_AS = "span";
 
+const STRONG = /\p{L}/u;
+const RTL =
+  /[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}\p{Script=Hanifi_Rohingya}]/u;
+
+/** The first strong letter's direction, as `dir="auto"` finds it — which rescans on every child the root gains. */
+function directionOf(value: string): "rtl" | "ltr" {
+  const first = STRONG.exec(value)?.[0];
+  return first && RTL.test(first) ? "rtl" : "ltr";
+}
+
 // An unchanged write would still restyle every slot.
 function setStyleVar(element: HTMLElement, name: string, value: string) {
   if (element.style.getPropertyValue(name) !== value) {
@@ -80,7 +90,8 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
   numbers: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
-const live = new Set<TextMorph>();
+// Weak, so an instance whose element is dropped without destroy() can still be collected.
+const live = new Set<WeakRef<TextMorph>>();
 let queued: Set<TextMorph> | null = null;
 
 export class TextMorph {
@@ -100,6 +111,8 @@ export class TextMorph {
   private reducedMotion: ReducedMotionState | null = null;
   private srNode: HTMLElement | null = null;
   private hasSetup = false;
+  private self = new WeakRef(this);
+  private ownsDir = false;
 
   constructor(options: TextMorphOptions) {
     // A prop left off in JSX arrives as an explicit `undefined`, which would spread
@@ -134,9 +147,20 @@ export class TextMorph {
 
     this.element.setAttribute(ATTR_ROOT, "");
     if (this.options.debug) this.element.setAttribute(ATTR_DEBUG, "");
+    // A box per letter has no direction of its own, so the root's orders them; it comes from the text.
+    this.ownsDir = !this.element.hasAttribute("dir");
     addStyles();
-    live.add(this);
-    watchFonts(() => live.forEach((morph) => morph.queueKerning()));
+    live.add(this.self);
+    watchFonts(TextMorph.refontAll);
+  }
+
+  // Static, not a closure made in setup(): that would hold the first instance as `this` for good.
+  private static refontAll() {
+    live.forEach((ref) => {
+      const morph = ref.deref();
+      if (morph) morph.queueKerning();
+      else live.delete(ref);
+    });
   }
 
   /** A first render reads no style, so its kerning waits for the frame — one batch for every instance. */
@@ -192,7 +216,7 @@ export class TextMorph {
   }
 
   destroy() {
-    live.delete(this);
+    live.delete(this.self);
     queued?.delete(this);
     this.reducedMotion?.destroy();
     clearContainerTransition(this.element);
@@ -203,6 +227,10 @@ export class TextMorph {
     this.element.style.removeProperty(VAR_INK_TOP);
     this.element.style.removeProperty(VAR_INK_BOTTOM);
     this.element.removeAttribute(ATTR_ROOT);
+    if (this.ownsDir) {
+      this.element.removeAttribute("dir");
+      this.ownsDir = false;
+    }
     this.element.removeAttribute(ATTR_DEBUG);
     // An instance that never ran setup must not decrement the stylesheet refcount.
     if (this.hasSetup) {
@@ -273,6 +301,11 @@ export class TextMorph {
     const kerning = style && readKerning(style);
 
     this.syncAccessibleText(value);
+    if (this.ownsDir) {
+      const dir = directionOf(value);
+      if (this.element.getAttribute("dir") !== dir)
+        this.element.setAttribute("dir", dir);
+    }
 
     let segments: Segment[];
     let splits: Map<string, Segment[]>;

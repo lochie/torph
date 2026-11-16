@@ -1012,3 +1012,35 @@ describe("ligatures across item boundaries", () => {
     ).toBe(3);
   });
 });
+
+describe("direction", () => {
+  it("lets the text set the root's direction, so a box per letter reads in order", () => {
+    const { element, morph } = mount();
+    morph.update("AVATAR");
+    expect(element.getAttribute("dir")).toBe("ltr");
+    morph.update("שלום AVATAR");
+    expect(element.getAttribute("dir")).toBe("rtl");
+    // Digits and punctuation have no direction; the first letter decides.
+    morph.update("12: مرحبا");
+    expect(element.getAttribute("dir")).toBe("rtl");
+    morph.destroy();
+    expect(element.hasAttribute("dir")).toBe(false);
+  });
+
+  it("leaves a direction the page set alone", () => {
+    const element = document.createElement("span");
+    element.setAttribute("dir", "rtl");
+    document.body.appendChild(element);
+    const morph = new TextMorph({ element, respectReducedMotion: false });
+    morph.update("שלום");
+    morph.destroy();
+    expect(element.getAttribute("dir")).toBe("rtl");
+  });
+
+  it("draws an Arabic word as one box from the first render", () => {
+    const { element, morph } = mount();
+    morph.update("مرحبا");
+    const items = element.querySelectorAll(`[${ATTR_ITEM}]`);
+    expect(Array.from(items, (item) => item.textContent)).toEqual(["مرحبا"]);
+  });
+});
