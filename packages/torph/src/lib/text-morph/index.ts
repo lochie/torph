@@ -180,6 +180,59 @@ function fitBoxes(boxes: HTMLElement[], { rects, along, across, rtl }: Layout) {
   });
 }
 
+type Letters = Map<string, Layout>;
+
+/** Where each letter sits inside a word box about to be split — the word's own kerning, read before it's gone. */
+function lettersOf(
+  element: HTMLElement,
+  splits: Map<string, Segment[]>,
+): Letters {
+  const out: Letters = new Map();
+  if (splits.size === 0) return out;
+  const rtl = getComputedStyle(element).direction === "rtl";
+  const range = document.createRange();
+  for (const word of Array.from(element.children) as HTMLElement[]) {
+    const id = word.getAttribute(ATTR_ID);
+    const letters = id && splits.get(id);
+    const node = word.firstChild;
+    if (!letters || !node || node.nodeType !== Node.TEXT_NODE) continue;
+    // A word caught mid-arrival is scaled; its letters' distances are scaled with it.
+    const along =
+      word.getBoundingClientRect().width /
+      parseFloat(getComputedStyle(word).width);
+    let offset = 0;
+    const rects = letters.map((letter) => {
+      range.setStart(node, offset);
+      offset += letter.string.length;
+      range.setEnd(node, offset);
+      return range.getBoundingClientRect();
+    });
+    out.set(id, { rects, along, across: 0, rtl });
+  }
+  return out;
+}
+
+function fitLetters(
+  element: HTMLElement,
+  splits: Map<string, Segment[]>,
+  letters: Letters,
+) {
+  if (letters.size === 0) return;
+  const byId = new Map(
+    (Array.from(element.children) as HTMLElement[]).map((child) => [
+      child.getAttribute(ATTR_ID),
+      child,
+    ]),
+  );
+  for (const [id, layout] of letters) {
+    const boxes = splits
+      .get(id)!
+      .map((letter) => byId.get(letter.id))
+      .filter((box): box is HTMLElement => !!box);
+    if (boxes.length === layout.rects.length) fitBoxes(boxes, layout);
+  }
+}
+
 const inFlowBoxes = (element: HTMLElement) =>
   (Array.from(element.children) as HTMLElement[]).filter(
     (child) =>
@@ -401,7 +454,11 @@ export class TextMorph {
     }
     // Sized to the text they replace, so the measure below reads where the text had them.
     if (this.textNode) this.split(splits, shaping);
-    else splitWordSpans(element, splits);
+    else {
+      const letters = lettersOf(element, splits);
+      splitWordSpans(element, splits);
+      fitLetters(element, splits, letters);
+    }
     // Out of flow and unseen: the new value laid out by the browser, for the boxes to match.
     const twin = textOf(value);
     twin.style.cssText =
