@@ -37,6 +37,13 @@ import {
   replacedRuns,
 } from "./utils/replace-animate";
 import { diffSegments } from "./utils/diff";
+import {
+  type Kerning,
+  kernSegments,
+  ligate,
+  readKerning,
+  watchFonts,
+} from "./utils/kerning";
 import { addStyles, removeStyles } from "../utils/styles";
 import {
   ATTR_ROOT,
@@ -73,6 +80,9 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
   numbers: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
+const live = new Set<TextMorph>();
+let queued: Set<TextMorph> | null = null;
+
 export class TextMorph {
   private element: HTMLElement;
   private options: Omit<TextMorphOptions, "element" | "ease"> & {
@@ -84,6 +94,8 @@ export class TextMorph {
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
   private previousSegments: Segment[] = [];
+  // `previousSegments` with ligatures joined — what the DOM holds, and the diff never sees.
+  private renderedSegments: Segment[] = [];
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
   private srNode: HTMLElement | null = null;
@@ -123,9 +135,65 @@ export class TextMorph {
     this.element.setAttribute(ATTR_ROOT, "");
     if (this.options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     addStyles();
+    live.add(this);
+    watchFonts(() => live.forEach((morph) => morph.queueKerning()));
+  }
+
+  /** A first render reads no style, so its kerning waits for the frame — one batch for every instance. */
+  private queueKerning() {
+    if (!queued) {
+      queued = new Set();
+      requestAnimationFrame(TextMorph.flushKerning);
+    }
+    queued.add(this);
+  }
+
+  private static flushKerning() {
+    const batch = Array.from(queued ?? []).filter(
+      (morph) => morph.hasSetup && morph.element.isConnected,
+    );
+    queued = null;
+    const reads = batch.map(
+      (morph) => [morph, readKerning(getComputedStyle(morph.element))] as const,
+    );
+    for (const [morph, kerning] of reads) {
+      morph.applyLigatures(ligate(morph.previousSegments, kerning));
+      morph.applyKerning(morph.renderedSegments, kerning);
+    }
+  }
+
+  /** Outside a morph a ligature forming or breaking has nothing to animate, so it swaps in place. */
+  private applyLigatures(segments: Segment[]) {
+    const ids = segments.map((s) => s.id);
+    if (ids.join("\n") === this.renderedSegments.map((s) => s.id).join("\n"))
+      return;
+    const newIds = new Set(ids);
+    const inFlow = (Array.from(this.element.children) as HTMLElement[]).filter(
+      (child) =>
+        !child.hasAttribute(ATTR_SR) && !child.hasAttribute(ATTR_EXITING),
+    );
+    for (const child of inFlow) {
+      if (!newIds.has(child.getAttribute(ATTR_ID)!)) child.remove();
+    }
+    reconcileChildren(this.element, inFlow, newIds, segments);
+    this.renderedSegments = segments;
+  }
+
+  private applyKerning(segments: Segment[], kerning: Kerning | null) {
+    const gaps = kernSegments(segments, kerning);
+    for (const child of Array.from(this.element.children) as HTMLElement[]) {
+      if (child.hasAttribute(ATTR_SR) || child.hasAttribute(ATTR_EXITING))
+        continue;
+      const gap = gaps.get(child.getAttribute(ATTR_ID)!);
+      const value = gap ? `${+gap.toFixed(4)}em` : "";
+      if (child.style.marginInlineEnd !== value)
+        child.style.marginInlineEnd = value;
+    }
   }
 
   destroy() {
+    live.delete(this);
+    queued?.delete(this);
     this.reducedMotion?.destroy();
     clearContainerTransition(this.element);
     this.element.getAnimations().forEach((anim) => anim.cancel());
@@ -169,6 +237,7 @@ export class TextMorph {
         this.element.textContent = formatted;
         // A later diff against these would animate from elements no longer in the DOM.
         this.previousSegments = [];
+        this.renderedSegments = [];
         this.isInitialRender = true;
       }
       return;
@@ -201,6 +270,7 @@ export class TextMorph {
       (/\d/.test(value) || this.previousSegments.some((s) => s.kind));
     const clip = style && (hasNumbers ? slotClip(style) : NO_CLIP);
     const numbers = this.options.numbers !== false;
+    const kerning = style && readKerning(style);
 
     this.syncAccessibleText(value);
 
@@ -226,6 +296,8 @@ export class TextMorph {
     if (isEmptyTransition) {
       segments = [{ id: EMPTY_ID, string: "\u200B" }];
     }
+    const diffed = segments;
+    segments = ligate(diffed, kerning);
 
     const newIds = new Set(segments.map((b) => b.id));
 
@@ -234,8 +306,10 @@ export class TextMorph {
         if (!child.hasAttribute(ATTR_SR)) child.remove();
       }
       reconcileChildren(element, [], newIds, segments);
-      this.previousSegments = segments;
+      this.previousSegments = diffed;
+      this.renderedSegments = segments;
       this.isInitialRender = false;
+      this.queueKerning();
       element.style.width = "";
       element.style.height = "";
       return;
@@ -275,6 +349,7 @@ export class TextMorph {
 
     detachFromFlow(element, exiting);
     reconcileChildren(element, oldChildren, newIds, segments);
+    this.applyKerning(segments, kerning);
 
     this.currentMeasures = measure(this.element);
 
@@ -337,7 +412,8 @@ export class TextMorph {
       }
     });
 
-    this.previousSegments = segments;
+    this.previousSegments = diffed;
+    this.renderedSegments = segments;
 
     if (isEmptyTransition) {
       holdContainerSize(

@@ -15,6 +15,7 @@ import { ChartPlayground } from "./chart-demo";
 import { InputPlayground } from "./input-demo";
 import { TickerDemo } from "./ticker-demo";
 import { LineHeightDemo } from "./line-height-demo";
+import { KerningDemo } from "./kerning-demo";
 import type { Result } from "@torph/test-cases";
 
 // Negative ids sit outside the corpus — they select a panel, not a case.
@@ -23,13 +24,17 @@ const CHART_DEMO = -2;
 const INPUT_DEMO = -3;
 const TICKER_DEMO = -4;
 const LINE_HEIGHT_DEMO = -5;
+const KERNING_DEMO = -6;
 
 const MODES = ["text", "numbers"] as const;
 type Mode = (typeof MODES)[number];
 
 // Per mode: the chart, ticker and input demos only drive numeric morphs.
 const PANELS: Record<Mode, { id: number; label: string }[]> = {
-  text: [{ id: SANDBOX, label: "Sandbox" }],
+  text: [
+    { id: SANDBOX, label: "Sandbox" },
+    { id: KERNING_DEMO, label: "Kerning" },
+  ],
   numbers: [
     { id: SANDBOX, label: "Sandbox" },
     { id: TICKER_DEMO, label: "Ticker" },
@@ -41,7 +46,13 @@ const PANELS: Record<Mode, { id: number; label: string }[]> = {
 
 // Demos that style their own numbers, so the shared controls do nothing there.
 const SELF_STYLED: number[] = [CHART_DEMO, INPUT_DEMO];
-const DEMOS: number[] = [CHART_DEMO, INPUT_DEMO, TICKER_DEMO, LINE_HEIGHT_DEMO];
+const DEMOS: number[] = [
+  CHART_DEMO,
+  INPUT_DEMO,
+  TICKER_DEMO,
+  LINE_HEIGHT_DEMO,
+  KERNING_DEMO,
+];
 
 type BundleSize = {
   name: string;
@@ -325,7 +336,9 @@ export const Playground = ({
         )}
 
         {mode === "text" ? (
-          current ? (
+          selected === KERNING_DEMO ? (
+            <KerningDemo speed={speed} easing={easing} align={align} />
+          ) : current ? (
             <TestDetail
               key={current.label}
               test={current as (typeof TESTS)[number]}

@@ -1,6 +1,7 @@
 import { readAnimationState, cancelAnimations } from "../../utils/animate";
 import type { AnimationState } from "../../utils/animate";
 import { moverOf } from "../../utils/dom";
+import { fontOf } from "./kerning";
 
 // Shares of the morph, not fixed lengths. The outgoing share is larger because a
 // digit that has already left is a hole in the number.
@@ -179,9 +180,7 @@ let supportsRound: boolean | undefined;
  * falls back to no overflow, the one case the stylesheet can't be followed.
  */
 export function slotClip(style: CSSStyleDeclaration): SlotClip {
-  const ink = measureInk(
-    `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`,
-  );
+  const ink = measureInk(fontOf(style));
   const fontSize = parseFloat(style.fontSize);
   if (!ink || !fontSize) return NO_CLIP;
   supportsLh ??= CSS.supports("height: 1lh");
