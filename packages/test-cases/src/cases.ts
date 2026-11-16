@@ -5,6 +5,7 @@ import {
   verifyCharMorph,
   verifyCycleStability,
   verifyGraphemeMorph,
+  verifyIdsKeepText,
   verifyKinds,
   verifyKindsAfterMorph,
   verifyNoMorph,
@@ -211,22 +212,29 @@ export const CASES: TestCase[] = [
   {
     label: "Punctuation",
     description:
-      '"Hello," char-morphs to "Hello" — shared char IDs persist. "world!" likewise morphs to "world".',
+      '"Hello," char-morphs to "Hello" — shared char IDs persist. "world!" likewise morphs to "world". The comma and "!" leave without lending their elements to letters.',
     tags: ["char morph"],
     values: ["Hello, world!", "Hello world"],
     verify: (t) => {
       const old = t.segmentText("Hello, world!", L);
-      const { segments } = t.diffSegments(old, "Hello world", L);
-      const oldIds = new Set(old.map((s: Segment) => s.id));
+      const { segments, splits } = t.diffSegments(old, "Hello world", L);
+      // A word cut into letters hands each letter on under the ID it was split into.
+      const oldIds = new Set([
+        ...old.map((s: Segment) => s.id),
+        ...[...splits.values()].flat().map((s: Segment) => s.id),
+      ]);
       const persisted = segments.filter((s: Segment) => oldIds.has(s.id));
-      const pass = persisted.length >= 4;
+      const enough = persisted.length === 10;
 
-      return {
-        pass,
-        detail: pass
-          ? `${persisted.length} char IDs persist across punctuation change`
-          : `Only ${persisted.length} IDs persisted (expected ≥4)`,
-      };
+      return combineResults(
+        {
+          pass: enough,
+          detail: enough
+            ? `${persisted.length} char IDs persist across punctuation change`
+            : `Only ${persisted.length} IDs persisted (expected all 10 letters)`,
+        },
+        verifyIdsKeepText(t, "Hello, world!", "Hello world"),
+      );
     },
   },
   {

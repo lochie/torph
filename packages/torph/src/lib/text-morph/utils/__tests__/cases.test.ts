@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { CASES } from "@torph/test-cases";
+import { CASES, verifyIdsKeepText } from "@torph/test-cases";
 import { segmentText } from "../segment";
 import { diffSegments } from "../diff";
 
@@ -16,4 +16,16 @@ describe("shared test cases", () => {
     const { pass, detail } = testCase.verify(torph);
     expect(pass, detail).toBe(true);
   });
+
+  const steps = CASES.flatMap((c) =>
+    c.values.slice(1).map((to, i) => [c.label, c.values[i]!, to] as const),
+  );
+
+  it.each(steps)(
+    "%s: %j → %j keeps every kept ID's text",
+    (_label, from, to) => {
+      const { pass, detail } = verifyIdsKeepText(torph, from, to);
+      expect(pass, detail).toBe(true);
+    },
+  );
 });

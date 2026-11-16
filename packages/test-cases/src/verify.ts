@@ -118,6 +118,28 @@ export function verifyCycleStability(
   return { pass: true, detail: `"${word}" ID stable across 4 cycles` };
 }
 
+/** A text segment that keeps its ID keeps its text — reconciliation reuses its element, so the element must still draw it. */
+export function verifyIdsKeepText(
+  t: TorphApi,
+  from: string,
+  to: string,
+): Result {
+  const old = t.segmentText(from, L);
+  const was = new Map(old.filter((s) => !s.kind).map((s) => [s.id, s.string]));
+  const { segments } = t.diffSegments(old, to, L);
+  const changed = segments.filter(
+    (s) => !s.kind && was.has(s.id) && was.get(s.id) !== s.string,
+  );
+  return {
+    pass: changed.length === 0,
+    detail: changed.length
+      ? changed
+          .map((s) => `"${was.get(s.id)}" → "${s.string}" under ID "${s.id}"`)
+          .join(", ")
+      : "every kept ID keeps its text",
+  };
+}
+
 export function renderSegments(segments: Segment[]): string {
   return segments
     .map((s) => s.string)
