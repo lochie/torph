@@ -4,6 +4,7 @@ import type { Result } from "@torph/test-cases";
 import styles from "./styles.module.scss";
 import { Scrubber } from "./scrubber";
 import { FONTS, type FontKey } from "./kerning-demo";
+import { boxGlyphs, snapAtJoin, type BoxGlyph } from "./verify-dom";
 import { SPEEDS, EASINGS } from "./config";
 import type { Speed, EasingKey, Align } from "./config";
 
@@ -18,87 +19,6 @@ const SPECIMENS = [
   ["مرحبا", "سلام"],
   ["Total\n$1,234", "Total\n$5,678"],
 ] as const;
-
-const TOLERANCE = 1; // px — WebKit snaps per-character rects to whole pixels.
-
-type Glyph = { text: string; x: number; y: number };
-
-const translateOf = (element: Element) => {
-  const { transform } = getComputedStyle(element);
-  if (!transform || transform === "none") return { x: 0, y: 0 };
-  const matrix = new DOMMatrixReadOnly(transform);
-  return { x: matrix.e, y: matrix.f };
-};
-
-/** The rect of a node's first character, measured from the root. */
-function firstGlyph(node: Text, offset: number, root: DOMRect) {
-  const range = document.createRange();
-  range.setStart(node, offset);
-  range.setEnd(node, Math.min(offset + 1, node.length));
-  const rect = range.getBoundingClientRect();
-  return { x: rect.left - root.left, y: rect.top - root.top };
-}
-
-/** Where each box's first glyph sits once every transform has played out. */
-function boxGlyphs(root: HTMLElement): Glyph[] | null {
-  const boxes = Array.from(
-    root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting])"),
-  );
-  if (boxes.length === 0) return null;
-  const origin = root.getBoundingClientRect();
-  return boxes.map((box) => {
-    if (box.tagName === "BR") return { text: "\n", x: 0, y: 0 };
-    const node = document
-      .createTreeWalker(box, NodeFilter.SHOW_TEXT)
-      .nextNode() as Text | null;
-    if (!node) return { text: "", x: 0, y: 0 };
-    const at = firstGlyph(node, 0, origin);
-    // A slot's glyph sits in a span that slides on its own.
-    let x = at.x;
-    let y = at.y;
-    for (
-      let el: Element | null = node.parentElement;
-      el && el !== root;
-      el = el.parentElement
-    ) {
-      const t = translateOf(el);
-      x -= t.x;
-      y -= t.y;
-    }
-    return { text: box.textContent ?? "", x, y };
-  });
-}
-
-/** How far each box's first glyph moves when the boxes give way to the text. */
-function snapAtJoin(root: HTMLElement, glyphs: Glyph[]): Result | null {
-  const text = root.querySelector("[torph-text]");
-  if (!text) return null;
-  const lines = Array.from(text.childNodes).filter(
-    (node): node is Text => node.nodeType === Node.TEXT_NODE,
-  );
-  const origin = root.getBoundingClientRect();
-  let line = 0;
-  let offset = 0;
-  let dx = 0;
-  let dy = 0;
-  for (const glyph of glyphs) {
-    if (glyph.text === "\n") {
-      line++;
-      offset = 0;
-      continue;
-    }
-    const node = lines[line];
-    if (!node || offset >= node.length) return null;
-    const at = firstGlyph(node, offset, origin);
-    dx = Math.max(dx, Math.abs(at.x - glyph.x));
-    dy = Math.max(dy, Math.abs(at.y - glyph.y));
-    offset += glyph.text.length;
-  }
-  return {
-    pass: dx <= TOLERANCE && dy <= TOLERANCE,
-    detail: `boxes joined back into text; glyphs moved ${dx.toFixed(2)}px across, ${dy.toFixed(2)}px down at most`,
-  };
-}
 
 /**
  * Between morphs the value is plain text, so the browser shapes all of it. A
@@ -129,7 +49,7 @@ export function RestDemo({
 
   // Every frame: what each root is drawing, and, the frame its boxes go, the snap.
   React.useEffect(() => {
-    const last: (Glyph[] | null)[] = [];
+    const last: (BoxGlyph[] | null)[] = [];
     let frame = 0;
     const tick = () => {
       const next = cells.current.map((cell, i) => {
@@ -143,7 +63,7 @@ export function RestDemo({
         const before = last[i];
         if (before) {
           last[i] = null;
-          const result = snapAtJoin(root, before);
+          const result = snapAtJoin(root, before, 1);
           setResults((rs) => {
             const copy = [...rs];
             copy[i] = result;

@@ -507,8 +507,9 @@ export function verifyNoJump(
   before: JumpSnapshot,
   tolerance = 2,
 ): { pass: boolean; detail: string } {
+  // From rest, nothing is in motion yet, so anything over half a pixel is a jump.
   if (before.glyphs)
-    return verifyNoJumpFromRest(root, before.glyphs, tolerance);
+    return verifyNoJumpFromRest(root, before.glyphs, Math.min(tolerance, 0.5));
   const after = takeJumpSnapshot(root);
   const jumps: string[] = [];
   const context: string[] = [];
@@ -754,4 +755,115 @@ export function textRects(text: HTMLElement): DOMRect[] {
       range.selectNodeContents(node);
       return range.getBoundingClientRect();
     });
+}
+
+// ── Join (boxes back into text) ──
+
+export type BoxGlyph = { text: string; x: number; y: number };
+
+const translateOf = (element: Element) => {
+  const { transform } = getComputedStyle(element);
+  if (!transform || transform === "none") return { x: 0, y: 0 };
+  const matrix = new DOMMatrixReadOnly(transform);
+  return { x: matrix.e, y: matrix.f };
+};
+
+/** The rect of a node's first character, measured from the root. */
+function firstGlyph(node: Text, offset: number, root: DOMRect) {
+  const range = document.createRange();
+  range.setStart(node, offset);
+  range.setEnd(node, Math.min(offset + 1, node.length));
+  const rect = range.getBoundingClientRect();
+  return { x: rect.left - root.left, y: rect.top - root.top };
+}
+
+/** Where each box's first glyph sits once every transform has played out. */
+export function boxGlyphs(root: HTMLElement): BoxGlyph[] | null {
+  const boxes = Array.from(
+    root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting])"),
+  );
+  if (boxes.length === 0) return null;
+  const origin = root.getBoundingClientRect();
+  return boxes.map((box) => {
+    if (box.tagName === "BR") return { text: "\n", x: 0, y: 0 };
+    const node = document
+      .createTreeWalker(box, NodeFilter.SHOW_TEXT)
+      .nextNode() as Text | null;
+    if (!node) return { text: "", x: 0, y: 0 };
+    const at = firstGlyph(node, 0, origin);
+    // A slot's glyph sits in a span that slides on its own.
+    let x = at.x;
+    let y = at.y;
+    for (
+      let el: Element | null = node.parentElement;
+      el && el !== root;
+      el = el.parentElement
+    ) {
+      const t = translateOf(el);
+      x -= t.x;
+      y -= t.y;
+    }
+    return { text: box.textContent ?? "", x, y };
+  });
+}
+
+/** How far each box's first glyph moves when the boxes give way to the text. */
+export function snapAtJoin(
+  root: HTMLElement,
+  glyphs: BoxGlyph[],
+  tolerance = 0.5,
+): Result | null {
+  const text = root.querySelector("[torph-text]");
+  if (!text) return null;
+  const lines = Array.from(text.childNodes).filter(
+    (node): node is Text => node.nodeType === Node.TEXT_NODE,
+  );
+  const origin = root.getBoundingClientRect();
+  let line = 0;
+  let offset = 0;
+  let dx = 0;
+  let dy = 0;
+  for (const glyph of glyphs) {
+    if (glyph.text === "\n") {
+      line++;
+      offset = 0;
+      continue;
+    }
+    const node = lines[line];
+    if (!node || offset >= node.length) return null;
+    const at = firstGlyph(node, offset, origin);
+    dx = Math.max(dx, Math.abs(at.x - glyph.x));
+    dy = Math.max(dy, Math.abs(at.y - glyph.y));
+    offset += glyph.text.length;
+  }
+  return {
+    pass: dx <= tolerance && dy <= tolerance,
+    detail: `boxes joined back into text; glyphs moved ${dx.toFixed(2)}px across, ${dy.toFixed(2)}px down at most`,
+  };
+}
+
+/**
+ * Follows a morph's boxes from near its end until they join back into text; the
+ * returned call reports the join. Reading only near the end keeps every earlier
+ * frame free of the reads, so a frame-timing check alongside it stays honest.
+ */
+export function trackJoin(root: HTMLElement, startAfter: number) {
+  let last: BoxGlyph[] | null = null;
+  let frame = 0;
+  const tick = () => {
+    const glyphs = boxGlyphs(root);
+    if (glyphs) last = glyphs;
+    frame = requestAnimationFrame(tick);
+  };
+  const timer = setTimeout(
+    () => {
+      frame = requestAnimationFrame(tick);
+    },
+    Math.max(0, startAfter),
+  );
+  return (): Result | null => {
+    clearTimeout(timer);
+    cancelAnimationFrame(frame);
+    return last ? snapAtJoin(root, last) : null;
+  };
 }
