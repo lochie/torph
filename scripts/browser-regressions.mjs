@@ -140,6 +140,48 @@ async function replay(code, fixture) {
   }
 }
 
+/** How many of 20 instances survive collection once their elements are dropped without destroy(). */
+async function survivors(code) {
+  const page = await browser.newPage();
+  try {
+    await page.setContent(
+      "<!doctype html><style>body{font:20px Arial}</style>",
+    );
+    await page.addScriptTag({ content: code });
+    await page.evaluate(async () => {
+      const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      window.instances = [];
+      for (let i = 0; i < 20; i++) {
+        const element = document.body.appendChild(
+          document.createElement("span"),
+        );
+        const instance = new Torph.TextMorph({
+          element,
+          duration: 50,
+          respectReducedMotion: false,
+        });
+        instance.update("AVATAR Typo");
+        window.instances.push(new WeakRef(instance));
+      }
+      await settle(200);
+      for (const ref of window.instances) ref.deref().update("Typo AVATAR");
+      await settle(200);
+      document.body.replaceChildren();
+    });
+    // Collected from outside the page: a gc() made in page script keeps whatever its own stack might point to.
+    const session = await page.context().newCDPSession(page);
+    for (let i = 0; i < 3; i++) {
+      await page.waitForTimeout(100);
+      await session.send("HeapProfiler.collectGarbage");
+    }
+    return await page.evaluate(
+      () => window.instances.filter((ref) => ref.deref()).length,
+    );
+  } finally {
+    await page.close();
+  }
+}
+
 try {
   const report = [];
   const failed = [];
@@ -212,6 +254,13 @@ try {
         `PASS ${fixture.name} (maximum geometry/opacity delta ${largestDelta.toFixed(5)})`,
       );
     }
+  }
+  const leaked = await survivors(optimized);
+  if (leaked > 0) {
+    failed.push("undestroyed instances");
+    console.log(`FAIL undestroyed instances: ${leaked} of 20 never collected`);
+  } else {
+    console.log("PASS undestroyed instances (all 20 collected)");
   }
   assert.equal(failed.length, 0, `Failed: ${failed.join(", ")}`);
   await writeFile(

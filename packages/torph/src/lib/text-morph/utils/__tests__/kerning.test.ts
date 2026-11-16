@@ -251,3 +251,36 @@ describe("kerning beside a ligature", () => {
     expect(measured).not.toContain("a-");
   });
 });
+
+describe("joining scripts", () => {
+  const strings = (segments: Segment[]) => segments.map((s) => s.string);
+
+  it("keeps an Arabic word in one box, with no font to measure", () => {
+    expect(strings(ligate(segmentText("مرحبا", "ar"), null))).toEqual([
+      "مرحبا",
+    ]);
+  });
+
+  it("joins even where the page turned ligatures off — joining isn't optional", () => {
+    expect(
+      strings(
+        ligate(segmentText("مرحبا", "ar"), kerning({ ligatures: false })),
+      ),
+    ).toEqual(["مرحبا"]);
+  });
+
+  it("joins only letters of a joining script", () => {
+    expect(strings(ligate(segmentText("abسلامcd", "ar"), null))).toEqual([
+      "a",
+      "b",
+      "سلام",
+      "c",
+      "d",
+    ]);
+  });
+
+  it("leaves Hebrew, which doesn't join, a box per letter", () => {
+    const segments = segmentText("שלום", "he");
+    expect(ligate(segments, null)).toBe(segments);
+  });
+});
