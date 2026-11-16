@@ -74,14 +74,25 @@ export function snapshotAnimations(root: HTMLElement) {
   }
 }
 
+/** An animation started mid-update stands in for one the snapshot already holds, so it is cancelled with the rest. */
+export function trackAnimation(element: Element, animation: Animation) {
+  if (!running) return;
+  const list = running.get(element);
+  if (list) list.push(animation);
+  else running.set(element, [animation]);
+}
+
 export function releaseAnimations() {
   running = null;
 }
 
+/** An element's animations, from the update's snapshot while one is held. */
+export function animationsOf(element: Element): Animation[] {
+  return running ? (running.get(element) ?? []) : element.getAnimations();
+}
+
 export function cancelAll(element: Element) {
-  (running ? (running.get(element) ?? []) : element.getAnimations()).forEach(
-    (animation) => animation.cancel(),
-  );
+  animationsOf(element).forEach((animation) => animation.cancel());
 }
 
 /** Accept a snapshot from the same update's read phase to avoid interleaving reads and writes. */

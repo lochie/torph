@@ -16,8 +16,10 @@ import {
   layoutSize,
   transitionContainerSize,
   readAnimationState,
+  animationsOf,
   releaseAnimations,
   snapshotAnimations,
+  trackAnimation,
   type AnimationState,
 } from "../utils/animate";
 import { animateExit, animateEnterOrPersist } from "./utils/animate";
@@ -40,7 +42,15 @@ import {
   replacedRuns,
 } from "./utils/replace-animate";
 import { diffSegments } from "./utils/diff";
-import { type Shaping, ligate, readShaping } from "./utils/ligature";
+import {
+  type Shaping,
+  fontOf,
+  intactRuns,
+  joinRuns,
+  ligate,
+  readShaping,
+  stableRuns,
+} from "./utils/ligature";
 import { addStyles, removeStyles } from "../utils/styles";
 import {
   ATTR_ROOT,
@@ -120,9 +130,13 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
   const lines = Array.from(text.childNodes).filter(
     (node): node is Text => node.nodeType === Node.TEXT_NODE,
   );
+  const style = getComputedStyle(text);
+  const rtl = style.direction === "rtl";
   const range = document.createRange();
   let line = 0;
   let offset = 0;
+  // Per line, each segment's rect and its offsets in the line's text.
+  const spans: { rect: DOMRect; line: number; from: number; to: number }[] = [];
   const rects = segments.map((segment) => {
     if (segment.string === "\n") {
       line++;
@@ -134,15 +148,89 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
     if (!node || end > node.length) return null;
     range.setStart(node, offset);
     range.setEnd(node, end);
+    const rect = range.getBoundingClientRect();
+    spans.push({ rect, line, from: offset, to: end });
     offset = end;
-    return range.getBoundingClientRect();
+    return rect;
   });
-  return {
-    rects,
-    along: unit.width / PROBE,
-    across: unit.height / PROBE,
-    rtl: getComputedStyle(text).direction === "rtl",
-  };
+  const along = unit.width / PROBE;
+  const across = unit.height / PROBE;
+  // WebKit places each segment a whole number of pixels from its line's start; its canvas has the fraction.
+  const starts = new Map<number, DOMRect>();
+  for (const span of spans)
+    if (!starts.has(span.line)) starts.set(span.line, span.rect);
+  const whole = spans.every(({ rect, line: n }) => {
+    const start = starts.get(n)!;
+    return Number.isInteger(
+      rtl ? start.right - rect.right : rect.left - start.left,
+    );
+  });
+  if (
+    whole &&
+    spans.length > starts.size &&
+    Math.abs(along - 1) < 1e-3 &&
+    Math.abs(across) < 1e-3
+  ) {
+    const fine = refine(lines, spans, style, rtl);
+    if (fine) {
+      let k = 0;
+      for (let i = 0; i < rects.length; i++)
+        if (rects[i]) rects[i] = fine[k++]!;
+    }
+  }
+  return { rects, along, across, rtl };
+}
+
+let ruler: CanvasRenderingContext2D | null | undefined;
+
+/** Fractional rects from a canvas, where every line it measures agrees with the page to the pixel. */
+function refine(
+  lines: Text[],
+  spans: { rect: DOMRect; line: number; from: number; to: number }[],
+  style: CSSStyleDeclaration,
+  rtl: boolean,
+): DOMRect[] | null {
+  ruler ??= document.createElement("canvas").getContext("2d");
+  if (!ruler) return null;
+  ruler.font = fontOf(style);
+  ruler.fontKerning = style.fontKerning as CanvasFontKerning;
+  if ("letterSpacing" in ruler) ruler.letterSpacing = style.letterSpacing;
+  if ("wordSpacing" in ruler) ruler.wordSpacing = style.wordSpacing;
+  const width = (text: string) => ruler!.measureText(text).width;
+  const out: DOMRect[] = [];
+  for (let i = 0; i < spans.length; ) {
+    const n = spans[i]!.line;
+    const run = [];
+    while (i < spans.length && spans[i]!.line === n) run.push(spans[i++]!);
+    const data = lines[n]!.data;
+    const first = run[0]!.rect;
+    const last = run.at(-1)!.rect;
+    const page = rtl ? first.right - last.left : last.right - first.left;
+    const drawn = width(data.slice(run[0]!.from, run.at(-1)!.to));
+    // A canvas that shapes this line differently from the page is no help.
+    if (Math.abs(page - drawn) > 1) return null;
+    const head = width(data.slice(0, run[0]!.from));
+    for (const span of run) {
+      const start = width(data.slice(0, span.from)) - head;
+      const end = width(data.slice(0, span.to)) - head;
+      out.push(
+        rtl
+          ? new DOMRect(
+              first.right - end,
+              span.rect.top,
+              end - start,
+              span.rect.height,
+            )
+          : new DOMRect(
+              first.left + start,
+              span.rect.top,
+              end - start,
+              span.rect.height,
+            ),
+      );
+    }
+  }
+  return out;
 }
 
 /**
@@ -180,7 +268,7 @@ function fitBoxes(boxes: HTMLElement[], { rects, along, across, rtl }: Layout) {
   });
 }
 
-type Letters = Map<string, Layout>;
+type Letters = Map<string, Layout & { motion: Animation[] }>;
 
 /** Where each letter sits inside a word box about to be split — the word's own kerning, read before it's gone. */
 function lettersOf(
@@ -207,7 +295,14 @@ function lettersOf(
       range.setEnd(node, offset);
       return range.getBoundingClientRect();
     });
-    out.set(id, { rects, along, across: 0, rtl });
+    // Mid-morph, the box is on its way somewhere; its letters carry on from where it has got to.
+    out.set(id, {
+      rects,
+      along,
+      across: 0,
+      rtl,
+      motion: [...animationsOf(word)],
+    });
   }
   return out;
 }
@@ -229,7 +324,19 @@ function fitLetters(
       .get(id)!
       .map((letter) => byId.get(letter.id))
       .filter((box): box is HTMLElement => !!box);
-    if (boxes.length === layout.rects.length) fitBoxes(boxes, layout);
+    if (boxes.length !== layout.rects.length) continue;
+    fitBoxes(boxes, layout);
+    for (const box of boxes)
+      for (const animation of layout.motion) {
+        const effect = animation.effect as KeyframeEffect | null;
+        if (!effect) continue;
+        const copy = box.animate(
+          effect.getKeyframes(),
+          effect.getTiming() as KeyframeAnimationOptions,
+        );
+        copy.currentTime = animation.currentTime;
+        trackAnimation(box, copy);
+      }
   }
 }
 
@@ -254,6 +361,8 @@ export class TextMorph {
   private previousSegments: Segment[] = [];
   // `previousSegments` with ligatures joined — what the DOM holds, and the diff never sees.
   private renderedSegments: Segment[] = [];
+  // Runs drawn as one box, by their joined ID: what to split them back into when they change.
+  private runParts = new Map<string, Segment[]>();
   private isInitialRender = true;
   private reducedMotion: ReducedMotionState | null = null;
   private srNode: HTMLElement | null = null;
@@ -431,7 +540,17 @@ export class TextMorph {
       segments = [{ id: EMPTY_ID, string: "\u200B" }];
     }
     const diffed = segments;
-    segments = ligate(diffed, shaping);
+    // What the morph doesn't touch stays whole: one box per run, drawn as the text draws it.
+    // Mid-morph, only the runs already drawn whole, where they still hold: joining one drawn in parts would swap its boxes.
+    const runs = this.textNode
+      ? stableRuns(this.previousSegments, diffed)
+      : {
+          before: [],
+          after: intactRuns([...this.runParts.values()], diffed),
+          keys: [],
+        };
+    const lines = joinRuns(diffed, runs.after);
+    segments = ligate(lines.segments, shaping);
 
     const newIds = new Set(segments.map((b) => b.id));
 
@@ -439,6 +558,7 @@ export class TextMorph {
       this.rest(value);
       this.previousSegments = diffed;
       this.renderedSegments = diffed;
+      this.runParts = new Map();
       this.isInitialRender = false;
       element.style.width = "";
       element.style.height = "";
@@ -453,11 +573,20 @@ export class TextMorph {
       setStyleVar(element, VAR_INK_BOTTOM, `${inkBottom.toFixed(4)}em`);
     }
     // Sized to the text they replace, so the measure below reads where the text had them.
-    if (this.textNode) this.split(splits, shaping);
+    if (this.textNode) this.split(splits, shaping, runs.before);
     else {
-      const letters = lettersOf(element, splits);
-      splitWordSpans(element, splits);
-      fitLetters(element, splits, letters);
+      // A run drawn whole that this morph changes goes back to its parts first, then any word in it.
+      // Its arrows and joined letters stay joined, so nothing a ligature drew comes apart.
+      const reopened = new Map(
+        [...this.runParts]
+          .filter(([id]) => !newIds.has(id))
+          .map(([id, parts]) => [id, ligate(parts, shaping)]),
+      );
+      for (const cut of [reopened, splits]) {
+        const letters = lettersOf(element, cut);
+        splitWordSpans(element, cut);
+        fitLetters(element, cut, letters);
+      }
     }
     // Out of flow and unseen: the new value laid out by the browser, for the boxes to match.
     const twin = textOf(value);
@@ -557,6 +686,7 @@ export class TextMorph {
 
     this.previousSegments = diffed;
     this.renderedSegments = segments;
+    this.runParts = lines.parts;
 
     if (isEmptyTransition) {
       holdContainerSize(element, oldWidth, oldHeight, this.options.duration!);
@@ -583,11 +713,16 @@ export class TextMorph {
   }
 
   /** Reads where each outgoing segment sits in the text, then draws them as boxes there. */
-  private split(splits: Map<string, Segment[]>, shaping: Shaping | null) {
+  private split(
+    splits: Map<string, Segment[]>,
+    shaping: Shaping | null,
+    runs: [number, number][],
+  ) {
     const text = this.textNode!;
-    const segments = ligate(this.previousSegments, shaping).flatMap(
-      (segment) => splits.get(segment.id) ?? [segment],
-    );
+    const segments = ligate(
+      joinRuns(this.previousSegments, runs).segments,
+      shaping,
+    ).flatMap((segment) => splits.get(segment.id) ?? [segment]);
     const layout = layoutOf(text, segments);
 
     text.remove();

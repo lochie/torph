@@ -1,7 +1,13 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Segment } from "../../../utils/types";
-import { ligate, readShaping, type Shaping } from "../ligature";
+import {
+  joinRuns,
+  ligate,
+  readShaping,
+  stableRuns,
+  type Shaping,
+} from "../ligature";
 import { segmentText } from "../segment";
 
 // Every glyph 10px; these pairs kern as a font's table would, which must not join them.
@@ -50,6 +56,8 @@ let fontId = 0;
 const shaping = (over: Partial<Shaping> = {}): Shaping => ({
   font: `400 20px Test${fontId++}`,
   ligatures: true,
+  // The fake ruler has no pixels to compare; the ink check has its own tests.
+  contextual: false,
   ...over,
 });
 
@@ -122,6 +130,7 @@ describe("readShaping", () => {
     expect(readShaping(style({}))).toEqual({
       font: "normal 400 20px Test",
       ligatures: true,
+      contextual: true,
     });
   });
 
@@ -198,5 +207,61 @@ describe("joining scripts", () => {
   it("leaves Hebrew, which doesn't join, a box per letter", () => {
     const segments = segmentText("שלום", "he");
     expect(ligate(segments, null)).toBe(segments);
+  });
+});
+
+describe("runs a morph leaves alone", () => {
+  const strings = (segments: Segment[]) => segments.map((s) => s.string);
+  const join = (before: Segment[], after: Segment[]) =>
+    joinRuns(after, stableRuns(before, after).after);
+
+  it("joins what didn't change around what did, within a line", () => {
+    const before = segmentText("you have new mail", "en");
+    const after = [
+      ...before.slice(0, 4),
+      { id: "old", string: "old" },
+      ...before.slice(5),
+    ];
+    expect(strings(join(before, after).segments)).toEqual([
+      "you\u00A0have",
+      "\u00A0",
+      "old",
+      "\u00A0",
+      "mail",
+    ]);
+  });
+
+  it("never runs across a line break", () => {
+    const before = segmentText("one two\nthree four", "en");
+    expect(strings(join(before, before).segments)).toEqual([
+      "one\u00A0two",
+      "\n",
+      "three\u00A0four",
+    ]);
+  });
+
+  it("names a run after its words, so it keeps its box when spaces renumber", () => {
+    const before = segmentText("a b c", "en");
+    const after = before.map((s) =>
+      s.string === "\u00A0" ? { ...s, id: `${s.id}-moved` } : s,
+    );
+    const first = join(before, before).segments[0]!;
+    expect(join(before, after).segments[0]!.id).toBe(first.id);
+    expect(first.id.startsWith("\u0000l")).toBe(true);
+  });
+
+  it("treats a figure that rolled as changed", () => {
+    const before = [
+      { id: "d1", string: "1", kind: "digit" as const },
+      { id: "d2", string: "2", kind: "digit" as const },
+    ];
+    const after = [before[0]!, { ...before[1]!, string: "3" }];
+    expect(stableRuns(before, after).after).toEqual([]);
+  });
+
+  it("keeps each run's parts, to split it back into", () => {
+    const before = segmentText("a b", "en");
+    const { segments, parts } = join(before, before);
+    expect(parts.get(segments[0]!.id)).toEqual(before);
   });
 });

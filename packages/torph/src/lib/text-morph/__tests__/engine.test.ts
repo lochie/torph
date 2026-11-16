@@ -175,8 +175,12 @@ const rendered = (element: HTMLElement) =>
 const shape = (element: HTMLElement) =>
   live(element).map((c) => `${c.text}:${c.kind ?? "text"}`);
 
+// A run the morph left alone is one box, so a character is found in whichever box holds it.
 const idOf = (element: HTMLElement, text: string) =>
-  live(element).find((c) => c.text === text)!.id;
+  (
+    live(element).find((c) => c.text === text) ??
+    live(element).find((c) => c.text.includes(text))!
+  ).id;
 
 /** At rest the value is one run of text; only a morph draws it as boxes. */
 function drawn(morph: TextMorph, value: string) {
@@ -453,8 +457,14 @@ describe("numbers across line changes", () => {
     for (const value of steps) {
       morph.update(value);
 
+      // A line the morph didn't touch is one box drawn as text, so its figure needs no slots.
       const digits = live(element).filter((c) => c.kind !== null);
-      expect(digits.length, `${JSON.stringify(value)} lost its number`).toBe(5);
+      const figure = value.split("\n").find((line) => /\d/.test(line))!;
+      const whole = live(element).some((c) => c.text === figure);
+      expect(
+        digits.length === 5 || whole,
+        `${JSON.stringify(value)} lost its number`,
+      ).toBe(true);
 
       const ids = live(element).map((c) => c.id);
       const duplicate = ids.find((id, i) => ids.indexOf(id) !== i);
@@ -862,12 +872,12 @@ describe("plain text at rest", () => {
     const { element, morph } = mount();
     morph.update("Copy");
     morph.update("Copied");
-    const first = Array.from(items(element)).find((i) => i.textContent === "C");
     morph.update("Copier");
     expect(text(element)).toBeNull();
-    expect(Array.from(items(element)).find((i) => i.textContent === "C")).toBe(
-      first,
+    const live = Array.from(items(element)).filter(
+      (i) => !i.hasAttribute(ATTR_EXITING),
     );
+    expect(live.map((i) => i.textContent).join("")).toBe("Copier");
   });
 });
 
@@ -914,14 +924,8 @@ describe("boxes sized to the text", () => {
       const { element, morph } = mount();
       morph.update("Copy");
       morph.update("Copied");
-      expect(widths(element)).toEqual([
-        "8px",
-        "10px",
-        "10px",
-        "10px",
-        "10px",
-        "10px",
-      ]);
+      // "Cop" didn't change, so it is one box: its own kerning comes with it.
+      expect(widths(element)).toEqual(["28px", "10px", "10px", "10px"]);
     } finally {
       restore();
     }
@@ -950,7 +954,8 @@ describe("boxes sized to the text", () => {
       root.style.direction = "rtl";
       morph.update("שלום");
       morph.update("שלומי");
-      expect(widths(root).slice(0, 4)).toEqual(["8px", "10px", "10px", "10px"]);
+      // "שלו" is one 28px box measured right edge to right edge; left to left would give 10px.
+      expect(widths(root)).toEqual(["28px", "10px", "10px"]);
     } finally {
       Range.prototype.getBoundingClientRect = range;
       Element.prototype.getBoundingClientRect = element;
@@ -963,14 +968,8 @@ describe("boxes sized to the text", () => {
       const { element, morph } = mount();
       morph.update("Copy");
       morph.update("Copied");
-      expect(widths(element)).toEqual([
-        "8px",
-        "10px",
-        "10px",
-        "10px",
-        "10px",
-        "10px",
-      ]);
+      // "Cop" didn't change, so it is one box: its own kerning comes with it.
+      expect(widths(element)).toEqual(["28px", "10px", "10px", "10px"]);
     } finally {
       restore();
     }
@@ -1008,9 +1007,6 @@ describe("ligatures across item boundaries", () => {
     );
   const texts = (element: HTMLElement) =>
     items(element).map((item) => item.textContent);
-  const arrowOf = (element: HTMLElement) =>
-    items(element, true).find((item) => item.textContent === "->");
-
   let restore: () => void;
   beforeEach(() => (restore = arrowRuler()));
   afterEach(() => restore());
@@ -1023,16 +1019,21 @@ describe("ligatures across item boundaries", () => {
     expect(element.querySelector(`[${ATTR_TEXT}]`)?.textContent).toBe("a->b");
   });
 
-  it("keeps the ligature's box while its parts persist", () => {
+  // Whether the arrow sits in a box of its own or inside a run left whole, no two boxes split it.
+  const splitsArrow = (element: HTMLElement) => {
+    const t = items(element).map((item) => item.textContent ?? "");
+    return t.some((x, i) => x.endsWith("-") && t[i + 1]?.startsWith(">"));
+  };
+
+  it("keeps the arrow in one box through every morph", () => {
     const { element, morph } = mount();
     element.style.fontSize = "20px";
     morph.update("a->b");
-    morph.update("a->c");
-    const arrow = arrowOf(element)!;
-    morph.update("x->c");
-    expect(texts(element)).toEqual(["x", "->", "c"]);
-    expect(arrowOf(element)).toBe(arrow);
-    expect(arrow.hasAttribute(ATTR_EXITING)).toBe(false);
+    for (const value of ["a->c", "x->c", "x->y now", "x->y"]) {
+      morph.update(value);
+      expect(splitsArrow(element), value).toBe(false);
+      expect(texts(element).join("")).toBe(value.replace(" ", "\u00A0"));
+    }
   });
 
   it("swaps the parts for the ligature when it forms", () => {
@@ -1041,12 +1042,12 @@ describe("ligatures across item boundaries", () => {
     morph.update("a-b");
     morph.update("a-c");
     morph.update("a->c");
-    expect(texts(element)).toEqual(["a", "->", "c"]);
+    expect(texts(element).join("")).toBe("a->c");
+    expect(splitsArrow(element)).toBe(false);
     // The lone hyphen leaves; nothing but the arrow draws an arrowhead.
     const leaving = items(element, true)
       .filter((item) => item.hasAttribute(ATTR_EXITING))
       .map((item) => item.textContent);
-    expect(leaving).toContain("-");
     expect(leaving.some((text) => text!.includes(">"))).toBe(false);
   });
 
@@ -1056,34 +1057,25 @@ describe("ligatures across item boundaries", () => {
     morph.update("a->b");
     morph.update("a->c");
     morph.update("a-c");
-    expect(texts(element)).toEqual(["a", "-", "c"]);
-    expect(arrowOf(element)?.hasAttribute(ATTR_EXITING)).toBe(true);
+    expect(texts(element).join("")).toBe("a-c");
+    // Whatever leaves with the arrowhead takes the whole arrow with it.
+    const leaving = items(element, true)
+      .filter((item) => item.hasAttribute(ATTR_EXITING))
+      .map((item) => item.textContent ?? "");
+    expect(
+      leaving.filter((t) => t.includes(">")).every((t) => t.includes("->")),
+    ).toBe(true);
   });
 
-  it("forms between words, and keeps its box as the words around it change", () => {
-    const { element, morph } = mount();
-    element.style.fontSize = "20px";
-    morph.update("go a->b now");
-    morph.update("go a->b later");
-    expect(texts(element)).toContain("->");
-    const arrow = arrowOf(element)!;
-    morph.update("then a->b later");
-    expect(arrowOf(element)).toBe(arrow);
-    expect(arrow.hasAttribute(ATTR_EXITING)).toBe(false);
-  });
-
-  it("forms on every line, each in a box of its own", () => {
+  it("forms on a changed line, and leaves an unchanged one whole", () => {
     const { element, morph } = mount();
     element.style.fontSize = "20px";
     morph.update("a->b\nc->d");
     morph.update("a->b\nc->e");
-    const arrows = items(element).filter((item) => item.textContent === "->");
-    expect(arrows).toHaveLength(2);
-    expect(new Set(arrows.map((a) => a.getAttribute(ATTR_ID))).size).toBe(2);
+    // The first line didn't change, so it is one box: the text draws its arrow.
+    expect(texts(element)).toContain("a->b");
+    expect(splitsArrow(element)).toBe(false);
     expect(element.querySelectorAll("br")).toHaveLength(1);
-    morph.update("a->b\nc->f");
-    const kept = items(element).filter((item) => item.textContent === "->");
-    expect(kept).toEqual(arrows);
   });
 
   it("re-forms cleanly when a break is interrupted", () => {
@@ -1185,5 +1177,51 @@ describe("exactly one of complete and cancel per morph", () => {
     morph.destroy();
     await settle();
     expect(calls).toEqual([]);
+  });
+});
+
+describe("a morph splits only the lines it changes", () => {
+  const boxes = (element: HTMLElement) =>
+    Array.from(
+      element.querySelectorAll<HTMLElement>(
+        `[${ATTR_ITEM}]:not([${ATTR_EXITING}]):not(br)`,
+      ),
+      (item) => item.textContent,
+    );
+
+  it("draws every untouched line as one box", () => {
+    const { element, morph } = mount();
+    morph.update("alpha beta\ngamma delta\nepsilon zeta");
+    morph.update("alpha beta\ngamma omega\nepsilon zeta");
+    expect(boxes(element)).toEqual([
+      "alpha beta",
+      "gamma",
+      " ",
+      "omega",
+      "epsilon zeta",
+    ]);
+  });
+
+  it("opens a whole line back up when a morph interrupts it", () => {
+    const { element, morph } = mount();
+    morph.update("alpha beta\ngamma delta");
+    morph.update("alpha beta\ngamma omega");
+    morph.update("alpha gamma\ngamma omega");
+    // The first line was whole and changed, so it is back in parts; the second,
+    // mid-morph in parts, stays in parts rather than be swapped for a new box.
+    expect(boxes(element).join("|")).toBe(
+      "alpha|\u00A0|gamma|gamma|\u00A0|omega",
+    );
+    const ids = Array.from(element.querySelectorAll(`[${ATTR_ITEM}]`), (item) =>
+      item.getAttribute(ATTR_ID),
+    );
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("keeps later lines whole when an earlier one changes length", () => {
+    const { element, morph } = mount();
+    morph.update("a b\nc d\ne f");
+    morph.update("a longer b\nc d\ne f");
+    expect(boxes(element).slice(-2)).toEqual(["c\u00A0d", "e\u00A0f"]);
   });
 });
