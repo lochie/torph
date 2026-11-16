@@ -41,7 +41,42 @@ export async function buildBundle(ref) {
           {
             name: "baseline-source",
             setup(builder) {
-              builder.onLoad({ filter: /\.ts$/ }, ({ path: source }) => {
+              const inRef = (relative) => {
+                try {
+                  execFileSync(
+                    "git",
+                    ["cat-file", "-e", `${ref}:${relative}`],
+                    {
+                      cwd: root,
+                      stdio: "ignore",
+                    },
+                  );
+                  return true;
+                } catch {
+                  return false;
+                }
+              };
+              // Resolved in the ref's tree, not the working tree's: a file renamed since would otherwise be missing.
+              builder.onResolve(
+                { filter: /^\.\.?\// },
+                ({ path: spec, resolveDir }) => {
+                  const base = path
+                    .relative(root, path.resolve(resolveDir, spec))
+                    .split(path.sep)
+                    .join("/");
+                  if (!base.startsWith("packages/torph/src/")) return;
+                  for (const candidate of [
+                    base,
+                    `${base}.ts`,
+                    `${base}.tsx`,
+                    `${base}/index.ts`,
+                  ]) {
+                    if (/\.tsx?$/.test(candidate) && inRef(candidate))
+                      return { path: path.join(root, candidate) };
+                  }
+                },
+              );
+              builder.onLoad({ filter: /\.tsx?$/ }, ({ path: source }) => {
                 const relative = path
                   .relative(root, source)
                   .split(path.sep)
