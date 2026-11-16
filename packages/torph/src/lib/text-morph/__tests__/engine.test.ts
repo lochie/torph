@@ -1044,3 +1044,56 @@ describe("direction", () => {
     expect(Array.from(items, (item) => item.textContent)).toEqual(["مرحبا"]);
   });
 });
+
+describe("exactly one of complete and cancel per morph", () => {
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 250));
+
+  function counted(options: Partial<TextMorphOptions> = {}) {
+    const calls: string[] = [];
+    const { element, morph } = mount({
+      duration: 30,
+      onAnimationComplete: () => calls.push("complete"),
+      onAnimationCancel: () => calls.push("cancel"),
+      ...options,
+    });
+    return { element, morph, calls };
+  }
+
+  it("completes a morph once, after it has settled", async () => {
+    const { morph, calls } = counted();
+    morph.update("hello");
+    morph.update("hello world");
+    expect(calls).toEqual([]);
+    await settle();
+    expect(calls).toEqual(["complete"]);
+  });
+
+  it("cancels the morph an update interrupts, and completes the one that replaces it", async () => {
+    const { morph, calls } = counted();
+    morph.update("hello");
+    morph.update("hello world");
+    morph.update("hello there");
+    await settle();
+    expect(calls).toEqual(["cancel", "complete"]);
+  });
+
+  it("completes a morph out of an empty value rather than cancelling it", async () => {
+    const { morph, calls } = counted();
+    morph.update("hi");
+    morph.update("");
+    await settle();
+    calls.length = 0;
+    morph.update("hello");
+    await settle();
+    expect(calls).toEqual(["complete"]);
+  });
+
+  it("fires neither for a morph torn down part-way", async () => {
+    const { morph, calls } = counted();
+    morph.update("hello");
+    morph.update("hello world");
+    morph.destroy();
+    await settle();
+    expect(calls).toEqual([]);
+  });
+});

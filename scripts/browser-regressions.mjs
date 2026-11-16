@@ -82,8 +82,23 @@ async function replay(code, fixture) {
             child.hasAttribute("torph-id") &&
             !child.hasAttribute("torph-exiting"),
         );
-        const text = live
-          .map((child) => (child.tagName === "BR" ? "\n" : child.textContent))
+        // At rest there are no boxes: the value is one run of plain text.
+        const plain = live.length
+          ? null
+          : element.querySelector("[torph-text]");
+        const text = (
+          plain
+            ? [...plain.childNodes].map((node) =>
+                node.nodeName === "BR"
+                  ? "\n"
+                  : node.nodeType === 3
+                    ? node.data
+                    : "",
+              )
+            : live.map((child) =>
+                child.tagName === "BR" ? "\n" : child.textContent,
+              )
+        )
           .join("")
           .replaceAll("\u00a0", " ")
           .replaceAll("\u200b", "");
@@ -100,26 +115,39 @@ async function replay(code, fixture) {
           animation.currentTime = 90;
         }
         clock += 90;
-        snapshots.push(
-          [...element.querySelectorAll("[torph-id]")].map((child) => {
-            // A slot's box may be padded past its line; the glyph inside is what must not move.
-            const glyph = child.hasAttribute("torph-slot")
-              ? child.firstElementChild
-              : child;
-            const rect = glyph.getBoundingClientRect();
-            const style = getComputedStyle(child);
-            return {
-              id: child.getAttribute("torph-id"),
-              text: child.textContent,
-              exiting: child.hasAttribute("torph-exiting"),
+        // Every glyph on screen, boxed or plain, in document order — what a reader sees, however it's drawn.
+        const glyphs = [];
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        const range = document.createRange();
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          if (node.parentElement.closest("[torph-sr]")) continue;
+          let opacity = 1;
+          for (
+            let e = node.parentElement;
+            e && e !== element;
+            e = e.parentElement
+          )
+            opacity *= +getComputedStyle(e).opacity;
+          const exiting = !!node.parentElement.closest("[torph-exiting]");
+          for (let i = 0; i < node.length; i++) {
+            const ch = node.data[i];
+            if (/[\s\u00a0\u200b]/.test(ch)) continue;
+            range.setStart(node, i);
+            range.setEnd(node, i + 1);
+            const rect = range.getBoundingClientRect();
+            glyphs.push({
+              id: ch,
+              text: ch,
+              exiting,
               x: rect.x,
               y: rect.y,
               width: rect.width,
               height: rect.height,
-              opacity: +style.opacity,
-            };
-          }),
-        );
+              opacity,
+            });
+          }
+        }
+        snapshots.push(glyphs);
       }
       for (const animation of document.getAnimations()) animation.finish();
       await new Promise(requestAnimationFrame);
@@ -244,7 +272,9 @@ try {
     });
     if (differences.length > 0) {
       failed.push(fixture.name);
-      console.log(`FAIL ${fixture.name}`);
+      console.log(
+        `FAIL ${fixture.name} (maximum geometry/opacity delta ${largestDelta.toFixed(5)})`,
+      );
       for (const line of differences.slice(0, 5)) console.log(`  ${line}`);
       if (differences.length > 5) {
         console.log(`  …and ${differences.length - 5} more`);

@@ -95,7 +95,6 @@ export function cancelAnimations(
 
 type PendingTransition = {
   stop: () => void;
-  onCancel?: () => void;
   /** Read before the abort, while the animations are still running. */
   snapshot: () => { width: AxisState; height: AxisState };
 };
@@ -285,10 +284,12 @@ export function abortContainerTransition(element: HTMLElement) {
   if (!entry) return;
   pending.delete(element);
   entry.stop();
-  entry.onCancel?.();
 }
 
-// Fires neither callback — teardown is not an animation event.
+export function isContainerSettling(element: HTMLElement) {
+  return pending.has(element);
+}
+
 export function clearContainerTransition(element: HTMLElement) {
   const entry = pending.get(element);
   if (entry) {
@@ -304,8 +305,6 @@ export function transitionContainerSize(
   oldHeight: number,
   duration: number,
   ease: string,
-  onComplete?: () => void,
-  onCancel?: () => void,
 ) {
   // Read before the abort, off the curves the box is still riding.
   const previous = inFlight(element);
@@ -313,7 +312,6 @@ export function transitionContainerSize(
 
   if (oldWidth === 0 || oldHeight === 0) {
     restoreSize(element);
-    onCancel?.();
     return;
   }
 
@@ -358,12 +356,10 @@ export function transitionContainerSize(
     pending.delete(element);
     stop();
     restoreSize(element);
-    onComplete?.();
   };
 
   pending.set(element, {
     stop,
-    onCancel,
     snapshot: () => ({
       width: axisState(width, duration),
       height: axisState(height, duration),
@@ -378,8 +374,6 @@ export function holdContainerSize(
   width: number,
   height: number,
   duration: number,
-  onComplete?: () => void,
-  onCancel?: () => void,
 ) {
   abortContainerTransition(element);
 
@@ -390,7 +384,6 @@ export function holdContainerSize(
   const timer = setTimeout(() => {
     pending.delete(element);
     restoreSize(element);
-    onComplete?.();
   }, duration);
 
   // Pinned, not animated — there is no motion to hand on.
@@ -404,7 +397,6 @@ export function holdContainerSize(
   });
   pending.set(element, {
     stop: () => clearTimeout(timer),
-    onCancel,
     snapshot: () => ({ width: held(width), height: held(height) }),
   });
 }
