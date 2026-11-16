@@ -799,17 +799,17 @@ export const CASES: TestCase[] = [
   {
     label: "Long paragraph",
     description:
-      "Stress test with paragraph-length text. Common words persist, unique words enter/exit.",
+      "Stress test with paragraph-length text over two lines — the root never wraps, so the break is the value's. Common words persist, unique words enter/exit.",
     tags: ["stress", "flip"],
     values: [
-      "The quick brown fox jumps over the lazy dog while the sun sets behind the distant mountains",
-      "The slow gray wolf runs under the bright moon while the rain falls across the nearby valleys",
+      "The quick brown fox jumps over the lazy dog\nwhile the sun sets behind the distant mountains",
+      "The slow gray wolf runs under the bright moon\nwhile the rain falls across the nearby valleys",
     ],
     verify: (t) => {
       const from =
-        "The quick brown fox jumps over the lazy dog while the sun sets behind the distant mountains";
+        "The quick brown fox jumps over the lazy dog\nwhile the sun sets behind the distant mountains";
       const to =
-        "The slow gray wolf runs under the bright moon while the rain falls across the nearby valleys";
+        "The slow gray wolf runs under the bright moon\nwhile the rain falls across the nearby valleys";
       return combineResults(
         verifyWordPersistence(t, from, to, "while"),
         verifyWordPersistence(t, from, to, "the"),

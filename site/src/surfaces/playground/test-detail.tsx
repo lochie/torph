@@ -165,7 +165,8 @@ export function TestDetail({
     const el = root();
     if (!el) return;
     setDom(
-      test.minLines
+      // Only a step whose value has a break can be held to a line count.
+      test.minLines && test.values[index]!.includes("\n")
         ? combineResults(
             verifyDomStandard(el),
             verifyMultiline(el, test.minLines),
