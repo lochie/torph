@@ -16,6 +16,7 @@ import { InputPlayground } from "./input-demo";
 import { TickerDemo } from "./ticker-demo";
 import { LineHeightDemo } from "./line-height-demo";
 import { KerningDemo } from "./kerning-demo";
+import { LongTextDemo } from "./long-text-demo";
 import type { Result } from "@torph/test-cases";
 
 // Negative ids sit outside the corpus — they select a panel, not a case.
@@ -25,6 +26,7 @@ const INPUT_DEMO = -3;
 const TICKER_DEMO = -4;
 const LINE_HEIGHT_DEMO = -5;
 const KERNING_DEMO = -6;
+const LONG_TEXT_DEMO = -7;
 
 const MODES = ["text", "numbers"] as const;
 type Mode = (typeof MODES)[number];
@@ -34,6 +36,7 @@ const PANELS: Record<Mode, { id: number; label: string }[]> = {
   text: [
     { id: SANDBOX, label: "Sandbox" },
     { id: KERNING_DEMO, label: "Kerning" },
+    { id: LONG_TEXT_DEMO, label: "Long text" },
   ],
   numbers: [
     { id: SANDBOX, label: "Sandbox" },
@@ -52,6 +55,7 @@ const DEMOS: number[] = [
   TICKER_DEMO,
   LINE_HEIGHT_DEMO,
   KERNING_DEMO,
+  LONG_TEXT_DEMO,
 ];
 
 type BundleSize = {
@@ -336,7 +340,9 @@ export const Playground = ({
         )}
 
         {mode === "text" ? (
-          selected === KERNING_DEMO ? (
+          selected === LONG_TEXT_DEMO ? (
+            <LongTextDemo speed={speed} easing={easing} align={align} />
+          ) : selected === KERNING_DEMO ? (
             <KerningDemo speed={speed} easing={easing} align={align} />
           ) : current ? (
             <TestDetail

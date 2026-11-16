@@ -1,5 +1,5 @@
 import type { Segment } from "./types";
-import { layoutSize, parseTranslate } from "./animate";
+import { cancelAll, layoutSize, parseTranslate } from "./animate";
 import {
   ATTR_EXITING,
   ATTR_ID,
@@ -77,7 +77,7 @@ export function detachFromFlow(
 
   // Only once every exit is read: a cancel dirties style, and the next read would recompute it.
   for (const child of snapshots.keys()) {
-    child.getAnimations().forEach((a) => a.cancel());
+    cancelAll(child);
   }
 
   // BRs can't be animated, so they leave the flow before reconciliation.

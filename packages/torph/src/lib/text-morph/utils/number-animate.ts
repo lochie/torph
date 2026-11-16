@@ -1,4 +1,9 @@
-import { readAnimationState, cancelAnimations } from "../../utils/animate";
+import {
+  ARRIVE,
+  readAnimationState,
+  cancelAll,
+  cancelAnimations,
+} from "../../utils/animate";
 import type { AnimationState } from "../../utils/animate";
 import { moverOf } from "../../utils/dom";
 import { fontOf } from "./kerning";
@@ -76,7 +81,7 @@ export function animateNumberEnter(
 
   mover.animate(
     { transform: `translate(0px, ${prev.ty + from}px)`, offset: 0 },
-    { duration, easing: ease, fill: "both" },
+    { duration, easing: ease, fill: ARRIVE },
   );
 
   const startOpacity = prev.opacity >= 1 ? 0 : prev.opacity;
@@ -84,7 +89,7 @@ export function animateNumberEnter(
     mover.animate([{ opacity: startOpacity }, { opacity: 1 }], {
       duration: duration * ENTER_FADE,
       easing: "linear",
-      fill: "both",
+      fill: ARRIVE,
     });
   }
 }
@@ -102,7 +107,7 @@ export function animateNumberPersist(
   const { deltaX, deltaY, duration, ease } = options;
 
   const { tx, ty } = options.previous ?? readAnimationState(slot);
-  slot.getAnimations().forEach((a) => a.cancel());
+  cancelAll(slot);
 
   const startX = deltaX + tx;
   const startY = deltaY + ty;
@@ -111,7 +116,7 @@ export function animateNumberPersist(
 
   slot.animate(
     { transform: `translate(${startX}px, ${startY}px)`, offset: 0 },
-    { duration, easing: ease, fill: "both" },
+    { duration, easing: ease, fill: ARRIVE },
   );
 }
 

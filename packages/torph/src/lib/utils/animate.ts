@@ -44,6 +44,8 @@ export function layoutSize(
   return { width, height };
 }
 
+export const ARRIVE: FillMode = "backwards"; // Ends where the element rests, so nothing need hold — a finished `both` lingers, and every getAnimations() sorts it.
+
 export type AnimationState = { tx: number; ty: number; opacity: number };
 
 /** Snapshot numeric values before writes; computed-style objects themselves remain live. */
@@ -54,12 +56,40 @@ export function readAnimationState(element: HTMLElement): AnimationState {
   return { tx, ty, opacity: Number.isFinite(opacity) ? opacity : 1 };
 }
 
+let running: Map<Element, Animation[]> | null = null;
+
+/**
+ * Every animation under the root, read once in an update's read phase. Asked per
+ * element instead, getAnimations() recalculates style each time an animate() or
+ * cancel() has dirtied it — once per item, on every update.
+ */
+export function snapshotAnimations(root: HTMLElement) {
+  running = new Map();
+  for (const animation of root.getAnimations({ subtree: true })) {
+    const target = (animation.effect as KeyframeEffect | null)?.target;
+    if (!target) continue;
+    const list = running.get(target);
+    if (list) list.push(animation);
+    else running.set(target, [animation]);
+  }
+}
+
+export function releaseAnimations() {
+  running = null;
+}
+
+export function cancelAll(element: Element) {
+  (running ? (running.get(element) ?? []) : element.getAnimations()).forEach(
+    (animation) => animation.cancel(),
+  );
+}
+
 /** Accept a snapshot from the same update's read phase to avoid interleaving reads and writes. */
 export function cancelAnimations(
   element: HTMLElement,
   previous = readAnimationState(element),
 ): AnimationState {
-  element.getAnimations().forEach((a) => a.cancel());
+  cancelAll(element);
   return previous;
 }
 
