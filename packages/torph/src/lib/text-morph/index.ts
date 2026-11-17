@@ -278,7 +278,7 @@ function fitBoxes(boxes: HTMLElement[], { rects, along, across, rtl }: Layout) {
   });
 }
 
-type Letters = Map<string, Layout & { motion: Animation[] }>;
+type Letters = Map<string, Layout & { motion: Animation[]; width: number }>;
 
 /** Where each letter sits inside a word box about to be split — the word's own kerning, read before it's gone. */
 function lettersOf(
@@ -312,6 +312,7 @@ function lettersOf(
       across: 0,
       rtl,
       motion: [...animationsOf(word)],
+      width: parseFloat(word.style.width),
     });
   }
   return out;
@@ -336,6 +337,13 @@ function fitLetters(
       .filter((box): box is HTMLElement => !!box);
     if (boxes.length !== layout.rects.length) continue;
     fitBoxes(boxes, layout);
+    // The last letter has no next to measure to; it ends where its word did, kerning into the next box included.
+    const last = boxes[boxes.length - 1]!;
+    const lead = boxes
+      .slice(0, -1)
+      .reduce((sum, box) => sum + parseFloat(box.style.width), 0);
+    if (last.style.width && Number.isFinite(layout.width - lead))
+      last.style.width = `${Math.round((layout.width - lead) * 64) / 64}px`;
     for (const box of boxes)
       for (const animation of layout.motion) {
         const effect = animation.effect as KeyframeEffect | null;
