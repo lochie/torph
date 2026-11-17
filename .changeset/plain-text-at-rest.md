@@ -8,7 +8,7 @@ Text at rest is plain text.
 
 - Text at rest is drawn as plain text, so kerning, ligatures, joining scripts and font changes are exactly the browser's.
 - Text at rest can be selected and copied.
-- A morph only redraws what changed, so updating long text costs a fraction of what it did.
+- Long text and pages full of instances morph without stalling.
 
 #### Fixed
 
