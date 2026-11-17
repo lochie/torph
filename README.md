@@ -33,8 +33,23 @@ For a field somebody is typing in, pass the caret position so the update matches
 by position rather than by place value:
 
 ```tsx
-<TextMorph cursorIndex={caret}>{value}</TextMorph>;
+<TextMorph cursorIndex={caret}>{value}</TextMorph>
 ```
+
+### Plugins
+
+Plugins change how text is cut up and how it moves. Three ship with torph:
+
+```tsx
+import { TextMorph } from "torph/react";
+import { blur } from "torph/plugins/blur";
+
+<TextMorph plugins={[blur()]}>{status}</TextMorph>;
+```
+
+`torph/plugins/words` swaps a changed word whole, and `torph/plugins/scramble`
+scrambles text in and out letter by letter. Writing your own is covered in the
+[package README](packages/torph/README.md#plugins).
 
 ### Spring Animations
 

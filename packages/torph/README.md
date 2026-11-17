@@ -134,19 +134,17 @@ import { TextMorph } from "torph/react";
 function App() {
   const [text, setText] = useState("Hello World");
 
-  return (
-    <TextMorph ease={{ stiffness: 200, damping: 20 }}>{text}</TextMorph>
-  );
+  return <TextMorph ease={{ stiffness: 200, damping: 20 }}>{text}</TextMorph>;
 }
 ```
 
 ### Spring Parameters
 
-| Parameter   | Type     | Default | Description                               |
-| ----------- | -------- | ------- | ----------------------------------------- |
-| `stiffness` | `number` | `100`   | Spring stiffness coefficient              |
-| `damping`   | `number` | `10`    | Damping coefficient                       |
-| `mass`      | `number` | `1`     | Mass of the spring                        |
+| Parameter   | Type     | Default | Description                                |
+| ----------- | -------- | ------- | ------------------------------------------ |
+| `stiffness` | `number` | `100`   | Spring stiffness coefficient               |
+| `damping`   | `number` | `10`    | Damping coefficient                        |
+| `mass`      | `number` | `1`     | Mass of the spring                         |
 | `precision` | `number` | `0.001` | Threshold for determining settled position |
 
 ## Numbers
@@ -204,6 +202,120 @@ const [caret, setCaret] = useState<number>();
 morph.update("$120", 2);
 ```
 
+## Plugins
+
+A plugin changes how a value is cut into pieces, how those pieces move, or both.
+Numbers and the way a long replaced run recedes as one shape are plugins too,
+built in and on by default. Pass your own with `plugins`; they run before the
+built-ins, so they can claim words and override motion first.
+
+```tsx
+import { TextMorph } from "torph/react";
+import { blur } from "torph/plugins/blur";
+
+<TextMorph plugins={[blur()]}>{status}</TextMorph>;
+```
+
+A new array on every render is fine: a plugin is matched by its name and
+options, and the morph is only rebuilt when those change.
+
+| Plugin                     | What it does                                                                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `torph/plugins/blur`       | Letter by letter, text rises into focus and blurs away upwards. `{ amount, rise, stagger }`                                                                                     |
+| `torph/plugins/words`      | A changed word swaps whole, instead of morphing the letters it shares.                                                                                                          |
+| `torph/plugins/scramble`   | Letter by letter, arriving text scrambles into place and leaving text scrambles away. `{ glyphs, rate, stagger }`                                                               |
+| `torph/plugins/flap`       | Like a departure board, each place flips round to the new letter. `{ glyphs, flips }`                                                                                           |
+| `torph/plugins/typewriter` | Old text backspaces from the end, then the new text types in. `{ keystroke }`                                                                                                   |
+| `torph/plugins/tokens`     | Identifiers and paths change at their joins: `getUserName` → `getUserEmail` keeps `getUser`.                                                                                    |
+| `torph/plugins/odometer`   | Figures count like a car's odometer, every wheel turning the way the value went. `{ trend }`                                                                                    |
+| `torph/plugins/wave`       | Letter by letter, text drops in with a bounce and falls away under its own weight. `{ height, stagger }`                                                                        |
+| `torph/plugins/wipe`       | An edge crosses the value, wiping the old text away and revealing the new. `{ sweep }`                                                                                          |
+| `torph/plugins/caseless`   | A letter that only changes case keeps its box, and pops to the new one in place.                                                                                                |
+| `torph/plugins/anagram`    | Every letter is reused wherever the new value needs it, across words and in any order.                                                                                          |
+| `torph/plugins/stack`      | The whole value is one card: the old one slides up and away as the new one rises in. `{ rise }`                                                                                 |
+| `torph/plugins/squash`     | Moving text stretches along its path, then squashes as it lands. `{ stretch }`                                                                                                  |
+| `torph/plugins/redline`    | Like track changes: removed words stay struck through before they go, added words come underlined. Several lines diff a line at a time, like code. `{ linger, removed, added }` |
+| `torph/plugins/countup`    | A figure counts through the values between, quick at first and slowing as it arrives. `{ time, steps }`                                                                         |
+| `torph/plugins/skeleton`   | While the value is empty a shimmering bar holds its place, and the text fades in over it. `{ length, color }`                                                                   |
+| `torph/plugins/magnet`     | Letters near the pointer lean away from it, and settle back when it leaves. `{ radius, strength }`                                                                              |
+| `torph/plugins/weight`     | New text arrives heavy and relaxes to its weight; leaving text thins away. Needs a variable font. `{ heavy, light }`                                                            |
+
+### Writing a plugin
+
+A plugin is an object with a `name` and the hooks it needs. This one fades
+plain text in from below:
+
+```ts
+import type { TorphPlugin } from "torph";
+
+export const rise: TorphPlugin = {
+  name: "rise",
+  animate: {
+    text: {
+      enter: (box, { delta, duration, ease }) => [
+        box.animate(
+          [
+            {
+              transform: `translate(${delta.x}px, ${delta.y + 8}px)`,
+              opacity: 0,
+            },
+            { transform: "none", opacity: 1 },
+          ],
+          { duration, easing: ease, fill: "backwards" },
+        ),
+      ],
+    },
+  },
+};
+```
+
+- **Motion:** `animate` replaces the `enter`, `persist` or `exit` hooks of a
+  kind, `"text"` for plain text. A hook it leaves out keeps the default.
+- **Matching:** `fold(char)` makes letters with the same key match, so
+  `(c) => c.toLowerCase()` ignores case. `maxShift` is the farthest, in
+  characters, a word can move and stay the same word; further, it leaves and
+  arrives.
+- **Segmentation:** `whole(value, ctx)` cuts the entire value itself, in place
+  of the word-by-word diff. `letters: true` draws plain text a box per letter.
+  `claim(word)` and `segment(word, ctx)` take over whole words. Mint IDs with `ctx.id()`, and give segments a `kind` to move them with
+  hooks of your own under `kinds`.
+- **Context:** a hook gets its `index` among the boxes on its side, how many
+  are `arriving` and `leaving`, what a staying box `was`, the box an arriving
+  one `replaces`, where it rests (`at`) and how wide the value is (`extent`).
+  An earlier plugin's hooks come before a later one's, built-ins included. `decorate` hooks run alongside whatever moves a box.
+- **Over time:** `tween(from, to)` returns values to pass through on the way,
+  each morphed in turn; a reader hears only the destination, and the callbacks
+  fire once. `mount(root)` runs for as long as the morph lives, for listeners
+  and the like, and returns its cleanup. An endless animation is ambient: a
+  morph never waits on it.
+- **At rest:** text is plain text between morphs, so boxes and their styles
+  exist only while something moves. `boxes(value)` keeps a value in boxes at
+  rest, for a plugin that styles or moves them there.
+- **Leaving text:** `linger` keeps leaving text in the line for that many
+  durations, so new text lands after it, before the line closes up.
+- **Settling:** return the animations, or a promise, that a hook starts. The
+  morph completes once they settle, and a leaving box is removed for you.
+  Anything that isn't a Web Animation should stop when `ctx.signal` aborts,
+  which happens when the next morph interrupts.
+- **Easing:** a plugin's `ease` becomes the morph's when the component sets
+  none, so blur's spring times every letter, moving ones included.
+- **Reads and writes:** hooks only write. Measure in `read`, which runs once per
+  morph before anything changes, and use what the context hands over.
+
+The full interface is in [docs/plugins.md](https://github.com/lochie/torph/blob/main/docs/plugins.md),
+and the three plugins above are short enough to read as examples.
+
+### Debugging a plugin
+
+```ts
+import { enableDebug } from "torph/debug";
+
+enableDebug();
+```
+
+With `debug` on, a hook that reads layout then logs a warning naming the plugin
+and the hook.
+
 ## API
 
 ### Options
@@ -218,6 +330,8 @@ All components accept the following props/options:
 - `numbers?: boolean` - Morph numeric words by place value, sliding digits along
   the block axis. Off falls back to the character-level text morph (default:
   `true`)
+- `plugins?: TorphPlugin[]` - Plugins that change how text is cut up and how it
+  moves, run before the built-ins (see [Plugins](#plugins))
 - `decimals?: number` - Fraction digits to format a numeric value to. Applies
   when the value is a number (React children, or `update(number)`); ignored for
   strings

@@ -32,6 +32,101 @@
       "import": "./dist/vue/index.mjs",
       "require": "./dist/vue/index.js"
     },
+    "./plugins/blur": {
+      "types": "./dist/plugins/blur/index.d.ts",
+      "import": "./dist/plugins/blur/index.mjs",
+      "require": "./dist/plugins/blur/index.js"
+    },
+    "./plugins/words": {
+      "types": "./dist/plugins/words/index.d.ts",
+      "import": "./dist/plugins/words/index.mjs",
+      "require": "./dist/plugins/words/index.js"
+    },
+    "./plugins/scramble": {
+      "types": "./dist/plugins/scramble/index.d.ts",
+      "import": "./dist/plugins/scramble/index.mjs",
+      "require": "./dist/plugins/scramble/index.js"
+    },
+    "./plugins/flap": {
+      "types": "./dist/plugins/flap/index.d.ts",
+      "import": "./dist/plugins/flap/index.mjs",
+      "require": "./dist/plugins/flap/index.js"
+    },
+    "./plugins/typewriter": {
+      "types": "./dist/plugins/typewriter/index.d.ts",
+      "import": "./dist/plugins/typewriter/index.mjs",
+      "require": "./dist/plugins/typewriter/index.js"
+    },
+    "./plugins/tokens": {
+      "types": "./dist/plugins/tokens/index.d.ts",
+      "import": "./dist/plugins/tokens/index.mjs",
+      "require": "./dist/plugins/tokens/index.js"
+    },
+    "./plugins/odometer": {
+      "types": "./dist/plugins/odometer/index.d.ts",
+      "import": "./dist/plugins/odometer/index.mjs",
+      "require": "./dist/plugins/odometer/index.js"
+    },
+    "./plugins/wave": {
+      "types": "./dist/plugins/wave/index.d.ts",
+      "import": "./dist/plugins/wave/index.mjs",
+      "require": "./dist/plugins/wave/index.js"
+    },
+    "./plugins/wipe": {
+      "types": "./dist/plugins/wipe/index.d.ts",
+      "import": "./dist/plugins/wipe/index.mjs",
+      "require": "./dist/plugins/wipe/index.js"
+    },
+    "./plugins/caseless": {
+      "types": "./dist/plugins/caseless/index.d.ts",
+      "import": "./dist/plugins/caseless/index.mjs",
+      "require": "./dist/plugins/caseless/index.js"
+    },
+    "./plugins/anagram": {
+      "types": "./dist/plugins/anagram/index.d.ts",
+      "import": "./dist/plugins/anagram/index.mjs",
+      "require": "./dist/plugins/anagram/index.js"
+    },
+    "./plugins/stack": {
+      "types": "./dist/plugins/stack/index.d.ts",
+      "import": "./dist/plugins/stack/index.mjs",
+      "require": "./dist/plugins/stack/index.js"
+    },
+    "./plugins/squash": {
+      "types": "./dist/plugins/squash/index.d.ts",
+      "import": "./dist/plugins/squash/index.mjs",
+      "require": "./dist/plugins/squash/index.js"
+    },
+    "./plugins/redline": {
+      "types": "./dist/plugins/redline/index.d.ts",
+      "import": "./dist/plugins/redline/index.mjs",
+      "require": "./dist/plugins/redline/index.js"
+    },
+    "./plugins/countup": {
+      "types": "./dist/plugins/countup/index.d.ts",
+      "import": "./dist/plugins/countup/index.mjs",
+      "require": "./dist/plugins/countup/index.js"
+    },
+    "./plugins/skeleton": {
+      "types": "./dist/plugins/skeleton/index.d.ts",
+      "import": "./dist/plugins/skeleton/index.mjs",
+      "require": "./dist/plugins/skeleton/index.js"
+    },
+    "./plugins/magnet": {
+      "types": "./dist/plugins/magnet/index.d.ts",
+      "import": "./dist/plugins/magnet/index.mjs",
+      "require": "./dist/plugins/magnet/index.js"
+    },
+    "./plugins/weight": {
+      "types": "./dist/plugins/weight/index.d.ts",
+      "import": "./dist/plugins/weight/index.mjs",
+      "require": "./dist/plugins/weight/index.js"
+    },
+    "./debug": {
+      "types": "./dist/debug/index.d.ts",
+      "import": "./dist/debug/index.mjs",
+      "require": "./dist/debug/index.js"
+    },
     "./svelte": {
       "types": {
         "import": "./dist/svelte/index.d.mts",

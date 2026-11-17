@@ -4,14 +4,17 @@ import {
   cancelAll,
   cancelAnimations,
 } from "../../utils/animate";
-import type { AnimationState } from "../../utils/animate";
-import { moverOf } from "../../utils/dom";
+import type { MotionContext } from "../plugin";
 import { fontOf } from "./ligature";
 
 // Shares of the morph, not fixed lengths. The outgoing share is larger because a
 // digit that has already left is a hole in the number.
 const EXIT_FADE = 0.45;
 const ENTER_FADE = 0.25;
+
+// A digit has to clear the whole clip, which can outgrow a tight line.
+const slide = ({ line, state }: MotionContext<SlotClip>) =>
+  line.height + state.top + state.bottom;
 
 /**
  * The slot takes the FLIP correction, the character inside it takes the slide and
@@ -20,24 +23,17 @@ const ENTER_FADE = 0.25;
  */
 export function animateNumberExit(
   slot: HTMLElement,
-  options: {
-    dx: number;
-    dy: number;
-    slideDistance: number;
-    duration: number;
-    ease: string;
-  },
+  ctx: MotionContext<SlotClip>,
 ) {
-  const { dx, dy, slideDistance, duration, ease } = options;
-  const mover = moverOf(slot);
+  const { delta, mover, duration, ease } = ctx;
 
   slot.animate(
-    { transform: `translate(${dx}px, ${dy}px)`, offset: 1 },
+    { transform: `translate(${delta.x}px, ${delta.y}px)`, offset: 1 },
     { duration, easing: ease, fill: "both" },
   );
 
   mover.animate(
-    { transform: `translate(0px, ${slideDistance}px)`, offset: 1 },
+    { transform: `translate(0px, ${slide(ctx)}px)`, offset: 1 },
     { duration, easing: ease, fill: "both" },
   );
 
@@ -52,32 +48,16 @@ export function animateNumberExit(
 
 export function animateNumberEnter(
   slot: HTMLElement,
-  options: {
-    deltaX: number;
-    deltaY: number;
-    slideDistance: number;
-    kind: "digit" | "symbol";
-    previous?: AnimationState;
-    moverPrevious?: AnimationState;
-    duration: number;
-    ease: string;
-  },
+  ctx: MotionContext<SlotClip>,
 ) {
-  const { deltaX, deltaY, slideDistance, kind, duration, ease } = options;
+  const { mover, kind, duration, ease } = ctx;
 
-  animateNumberPersist(slot, {
-    deltaX,
-    deltaY,
-    duration,
-    ease,
-    previous: options.previous,
-  });
+  animateNumberPersist(slot, ctx);
 
-  const mover = moverOf(slot);
-  const prev = cancelAnimations(mover, options.moverPrevious);
+  const prev = cancelAnimations(mover, ctx.moverFrom);
 
   // Digits arrive from above, separators from below, so each reads as its own event.
-  const from = kind === "digit" ? -slideDistance : slideDistance;
+  const from = kind === "digit" ? -slide(ctx) : slide(ctx);
 
   mover.animate(
     { transform: `translate(0px, ${prev.ty + from}px)`, offset: 0 },
@@ -96,21 +76,15 @@ export function animateNumberEnter(
 
 export function animateNumberPersist(
   slot: HTMLElement,
-  options: {
-    deltaX: number;
-    deltaY: number;
-    previous?: AnimationState;
-    duration: number;
-    ease: string;
-  },
+  ctx: MotionContext<SlotClip>,
 ) {
-  const { deltaX, deltaY, duration, ease } = options;
+  const { delta, duration, ease } = ctx;
 
-  const { tx, ty } = options.previous ?? readAnimationState(slot);
+  const { tx, ty } = ctx.from ?? readAnimationState(slot);
   cancelAll(slot);
 
-  const startX = deltaX + tx;
-  const startY = deltaY + ty;
+  const startX = delta.x + tx;
+  const startY = delta.y + ty;
 
   if (startX === 0 && startY === 0) return;
 

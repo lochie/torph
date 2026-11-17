@@ -12,8 +12,8 @@
   let {
     text,
     locale = DEFAULT_TEXT_MORPH_OPTIONS.locale,
-    duration = DEFAULT_TEXT_MORPH_OPTIONS.duration,
-    ease = DEFAULT_TEXT_MORPH_OPTIONS.ease,
+    duration = undefined,
+    ease = undefined,
     scale = DEFAULT_TEXT_MORPH_OPTIONS.scale,
     numbers = DEFAULT_TEXT_MORPH_OPTIONS.numbers,
     debug = DEFAULT_TEXT_MORPH_OPTIONS.debug,
@@ -22,6 +22,7 @@
     onAnimationStart = undefined,
     onAnimationComplete = undefined,
     onAnimationCancel = undefined,
+    plugins = undefined,
     as = DEFAULT_AS,
     ...props
   }: Props = $props();
@@ -31,7 +32,7 @@
 
   const options = $derived({
     locale, duration, ease, debug, scale, numbers,
-    disabled, respectReducedMotion,
+    disabled, respectReducedMotion, plugins,
     onAnimationStart, onAnimationComplete, onAnimationCancel,
   });
 

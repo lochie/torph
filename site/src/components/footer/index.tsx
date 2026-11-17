@@ -35,6 +35,8 @@ export const Footer = () => {
         {" • "}
         <Link href="/examples">Examples</Link>
         {" • "}
+        <Link href="/plugins">Plugins</Link>
+        {" • "}
         <Link href="/showcase">Showcase</Link>
         {" • "}
         <Link href="/playground">Playground</Link>

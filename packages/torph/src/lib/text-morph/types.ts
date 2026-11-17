@@ -1,4 +1,5 @@
 import type { BaseMorphOptions } from "../utils/types";
+import type { AnyPlugin } from "./plugin";
 
 export interface TextMorphOptions extends BaseMorphOptions {
   debug?: boolean;
@@ -8,4 +9,6 @@ export interface TextMorphOptions extends BaseMorphOptions {
   /** Fraction digits for a numeric value. Ignored for strings. */
   decimals?: number;
   onAnimationCancel?: () => void;
+  /** Run before the built-ins, so they can claim words and override motion first. */
+  plugins?: readonly AnyPlugin[];
 }

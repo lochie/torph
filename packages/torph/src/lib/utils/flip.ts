@@ -2,7 +2,7 @@ import { ATTR_EXITING, ATTR_ID, ATTR_SR, ATTR_TEXT } from "./constants";
 import { parseTranslate } from "./animate";
 
 export type Measures = {
-  [key: string]: { x: number; y: number };
+  [key: string]: { x: number; y: number; width: number };
 };
 
 /** The root's layout axes on screen: x lands at (a, b), y at (c, d), per layout pixel. */
@@ -46,26 +46,37 @@ export function placer(frame?: Frame): ((rect: DOMRect) => Placed) | null {
 }
 
 export function measure(element: HTMLElement, frame?: Frame): Measures {
-  const children = Array.from(element.children) as HTMLElement[];
+  const children = (Array.from(element.children) as HTMLElement[]).filter(
+    (child) =>
+      !child.hasAttribute(ATTR_EXITING) &&
+      !child.hasAttribute(ATTR_SR) &&
+      !child.hasAttribute(ATTR_TEXT) &&
+      child.tagName !== "BR",
+  );
+  return measureBoxes(element, children, frame);
+}
+
+/** As `measure`, for boxes of its own choosing — ones it would skip, too. */
+export function measureBoxes(
+  root: HTMLElement,
+  boxes: HTMLElement[],
+  frame?: Frame,
+): Measures {
   const measures: Measures = {};
   // No layout to read a transform from (display: none, happy-dom) reads as on screen.
   const place = placer(frame) ?? placer()!;
-  const root = place(element.getBoundingClientRect());
-
-  children.forEach((child, index) => {
-    if (child.hasAttribute(ATTR_EXITING)) return;
-    if (child.hasAttribute(ATTR_SR) || child.hasAttribute(ATTR_TEXT)) return;
-    if (child.tagName === "BR") return;
-    const key = child.getAttribute(ATTR_ID) || `child-${index}`;
-    const at = place(child.getBoundingClientRect());
-    const { tx, ty } = parseTranslate(child);
+  const origin = place(root.getBoundingClientRect());
+  boxes.forEach((box, index) => {
+    const key = box.getAttribute(ATTR_ID) || `child-${index}`;
+    const at = place(box.getBoundingClientRect());
+    const { tx, ty } = parseTranslate(box);
     measures[key] = {
       // Subtracting the transform keeps this subpixel, where offsets would round.
-      x: at.x - root.x - tx,
-      y: at.y - root.y - ty,
+      x: at.x - origin.x - tx,
+      y: at.y - origin.y - ty,
+      width: at.w,
     };
   });
-
   return measures;
 }
 

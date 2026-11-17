@@ -1,6 +1,7 @@
 export type { Segment } from "../../utils/types";
 import { BASE_DEFAULTS, type Segment } from "../../utils/types";
-import { isNumericWord, segmentNumber } from "./number";
+import { type AnyPlugin, claimant, pluginIds } from "../plugin";
+import { pluginsFor } from "../plugins";
 
 // A collision makes two segments fight over one element and one silently loses its
 // text, so uniqueness has to hold across the whole value, not per line.
@@ -57,19 +58,30 @@ export function groupIntoWords(segments: Segment[]): {
 }
 
 /**
- * Re-cuts every numeric word into per-character segments carrying a kind. A pass over
- * the finished segmentation, not part of it: `Intl.Segmenter` splits "$1,234" on its
- * own terms, and regrouping on whitespace is what keeps this and the diff agreeing.
+ * Hands every word a plugin claims to that plugin to re-cut. A pass over the finished
+ * segmentation, not part of it: `Intl.Segmenter` splits "$1,234" on its own terms,
+ * and regrouping on whitespace is what keeps this and the diff agreeing.
  */
-function expandNumbers(segments: Segment[]): Segment[] {
+function expandClaims(
+  segments: Segment[],
+  plugins: readonly AnyPlugin[],
+  locale: Intl.LocalesArgument,
+  alloc: IdAllocator,
+): Segment[] {
+  if (plugins.length === 0) return segments;
   const out: Segment[] = [];
   let run: Segment[] = [];
 
   const flush = () => {
     if (run.length === 0) return;
     const word = run.map((s) => s.string).join("");
-    if (isNumericWord(word)) out.push(...segmentNumber(word));
-    else out.push(...run);
+    const plugin = claimant(plugins, word, { locale });
+    if (plugin?.segment) {
+      const id = pluginIds(plugin, alloc);
+      out.push(...plugin.segment(word, { locale, id, split: () => [] }));
+    } else {
+      out.push(...run);
+    }
     run = [];
   };
 
@@ -86,13 +98,16 @@ function expandNumbers(segments: Segment[]): Segment[] {
   return out;
 }
 
+/** `plugins` takes the public `numbers` flag too, as `true` for the built-ins and `false` for none. */
 export function segmentText(
   value: string,
   locale: Intl.LocalesArgument,
-  numbers = true,
+  plugins: boolean | readonly AnyPlugin[] = true,
 ): Segment[] {
+  const active = typeof plugins === "boolean" ? pluginsFor(plugins) : plugins;
   const hasNewlines = value.includes("\n");
-  const byWord = value.includes(" ") || hasNewlines;
+  const letters = active.some((plugin) => plugin.letters);
+  const byWord = !letters && (value.includes(" ") || hasNewlines);
   const alloc = createIdAllocator();
 
   if (hasNewlines) {
@@ -110,16 +125,25 @@ export function segmentText(
         offset += 1;
       }
       if (line.length > 0) {
-        allSegments.push(...segmentLine(line, locale, true, offset, alloc));
+        allSegments.push(...segmentLine(line, locale, !letters, offset, alloc));
       }
       offset += line.length;
     });
 
-    return numbers ? expandNumbers(allSegments) : allSegments;
+    return expandClaims(allSegments, active, locale, alloc);
   }
 
   const segments = segmentLine(value, locale, byWord, 0, alloc);
-  return numbers ? expandNumbers(segments) : segments;
+  return expandClaims(segments, active, locale, alloc);
+}
+
+export function graphemes(text: string, locale: Intl.LocalesArgument) {
+  return typeof Intl.Segmenter === "function"
+    ? Array.from(
+        getSegmenter(locale, "grapheme").segment(text),
+        (s) => s.segment,
+      )
+    : Array.from(text);
 }
 
 const segmenters = new Map<string, Intl.Segmenter>();
