@@ -183,7 +183,7 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
 
 let ruler: CanvasRenderingContext2D | null | undefined;
 
-/** Fractional rects from a canvas, where every line it measures agrees with the page to the pixel. */
+/** Fractional rects for WebKit's whole-pixel ones, from a canvas where it agrees with the page. */
 function refine(
   lines: Text[],
   spans: { rect: DOMRect; line: number; from: number; to: number }[],
@@ -205,14 +205,21 @@ function refine(
     const data = lines[n]!.data;
     const first = run[0]!.rect;
     const last = run.at(-1)!.rect;
-    const page = rtl ? first.right - last.left : last.right - first.left;
-    const drawn = width(data.slice(run[0]!.from, run.at(-1)!.to));
-    // A canvas that shapes this line differently from the page is no help.
-    if (Math.abs(page - drawn) > 1) return null;
-    const head = width(data.slice(0, run[0]!.from));
-    for (const span of run) {
-      const start = width(data.slice(0, span.from)) - head;
-      const end = width(data.slice(0, span.to)) - head;
+    const total = width(data.slice(run[0]!.from));
+    // The canvas's fraction counts only inside WebKit's own pixel; past it, the pixel's middle.
+    const starts = run.map((span, k) => {
+      if (k === 0) return 0;
+      const pixel = rtl
+        ? first.right - span.rect.right
+        : span.rect.left - first.left;
+      const fine = total - width(data.slice(span.from)); // the whole less the rest keeps the kern across the edge
+      return fine > pixel - 0.01 && fine < pixel + 1.01 ? fine : pixel + 0.5;
+    });
+    // The line's far edge is the one fractional edge WebKit reports.
+    starts.push(rtl ? first.right - last.left : last.right - first.left);
+    run.forEach((span, k) => {
+      const start = starts[k]!;
+      const end = starts[k + 1]!;
       out.push(
         rtl
           ? new DOMRect(
@@ -228,7 +235,7 @@ function refine(
               span.rect.height,
             ),
       );
-    }
+    });
   }
   return out;
 }
