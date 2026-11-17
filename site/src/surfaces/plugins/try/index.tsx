@@ -1,5 +1,5 @@
 import React from "react";
-import type { TorphPlugin } from "torph";
+import { classic, type TorphPlugin } from "torph";
 import { TextMorph } from "torph/react";
 import { anagram } from "torph/plugins/anagram";
 import { blur } from "torph/plugins/blur";
@@ -38,7 +38,11 @@ const CHOICES: Record<string, () => TorphPlugin[]> = {
 export const TryIt = () => {
   const [text, setText] = React.useState("Type here to try a plugin");
   const [choice, setChoice] = React.useState("blur");
-  const plugins = React.useMemo(() => CHOICES[choice]!(), [choice]);
+  // In front of torph's own set, as the page's other demos are.
+  const plugins = React.useMemo(
+    () => [...CHOICES[choice]!(), ...classic()],
+    [choice],
+  );
 
   return (
     <div className={styles.try}>

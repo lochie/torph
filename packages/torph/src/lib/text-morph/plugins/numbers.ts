@@ -45,7 +45,7 @@ const slot: KindSpec<SlotClip> = {
   exit: animateNumberExit,
 };
 
-export const numbers: TorphPlugin<SlotClip> = {
+const NUMBERS: TorphPlugin<SlotClip> = {
   name: "numbers",
   touches: hasDigit,
   claim: isNumericWord,
@@ -82,3 +82,6 @@ export const numbers: TorphPlugin<SlotClip> = {
   idle: NO_CLIP,
   kinds: { digit: slot, symbol: slot },
 };
+
+/** Figures morph digit by digit, each digit sliding in its own slot, the way the value went. */
+export const numbers = () => NUMBERS;

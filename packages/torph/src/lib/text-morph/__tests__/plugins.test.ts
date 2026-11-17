@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { classic, fade } from "../plugins";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { TextMorph } from "../index";
 import { MorphController } from "../controller";
@@ -40,7 +41,12 @@ function mount(
     duration: 30,
     respectReducedMotion: false,
     ...options,
-    plugins: [...(options.plugins ?? []), ...(rest ? [] : [held])],
+    // After torph's own set, as an author adding to it would write it.
+    plugins: [
+      ...(options.plugins ?? []),
+      ...(rest ? [] : [held]),
+      ...classic(),
+    ],
   });
   mounted.push(morph);
   return { element, morph };
@@ -658,5 +664,55 @@ describe("boxes", () => {
     expect(
       Array.from(element.querySelectorAll("[torph-id]"), (b) => b.textContent),
     ).toEqual(["box", "\u00A0", "again"]);
+  });
+});
+
+describe("the plugin list", () => {
+  const bare = (plugins?: TorphPlugin[]) => {
+    const element = document.createElement("span");
+    document.body.appendChild(element);
+    const morph = new TextMorph({
+      element,
+      duration: 30,
+      respectReducedMotion: false,
+      ...(plugins ? { plugins } : {}),
+    });
+    mounted.push(morph);
+    return { element, morph };
+  };
+
+  it("is torph's classic set when it isn't given", () => {
+    const { element, morph } = bare();
+    morph.update("$1");
+    morph.update("$2");
+    expect(element.querySelector(`[${ATTR_SLOT}]`)).not.toBeNull();
+  });
+
+  it("replaces the classic set when it is", () => {
+    const { element, morph } = bare([fade()]);
+    morph.update("$1");
+    morph.update("$2");
+    expect(element.querySelector(`[${ATTR_SLOT}]`)).toBeNull();
+  });
+
+  it("is the engine alone when empty: arrivals appear, leavers go, stayers still slide", () => {
+    const { element, morph } = bare([]);
+    morph.update("hello world");
+    const calls: Element[] = [];
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args) {
+      calls.push(this);
+      return animate.apply(this, args);
+    } as typeof Element.prototype.animate;
+    try {
+      morph.update("hello there");
+    } finally {
+      Element.prototype.animate = animate;
+    }
+    const there = Array.from(
+      element.querySelectorAll<HTMLElement>("[torph-id]"),
+    ).find((b) => b.textContent === "there")!;
+    expect(calls).not.toContain(there);
+    expect(element.querySelector(`[${ATTR_EXITING}]`)).toBeNull();
   });
 });

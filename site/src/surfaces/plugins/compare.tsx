@@ -1,5 +1,5 @@
 import React from "react";
-import type { TorphPlugin } from "torph";
+import { classic, type TorphPlugin } from "torph";
 import { TextMorph } from "torph/react";
 
 import styles from "./styles.module.scss";
@@ -40,7 +40,11 @@ const Pair = ({
       </span>
       <span className={styles.row}>
         <span className={styles.tag}>{label}</span>
-        <TextMorph className={morph} duration={duration} plugins={plugins}>
+        <TextMorph
+          className={morph}
+          duration={duration}
+          plugins={[...plugins, ...classic()]}
+        >
           {value}
         </TextMorph>
       </span>

@@ -7,7 +7,7 @@ import {
 } from "./segment";
 import { lcsIndices } from "../../utils/lcs";
 import { type AnyPlugin, claimant, pluginIds } from "../plugin";
-import { pluginsFor } from "../plugins";
+import { CLASSIC } from "../plugins";
 
 export type DiffResult = {
   segments: Segment[];
@@ -15,9 +15,7 @@ export type DiffResult = {
 };
 
 export type DiffOptions = {
-  /** Numeric words morph by place value. Off falls back to character LCS. */
-  numbers?: boolean;
-  /** Overrides `numbers`. */
+  /** The plugins that claim and cut words; torph's own set when left out. */
   plugins?: readonly AnyPlugin[];
   /** Caret position, honoured only when the value holds a single claimed word. */
   cursorIndex?: number;
@@ -101,7 +99,7 @@ export function diffSegments(
   const newHasNewlines = newText.includes("\n");
   const oldWords = groupIntoWords(oldSegments);
 
-  const plugins = options.plugins ?? pluginsFor(options.numbers);
+  const plugins = options.plugins ?? CLASSIC;
   const claimOf = (word: string) => claimant(plugins, word, { locale });
   const letters = plugins.some((plugin) => plugin.letters);
   const fold = plugins.find((plugin) => plugin.fold)?.fold;

@@ -4,8 +4,14 @@
 
 Plugins.
 
+#### Breaking
+
+- `numbers` and `scale` props are removed. Both are plugins in torph's default set now: pass that set without the one you don't want, `plugins={[groups(), fade(), scale()]}` for no numbers.
+- `plugins` replaces torph's default set rather than adding to it. To add to it, put yours first: `plugins={[blur(), ...classic()]}`.
+
 #### New
 
 - `plugins` on `TextMorph` and the React, Vue and Svelte components, to change how text is cut up and how it moves.
+- `classic()`, torph's own look as a set of plugins: `numbers()`, `groups()`, `fade()` and `scale()`, each usable alone. `plugins={[]}` is the engine on its own.
 - `torph/plugins/blur`, `words`, `scramble`, `flap`, `typewriter`, `tokens`, `odometer`, `wave`, `wipe`, `caseless`, `anagram`, `stack`, `squash`, `redline`, `countup`, `skeleton`, `magnet`, `weight`, `rows`, `trend` and `reveal`.
 - `torph/debug`, which warns when a plugin reads layout mid-morph.

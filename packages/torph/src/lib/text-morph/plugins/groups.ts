@@ -5,7 +5,7 @@ import {
   GROUP_MIN,
 } from "../utils/replace-animate";
 
-export const groups: TorphPlugin = {
+const GROUPS: TorphPlugin = {
   name: "groups",
   runs: {
     claim: (run) => run.length >= GROUP_MIN,
@@ -13,3 +13,6 @@ export const groups: TorphPlugin = {
     exit: animateGroupExit,
   },
 };
+
+/** A long run of text replaced whole recedes and arrives as one shape, rather than letter by letter. */
+export const groups = () => GROUPS;

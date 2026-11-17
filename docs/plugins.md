@@ -131,7 +131,7 @@ new TextMorph({ element, plugins: [blur()] });
 <TextMorph plugins={[words(), blur({ amount: "0.2em" })]}>{label}</TextMorph>
 ```
 
-`plugins` adds to the defaults; it doesn't replace them. `numbers: false` still turns numbers off.
+`plugins` replaces torph's default set, `classic()` (`numbers()`, `groups()`, `fade()`, `scale()`), which runs when it isn't set. Adding to it is `[blur(), ...classic()]`; dropping numbers is the set without `numbers()`; `[]` is the engine alone, where staying text slides, arriving text appears and leaving text goes.
 
 ## How the engine runs plugins
 
@@ -139,7 +139,7 @@ new TextMorph({ element, plugins: [blur()] });
 
 The engine segments as it does today with `Intl.Segmenter`, then regroups the result into whitespace-delimited words, as `expandNumbers` does in [segment.ts](../packages/torph/src/lib/text-morph/utils/segment.ts). For each word, the first plugin whose `claim` returns true calls `segment` for it. Unclaimed words keep the engine's own segments, which have the `"text"` kind.
 
-Order is user plugins first, then the built-ins. So a user plugin can claim words numbers would have taken.
+Order is the list's. Put a plugin before `numbers()` and it can claim words numbers would have taken.
 
 The diff ([diff.ts](../packages/torph/src/lib/text-morph/utils/diff.ts)) generalises its four number touch-points:
 

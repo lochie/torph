@@ -5,6 +5,13 @@ export {
   TextMorph,
 } from "./lib/text-morph";
 export type { TextMorphOptions } from "./lib/text-morph/types";
+export {
+  classic,
+  fade,
+  groups,
+  numbers,
+  scale,
+} from "./lib/text-morph/plugins";
 export type {
   TorphPlugin,
   ClaimContext,

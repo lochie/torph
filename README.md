@@ -38,13 +38,15 @@ by position rather than by place value:
 
 ### Plugins
 
-Plugins change how text is cut up and how it moves. Three ship with torph:
+Plugins change how text is cut up and how it moves. torph's own look is a set
+of them, `classic()`, which runs unless you pass `plugins`; add yours in front:
 
 ```tsx
 import { TextMorph } from "torph/react";
+import { classic } from "torph";
 import { blur } from "torph/plugins/blur";
 
-<TextMorph plugins={[blur()]}>{status}</TextMorph>;
+<TextMorph plugins={[blur(), ...classic()]}>{status}</TextMorph>;
 ```
 
 `torph/plugins/words` swaps a changed word whole, and `torph/plugins/scramble`

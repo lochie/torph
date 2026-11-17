@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { classic } from "../../lib/text-morph/plugins";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { TextMorph } from "../../lib/text-morph";
 import type { TextMorphOptions } from "../../lib/text-morph/types";
@@ -60,7 +61,12 @@ function mount(
     duration: 40,
     respectReducedMotion: false,
     ...options,
-    plugins: [...(options.plugins ?? []), ...(rest ? [] : [held])],
+    // After torph's own set, as an author adding to it would write it.
+    plugins: [
+      ...(options.plugins ?? []),
+      ...(rest ? [] : [held]),
+      ...classic(),
+    ],
   });
   mounted.push(morph);
   return { element, morph };
@@ -275,8 +281,11 @@ describe("typewriter", () => {
     const { morph } = mount({ plugins: [typewriter({ keystroke: 10 })] });
     morph.update("abc");
     const calls = animations(() => morph.update("axy"));
+    // Typewriter's own, not the classic scale that rides on every box.
     const delays = Object.fromEntries(
-      calls.map((c) => [c.box.textContent, c.options.delay ?? 0]),
+      calls
+        .filter((c) => c.options.composite !== "add")
+        .map((c) => [c.box.textContent, c.options.delay ?? 0]),
     );
     // "c" goes before "b"; "x" and "y" follow once both are gone.
     expect(delays).toMatchObject({ c: 0, b: 10, x: 20, y: 30 });

@@ -200,9 +200,10 @@ const PLUGINS: {
 ];
 
 const usage = (name: PluginName) =>
-  `import { ${name} } from "torph/plugins/${name}";
+  `import { classic } from "torph";
+import { ${name} } from "torph/plugins/${name}";
 
-<TextMorph plugins={[${name}()]}>{value}</TextMorph>`;
+<TextMorph plugins={[${name}(), ...classic()]}>{value}</TextMorph>`;
 
 export const Plugins = ({
   sources,
@@ -213,9 +214,9 @@ export const Plugins = ({
     <div className={styles.container}>
       <Header />
       <p className={styles.intro}>
-        A plugin changes how torph cuts text up, how it moves, or both. Numbers
-        and grouped replacements are plugins too, on by default. Each one below
-        is its whole source.
+        A plugin changes how torph cuts text up, how it moves, or both.
+        torph&apos;s own look is a set of plugins too, classic(), and each one
+        below is added in front of it. Each is its whole source.
       </p>
 
       <section className={styles.plugin}>

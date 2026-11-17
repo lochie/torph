@@ -19,6 +19,7 @@ import {
   isContainerSettling,
   layoutSize,
   readAnimationState,
+  cancelAnimations,
   animationsOf,
   holdAnimations,
   releaseAnimations,
@@ -29,7 +30,7 @@ import {
   transitionContainerSize,
   type AnimationState,
 } from "../utils/animate";
-import { animateExit, animateEnterOrPersist } from "./utils/animate";
+import { animateEnterOrPersist } from "./utils/animate";
 import {
   type AnyPlugin,
   type HookSet,
@@ -39,7 +40,7 @@ import {
   kindOwners,
   pluginIds,
 } from "./plugin";
-import { pluginsFor } from "./plugins";
+import { CLASSIC } from "./plugins";
 import {
   placeDetached,
   readDetached,
@@ -139,8 +140,6 @@ type Claimed = [AnyPlugin, HTMLElement[], DOMRect[]][];
 export const DEFAULT_TEXT_MORPH_OPTIONS = {
   ...BASE_DEFAULTS,
   debug: false,
-  scale: true,
-  numbers: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
 const STILL = 0.1; // px — a box that moved less keeps its running animation rather than a new one, which is garbage on every update
@@ -531,7 +530,8 @@ export class TextMorph {
       Object.entries(options).filter(([, value]) => value !== undefined),
     ) as TextMorphOptions;
 
-    const plugins = pluginsFor(given.numbers, given.plugins);
+    // Set, the author's list replaces torph's own; `[]` is the engine alone.
+    const plugins = given.plugins ?? CLASSIC;
     const { ease: rawEase, ...rest } = {
       ...DEFAULT_TEXT_MORPH_OPTIONS,
       ...given,
@@ -1065,14 +1065,11 @@ export class TextMorph {
         { x: dx, y: dy },
         index,
         scene,
+        // Unhandled, it just goes: when the line closes up if it lingers, else now.
         () =>
-          animateExit(child, {
-            dx,
-            dy,
-            duration: this.options.duration!,
-            ease: this.options.ease!,
-            scale: this.options.scale!,
-          }),
+          child.hasAttribute(ATTR_LINGER)
+            ? this.spent.add(child)
+            : child.remove(),
       );
     });
 
@@ -1569,15 +1566,18 @@ export class TextMorph {
         { x: deltaX, y: deltaY },
         counts[name]++,
         scene,
+        // Unhandled, an arriving box just appears; a staying one still slides, or the line would jump.
         () =>
-          animateEnterOrPersist(child, {
-            previous: previous.get(child),
-            deltaX,
-            deltaY,
-            isNew,
-            duration: this.options.duration!,
-            ease: this.options.ease!,
-          }),
+          isNew
+            ? cancelAnimations(child, previous.get(child))
+            : animateEnterOrPersist(child, {
+                previous: previous.get(child),
+                deltaX,
+                deltaY,
+                isNew,
+                duration: this.options.duration!,
+                ease: this.options.ease!,
+              }),
         previous.get(child),
         previous.get(moverOf(child)),
       );

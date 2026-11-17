@@ -1,15 +1,18 @@
 import type { AnyPlugin } from "../plugin";
+import { fade } from "./fade";
 import { groups } from "./groups";
 import { numbers } from "./numbers";
+import { scale } from "./scale";
 
-const BUILT_IN: readonly AnyPlugin[] = [numbers, groups];
-const WITHOUT_NUMBERS: readonly AnyPlugin[] = [groups];
+export { fade, groups, numbers, scale };
 
-/** The public `numbers` flag, as a plugin list, after any of the author's own. */
-export function pluginsFor(
-  numbersOn: boolean | undefined,
-  own: readonly AnyPlugin[] = [],
-) {
-  const builtIn = numbersOn === false ? WITHOUT_NUMBERS : BUILT_IN;
-  return own.length ? [...own, ...builtIn] : builtIn;
-}
+// Built once: every instance without `plugins` shares it, so wrappers see the same set each render.
+export const CLASSIC: readonly AnyPlugin[] = [
+  numbers(),
+  groups(),
+  fade(),
+  scale(),
+];
+
+/** torph's own look, used when `plugins` isn't set: numbers, grouped replacements, a fade and a scale. */
+export const classic = (): AnyPlugin[] => [...CLASSIC];

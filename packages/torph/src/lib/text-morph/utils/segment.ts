@@ -1,7 +1,7 @@
 export type { Segment } from "../../utils/types";
 import { BASE_DEFAULTS, type Segment } from "../../utils/types";
 import { type AnyPlugin, claimant, pluginIds } from "../plugin";
-import { pluginsFor } from "../plugins";
+import { CLASSIC } from "../plugins";
 
 // A collision makes two segments fight over one element and one silently loses its
 // text, so uniqueness has to hold across the whole value, not per line.
@@ -98,13 +98,11 @@ function expandClaims(
   return out;
 }
 
-/** `plugins` takes the public `numbers` flag too, as `true` for the built-ins and `false` for none. */
 export function segmentText(
   value: string,
   locale: Intl.LocalesArgument,
-  plugins: boolean | readonly AnyPlugin[] = true,
+  active: readonly AnyPlugin[] = CLASSIC,
 ): Segment[] {
-  const active = typeof plugins === "boolean" ? pluginsFor(plugins) : plugins;
   const hasNewlines = value.includes("\n");
   const letters = active.some((plugin) => plugin.letters);
   const byWord = !letters && (value.includes(" ") || hasNewlines);

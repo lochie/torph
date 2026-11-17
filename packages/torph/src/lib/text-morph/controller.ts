@@ -38,8 +38,6 @@ export class MorphController {
       ease: options.ease,
       duration: options.duration,
       locale: options.locale,
-      scale: options.scale,
-      numbers: options.numbers,
       decimals: options.decimals,
       debug: options.debug,
       disabled: options.disabled,

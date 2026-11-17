@@ -152,8 +152,8 @@ function App() {
 Numeric words morph by place value: digits slide along the block axis, and the
 symbols around them — currency, separators, signs, suffixes — travel with the
 places they belong to. It is on by default, so any value that contains a number
-already animates this way. Pass `numbers={false}` to fall back to the
-character-level text morph.
+already animates this way. It's the `numbers()` plugin in torph's default set;
+pass `plugins` without it to fall back to the character-level text morph.
 
 ```tsx
 import { TextMorph } from "torph/react";
@@ -205,16 +205,27 @@ morph.update("$120", 2);
 ## Plugins
 
 A plugin changes how a value is cut into pieces, how those pieces move, or both.
-Numbers and the way a long replaced run recedes as one shape are plugins too,
-built in and on by default. Pass your own with `plugins`; they run before the
-built-ins, so they can claim words and override motion first.
+torph's own look is a set of plugins too, `classic()`: `numbers()` for figures,
+`groups()` for long runs replaced whole, `fade()` for text arriving and leaving,
+and `scale()` for the little shrink as it does. With no `plugins`, that set
+runs.
+
+Pass `plugins` and your list replaces it. To add to torph's look, put yours
+first, so it claims words and overrides motion before the classic ones do:
 
 ```tsx
 import { TextMorph } from "torph/react";
+import { classic } from "torph";
 import { blur } from "torph/plugins/blur";
 
-<TextMorph plugins={[blur()]}>{status}</TextMorph>;
+<TextMorph plugins={[blur(), ...classic()]}>{status}</TextMorph>;
 ```
+
+To drop part of the look, list the rest: `[groups(), fade(), scale()]` has no
+numbers, `[numbers(), groups(), fade()]` no scale. `scale()` rides on whatever
+moves text, so it scales a plugin's own motion too; leave it out if that plugin
+scales on its own. `plugins={[]}` is the engine alone: staying text still
+slides, arriving text appears and leaving text goes.
 
 A new array on every render is fine: a plugin is matched by its name and
 options, and the morph is only rebuilt when those change.
@@ -285,7 +296,7 @@ export const rise: TorphPlugin = {
 - **Context:** a hook gets its `index` among the boxes on its side, how many
   are `arriving` and `leaving`, what a staying box `was`, the box an arriving
   one `replaces`, where it rests (`at`) and how wide the value is (`extent`).
-  An earlier plugin's hooks come before a later one's, built-ins included. `decorate` hooks run alongside whatever moves a box.
+  An earlier plugin's hooks come before a later one's, the classic set's included. `decorate` hooks run alongside whatever moves a box.
 - **Over time:** `tween(from, to)` returns values to pass through on the way,
   each morphed in turn; a reader hears only the destination, and the callbacks
   fire once. `mount(root)` runs for as long as the morph lives, for listeners
@@ -329,12 +340,9 @@ All components accept the following props/options:
 - `duration?: number` - Animation duration in milliseconds (default: `400`).
   Ignored when `ease` is a spring, which settles on its own physics
 - `ease?: string | SpringParams` - CSS easing function or spring parameters (default: `"cubic-bezier(0.19, 1, 0.22, 1)"`)
-- `scale?: boolean` - Enable scale animation on exiting segments (default: `true`)
-- `numbers?: boolean` - Morph numeric words by place value, sliding digits along
-  the block axis. Off falls back to the character-level text morph (default:
-  `true`)
 - `plugins?: TorphPlugin[]` - Plugins that change how text is cut up and how it
-  moves, run before the built-ins (see [Plugins](#plugins))
+  moves, earlier ones first. Replaces torph's own set, `classic()`, which runs
+  when this isn't set (see [Plugins](#plugins))
 - `decimals?: number` - Fraction digits to format a numeric value to. Applies
   when the value is a number (React children, or `update(number)`); ignored for
   strings

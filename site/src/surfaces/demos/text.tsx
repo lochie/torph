@@ -1,6 +1,7 @@
 import styles from "./inline.module.scss";
 
 import React from "react";
+import { fade, groups, scale } from "torph";
 import { TextMorph } from "torph/react";
 
 import { useCycle } from "./use-cycle";
@@ -49,6 +50,9 @@ export const Dates = () => {
 
 export const TOTALS = ["1,204", "1,318", "9,847", "986"];
 
+// torph's default set, less numbers(): figures morph as plain text.
+const WITHOUT_NUMBERS = [groups(), fade(), scale()];
+
 export const NumbersOff = () => {
   const index = useCycle(TOTALS.length, 1800);
 
@@ -60,10 +64,10 @@ export const NumbersOff = () => {
       </div>
 
       <div className={styles.splitItem}>
-        <TextMorph className={styles.stage} numbers={false}>
+        <TextMorph className={styles.stage} plugins={WITHOUT_NUMBERS}>
           {TOTALS[index]!}
         </TextMorph>
-        <span className={styles.caption}>numbers={"{false}"}</span>
+        <span className={styles.caption}>without numbers()</span>
       </div>
     </div>
   );

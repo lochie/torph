@@ -60,7 +60,7 @@ Prettier + eslint flat config, both in `packages/torph/`. Formatting is prettier
 
 ## The library
 
-One engine. `TextMorph` handles text and numbers both; numbers are a `kind` (`"digit" | "symbol"`) on `Segment`, on by default, opt out with the `numbers` prop.
+One engine. `TextMorph` handles text and numbers both; numbers are a `kind` (`"digit" | "symbol"`) on `Segment`, on by default as the `numbers()` plugin in `classic()`, torph's default set; a `plugins` list without it opts out.
 
 **Segment IDs are the only identity** used for FLIP tracking and DOM reconciliation. A duplicate ID means visible text loss, because reconciliation hands one element to two segments. `createIdAllocator()` in [segment.ts](packages/torph/src/lib/text-morph/utils/segment.ts) is the single source of uniqueness for text; `unique-ids.test.ts` asserts the invariant. Don't mint text IDs outside it.
 
