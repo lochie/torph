@@ -784,9 +784,6 @@ export class TextMorph {
       : new Map<AnyPlugin, unknown>();
     if (style) snapshotAnimations(element);
     const shaping = style && readShaping(style);
-    // Text the last morph left lingering leaves the line now, before anything is measured.
-    const lingered = style ? this.lingering() : [];
-    const lingeredAt = lingered.length ? readDetached(element, lingered) : null;
 
     let segments: Segment[];
     let splits: Map<string, Segment[]>;
@@ -870,7 +867,6 @@ export class TextMorph {
       : lettersOf(element, reopened, this.frame);
     yield;
 
-    if (lingeredAt) this.collapse(lingered, lingeredAt);
     for (const plugin of this.plugins) {
       const prepare = plugin.prepare;
       if (prepare)
@@ -932,6 +928,9 @@ export class TextMorph {
       Math.max(0, ...this.plugins.map((p) => p.linger ?? 0)) *
       this.options.duration!;
     const detached = lingers > 0 ? null : readDetached(element, exiting);
+    // Text the last morph left lingering leaves with this morph's exits, so the measure above saw it in place.
+    const lingered = this.lingering();
+    const lingeredAt = lingered.length ? readDetached(element, lingered) : null;
     // The previous morph's text per box, before the reconcile rewrites any of it.
     const was = new Map(this.renderedSegments.map((s) => [s.id, s.string]));
     const leavingRuns = this.claimRuns(
@@ -946,6 +945,7 @@ export class TextMorph {
     yield;
 
     twin.remove();
+    if (lingeredAt) this.collapse(lingered, lingeredAt, true);
     if (detached) placeDetached(exiting, detached);
     else {
       // Still in the line, so what arrives lands around it; it leaves the line later.
@@ -1226,11 +1226,24 @@ export class TextMorph {
   }
 
   /** Takes lingering text out of the line, where `readDetached` found it, its exit left running. */
-  private collapse(boxes: HTMLElement[], at: ReturnType<typeof readDetached>) {
+  private collapse(
+    boxes: HTMLElement[],
+    at: ReturnType<typeof readDetached>,
+    hurry = false,
+  ) {
     placeDetached(boxes, at, false);
+    // Cut short by a new change, what's left of its exit plays out fast, so it can't pile up under the next one's.
+    const cap = this.options.duration! * 0.3;
     for (const box of boxes) {
       box.removeAttribute(ATTR_LINGER);
       if (this.spent.delete(box)) box.remove();
+      else if (hurry)
+        for (const animation of box.getAnimations()) {
+          const end = Number(animation.effect?.getComputedTiming().endTime);
+          const left = end - Number(animation.currentTime ?? 0);
+          if (Number.isFinite(left) && left > cap)
+            animation.updatePlaybackRate(left / cap);
+        }
     }
   }
 
@@ -1241,14 +1254,26 @@ export class TextMorph {
     if (still.length === 0) return;
     const before = measure(element, this.frame);
     const size = layoutSize(element);
+    const staying = (Array.from(element.children) as HTMLElement[]).filter(
+      (child) =>
+        !child.hasAttribute(ATTR_EXITING) &&
+        before[child.getAttribute(ATTR_ID) ?? ""],
+    );
+    // Where a box still sliding from the morph has got to, so closing up carries on from there.
+    const moving = new Map(
+      staying.map((child) => [child, readAnimationState(child)]),
+    );
     this.collapse(still, readDetached(element, still));
     const after = measure(element, this.frame);
-    for (const child of Array.from(element.children) as HTMLElement[]) {
-      const id = child.getAttribute(ATTR_ID);
-      if (!id || child.hasAttribute(ATTR_EXITING) || !before[id]) continue;
-      const { dx, dy } = computeDelta(before, after, id);
+    for (const child of staying) {
+      const { dx, dy } = computeDelta(
+        before,
+        after,
+        child.getAttribute(ATTR_ID)!,
+      );
       if (!dx && !dy) continue;
       animateEnterOrPersist(child, {
+        previous: moving.get(child),
         deltaX: dx,
         deltaY: dy,
         isNew: false,

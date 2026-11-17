@@ -94,7 +94,7 @@ export type RedlineOptions = {
 
 /** Like track changes: removed words stay struck through before they go, added words come underlined. */
 export function redline({
-  linger = 2,
+  linger = 1.5,
   removed = "#ff6b6b",
   added = "#6bdc8b",
 }: RedlineOptions = {}): TorphPlugin {
