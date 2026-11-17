@@ -179,6 +179,8 @@ async function survivors(code) {
     await page.evaluate(async () => {
       const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       window.instances = [];
+      // Held strongly until the drop, or one could be collected before the second update.
+      let held = [];
       for (let i = 0; i < 20; i++) {
         const element = document.body.appendChild(
           document.createElement("span"),
@@ -189,11 +191,13 @@ async function survivors(code) {
           respectReducedMotion: false,
         });
         instance.update("AVATAR Typo");
+        held.push(instance);
         window.instances.push(new WeakRef(instance));
       }
       await settle(200);
-      for (const ref of window.instances) ref.deref().update("Typo AVATAR");
+      for (const instance of held) instance.update("Typo AVATAR");
       await settle(200);
+      held = [];
       document.body.replaceChildren();
     });
     // Collected from outside the page: a gc() made in page script keeps whatever its own stack might point to.

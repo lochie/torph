@@ -14,10 +14,12 @@ import {
   holdContainerSize,
   isContainerSettling,
   layoutSize,
-  transitionContainerSize,
   readAnimationState,
   animationsOf,
+  holdAnimations,
   releaseAnimations,
+  releaseContainerSize,
+  resizeContainer,
   snapshotAnimations,
   trackAnimation,
   type AnimationState,
@@ -31,7 +33,8 @@ import {
   NO_CLIP,
 } from "./utils/number-animate";
 import {
-  detachFromFlow,
+  placeDetached,
+  readDetached,
   splitWordSpans,
   reconcileChildren,
   moverOf,
@@ -355,6 +358,57 @@ const inFlowBoxes = (element: HTMLElement) =>
       !child.hasAttribute(ATTR_TEXT),
   );
 
+const queued = new Set<TextMorph>();
+let scheduled = false;
+let flushing = false;
+
+function schedule() {
+  if (scheduled) return;
+  scheduled = true;
+  queueMicrotask(() => {
+    scheduled = false;
+    flush();
+  });
+}
+
+/** Runs every queued update phase by phase: all reads of one phase, then all its writes. */
+function flush() {
+  // An update queued from a callback mid-flush joins the next round of this loop.
+  if (flushing) return;
+  flushing = true;
+  let failure: unknown = null;
+  try {
+    while (queued.size) {
+      if (queued.size === 1) {
+        // The common case, one instance on its own: nothing to step in time with.
+        const [morph] = queued;
+        queued.clear();
+        try {
+          while (morph!.step());
+        } catch (error) {
+          failure ??= error;
+        }
+        continue;
+      }
+      let live = [...queued];
+      queued.clear();
+      while (live.length) {
+        live = live.filter((morph) => {
+          try {
+            return morph.step();
+          } catch (error) {
+            failure ??= error;
+            return false;
+          }
+        });
+      }
+    }
+  } finally {
+    flushing = false;
+  }
+  if (failure) throw failure;
+}
+
 export class TextMorph {
   private element: HTMLElement;
   private options: Omit<TextMorphOptions, "element" | "ease"> & {
@@ -380,6 +434,12 @@ export class TextMorph {
   // From a morph's start until it settles: exactly one of complete and cancel ends it.
   private morphing = false;
   private ownsDir = false;
+  private pending: {
+    value: HTMLElement | string | number;
+    cursorIndex?: number;
+  } | null = null;
+  private steps: Generator<void, void, void> | null = null;
+  private animations: Map<Element, Animation[]> | null = null;
 
   constructor(options: TextMorphOptions) {
     // A prop left off in JSX arrives as an explicit `undefined`, which would spread
@@ -420,6 +480,10 @@ export class TextMorph {
   }
 
   destroy() {
+    queued.delete(this);
+    this.pending = null;
+    this.steps = null;
+    this.animations = null;
     this.generation++;
     this.morphing = false;
     // With the stand-in gone, the text is the only copy left to read.
@@ -454,6 +518,48 @@ export class TextMorph {
 
   /** `cursorIndex` switches a single-number value from place matching to caret matching. */
   update(value: HTMLElement | string | number, cursorIndex?: number) {
+    this.pending = { value, cursorIndex };
+    queued.add(this);
+    flush();
+  }
+
+  /**
+   * As `update`, but run with every other instance queued this tick, so all their layout
+   * reads share one pass rather than each forcing its own.
+   * @internal
+   */
+  queue(value: HTMLElement | string | number, cursorIndex?: number) {
+    this.pending = { value, cursorIndex };
+    queued.add(this);
+    schedule();
+  }
+
+  /** @internal Runs the update's next phase; false once it has finished. */
+  step(): boolean {
+    if (!this.steps) {
+      const pending = this.pending;
+      if (!pending) return false;
+      this.pending = null;
+      this.steps = this.morph(pending.value, pending.cursorIndex);
+    }
+    holdAnimations(this.animations);
+    try {
+      if (!this.steps.next().done) return true;
+      this.steps = null;
+      return false;
+    } catch (error) {
+      this.steps = null;
+      throw error;
+    } finally {
+      this.animations = releaseAnimations();
+      if (!this.steps) this.animations = null;
+    }
+  }
+
+  private *morph(
+    value: HTMLElement | string | number,
+    cursorIndex?: number,
+  ): Generator<void, void, void> {
     const formatted =
       typeof value === "number"
         ? value.toLocaleString(this.options.locale, {
@@ -486,25 +592,21 @@ export class TextMorph {
     if (this.data instanceof HTMLElement) {
       // TODO: handle HTMLElement case
       throw new Error("HTMLElement not yet supported");
-    } else {
-      if (!this.isInitialRender) {
-        if (this.morphing) this.options.onAnimationCancel?.();
-        this.morphing = true;
-        this.options.onAnimationStart?.();
-      }
-      try {
-        this.createTextGroup(this.data, this.element, cursorIndex);
-      } finally {
-        releaseAnimations();
-      }
     }
+    if (!this.isInitialRender) {
+      if (this.morphing) this.options.onAnimationCancel?.();
+      this.morphing = true;
+      this.options.onAnimationStart?.();
+    }
+    yield* this.createTextGroup(this.data, this.element, cursorIndex);
   }
 
-  private createTextGroup(
+  /** Each `yield` sits between a read phase and a write phase; a batch runs every instance's phase before the next. */
+  private *createTextGroup(
     value: string,
     element: HTMLElement,
     cursorIndex?: number,
-  ) {
+  ): Generator<void, void, void> {
     // Before the running transition is aborted below, so an interrupt carries on from screen.
     const style = this.isInitialRender ? null : getComputedStyle(element);
     const oldSize = style && layoutSize(element, style);
@@ -555,6 +657,7 @@ export class TextMorph {
     const newIds = new Set(segments.map((b) => b.id));
 
     if (!oldSize) {
+      yield;
       this.syncText(value);
       this.rest(value);
       this.previousSegments = diffed;
@@ -568,26 +671,38 @@ export class TextMorph {
 
     const { width: oldWidth, height: oldHeight } = oldSize;
     const { inkTop, inkBottom, top: clipTop, bottom: clipBottom } = clip!;
+    // A run drawn whole that this morph changes goes back to its parts first, then any word in it.
+    // Its arrows and joined letters stay joined, so nothing a ligature drew comes apart.
+    const reopened = new Map(
+      [...this.runParts]
+        .filter(([id]) => !newIds.has(id))
+        .map(([id, parts]) => [id, ligate(parts, shaping)]),
+    );
+    const outgoing = this.textNode
+      ? this.readSplit(splits, shaping, runs.before)
+      : null;
+    const reopenedLetters = outgoing ? null : lettersOf(element, reopened);
+    yield;
+
     // Only a new font changes these, so most morphs write nothing.
     if (inkTop !== null && inkBottom !== null) {
       setStyleVar(element, VAR_INK_TOP, `${inkTop.toFixed(4)}em`);
       setStyleVar(element, VAR_INK_BOTTOM, `${inkBottom.toFixed(4)}em`);
     }
     // Sized to the text they replace, so the measure below reads where the text had them.
-    if (this.textNode) this.split(splits, shaping, runs.before);
+    if (outgoing) this.split(outgoing);
     else {
-      // A run drawn whole that this morph changes goes back to its parts first, then any word in it.
-      // Its arrows and joined letters stay joined, so nothing a ligature drew comes apart.
-      const reopened = new Map(
-        [...this.runParts]
-          .filter(([id]) => !newIds.has(id))
-          .map(([id, parts]) => [id, ligate(parts, shaping)]),
-      );
-      for (const cut of [reopened, splits]) {
-        const letters = lettersOf(element, cut);
-        splitWordSpans(element, cut);
-        fitLetters(element, cut, letters);
-      }
+      splitWordSpans(element, reopened);
+      fitLetters(element, reopened, reopenedLetters!);
+    }
+    yield;
+
+    const letters = outgoing ? null : lettersOf(element, splits);
+    yield;
+
+    if (letters) {
+      splitWordSpans(element, splits);
+      fitLetters(element, splits, letters);
     }
     this.syncText(value);
     // Out of flow and unseen: the new value laid out by the browser, for the boxes to match.
@@ -595,12 +710,13 @@ export class TextMorph {
     twin.style.cssText =
       "position: absolute; left: 0; top: 0; visibility: hidden";
     element.append(twin);
+    yield;
+
     this.prevMeasures = measure(this.element);
     const target = layoutOf(twin, segments);
-    twin.remove();
     // The stand-in has no ID, so the exit path would claim it and animate it away.
     const oldChildren = (Array.from(element.children) as HTMLElement[]).filter(
-      (child) => !child.hasAttribute(ATTR_SR),
+      (child) => child !== twin && !child.hasAttribute(ATTR_SR),
     );
     const inFlow = oldChildren.filter(
       (child) => !child.hasAttribute(ATTR_EXITING),
@@ -620,10 +736,14 @@ export class TextMorph {
       oldIds,
       newIds,
     );
+    const detached = readDetached(element, exiting);
+    yield;
 
-    detachFromFlow(element, exiting);
+    twin.remove();
+    placeDetached(exiting, detached);
     reconcileChildren(element, oldChildren, newIds, segments);
     fitBoxes(inFlowBoxes(element), target);
+    yield;
 
     this.currentMeasures = measure(this.element);
 
@@ -635,14 +755,18 @@ export class TextMorph {
     const lineHeight = (element.offsetHeight || 20 * lineCount) / lineCount;
     // A digit has to clear the whole clip, which can outgrow a tight line.
     const slideDistance = lineHeight + clipTop + clipBottom;
+    yield;
 
     // Measured at the old width, not derived — text-align does nothing to overflowing content.
     element.style.width = `${oldWidth}px`;
-    void element.offsetWidth;
-    const firstFrameMeasures = measure(this.element);
-    element.style.width = "";
+    yield;
 
-    this.updateStyles(segments, firstFrameMeasures, slideDistance);
+    const firstFrameMeasures = measure(this.element);
+    const moving = this.readStyles();
+    yield;
+
+    element.style.width = "";
+    this.updateStyles(segments, firstFrameMeasures, slideDistance, moving);
 
     // A run with no survivors inside it recedes as one shape.
     const leavingRuns = replacedRuns(inFlow, new Set(exiting));
@@ -693,13 +817,19 @@ export class TextMorph {
     if (isEmptyTransition) {
       holdContainerSize(element, oldWidth, oldHeight, this.options.duration!);
     } else {
-      transitionContainerSize(
-        element,
-        oldWidth,
-        oldHeight,
-        this.options.duration!,
-        this.options.ease!,
-      );
+      const resize = releaseContainerSize(element, oldWidth, oldHeight);
+      if (resize) {
+        yield;
+        const size = layoutSize(element);
+        yield;
+        resizeContainer(
+          element,
+          resize,
+          size,
+          this.options.duration!,
+          this.options.ease!,
+        );
+      }
     }
 
     this.settle();
@@ -714,20 +844,22 @@ export class TextMorph {
     this.element.append(this.textNode);
   }
 
-  /** Reads where each outgoing segment sits in the text, then draws them as boxes there. */
-  private split(
+  /** Reads where each outgoing segment sits in the text. */
+  private readSplit(
     splits: Map<string, Segment[]>,
     shaping: Shaping | null,
     runs: [number, number][],
   ) {
-    const text = this.textNode!;
     const segments = ligate(
       joinRuns(this.previousSegments, runs).segments,
       shaping,
     ).flatMap((segment) => splits.get(segment.id) ?? [segment]);
-    const layout = layoutOf(text, segments);
+    return { segments, layout: layoutOf(this.textNode!, segments) };
+  }
 
-    text.remove();
+  /** Draws the outgoing segments as boxes where `readSplit` found them. */
+  private split({ segments, layout }: { segments: Segment[]; layout: Layout }) {
+    this.textNode!.remove();
     this.textNode = null;
     reconcileChildren(
       this.element,
@@ -763,17 +895,11 @@ export class TextMorph {
     queueMicrotask(check);
   }
 
-  private updateStyles(
-    segments: Segment[],
-    firstFrameMeasures: Measures,
-    slideDistance: number,
-  ) {
+  /** Where every moving box has got to, read before any animation starts so no write invalidates the rest. */
+  private readStyles() {
     const children = (
       Array.from(this.element.children) as HTMLElement[]
     ).filter((child) => !child.hasAttribute(ATTR_SR));
-    const segmentIds = segments.map((b) => b.id);
-    const kinds = new Map(segments.map((b) => [b.id, b.kind]));
-
     // The arriving half of the same gesture.
     const settled = children.filter(
       (child) =>
@@ -786,8 +912,6 @@ export class TextMorph {
         (child) => !this.prevMeasures[child.getAttribute(ATTR_ID)!],
       ),
     );
-    const arrivingTogether = new Set<HTMLElement>();
-    // Snapshot every moving box before starting animations, so writes cannot invalidate later reads.
     const previous = new Map<HTMLElement, AnimationState>();
     for (const child of settled) {
       previous.set(child, readAnimationState(child));
@@ -796,6 +920,23 @@ export class TextMorph {
         if (mover !== child) previous.set(mover, readAnimationState(mover));
       }
     }
+    return { children, settled, arriving, previous };
+  }
+
+  private updateStyles(
+    segments: Segment[],
+    firstFrameMeasures: Measures,
+    slideDistance: number,
+    {
+      children,
+      settled,
+      arriving,
+      previous,
+    }: ReturnType<TextMorph["readStyles"]>,
+  ) {
+    const segmentIds = segments.map((b) => b.id);
+    const kinds = new Map(segments.map((b) => [b.id, b.kind]));
+    const arrivingTogether = new Set<HTMLElement>();
     for (const run of replacedRuns(settled, arriving)) {
       run.forEach((child) => arrivingTogether.add(child));
       animateGroupEnter(
@@ -866,7 +1007,6 @@ export class TextMorph {
     });
   }
 
-  /** Holds the value as plain text — the segments are split and aria-hidden, so unreadable. */
   /** After the split has read the rest text — a write before it costs every instance a layout. */
   private syncText(value: string) {
     this.syncAccessibleText(value);
@@ -877,6 +1017,7 @@ export class TextMorph {
     }
   }
 
+  /** Holds the value as plain text — the segments are split and aria-hidden, so unreadable. */
   private syncAccessibleText(value: string) {
     if (!this.srNode || this.srNode.parentNode !== this.element) {
       const node = document.createElement("span");

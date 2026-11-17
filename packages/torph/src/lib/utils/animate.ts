@@ -82,8 +82,15 @@ export function trackAnimation(element: Element, animation: Animation) {
   else running.set(element, [animation]);
 }
 
+/** Hands back the snapshot, for the update to carry across a batch's other instances. */
 export function releaseAnimations() {
+  const held = running;
   running = null;
+  return held;
+}
+
+export function holdAnimations(held: Map<Element, Animation[]> | null) {
+  running = held;
 }
 
 /** An element's animations, from the update's snapshot while one is held. */
@@ -317,13 +324,30 @@ export function transitionContainerSize(
   duration: number,
   ease: string,
 ) {
+  const resize = releaseContainerSize(element, oldWidth, oldHeight);
+  if (resize)
+    resizeContainer(element, resize, layoutSize(element), duration, ease);
+}
+
+type ContainerResize = {
+  oldWidth: number;
+  oldHeight: number;
+  previous: ReturnType<typeof inFlight>;
+};
+
+/** The write half: frees the size for the read that follows, or null when there is nothing to animate. */
+export function releaseContainerSize(
+  element: HTMLElement,
+  oldWidth: number,
+  oldHeight: number,
+): ContainerResize | null {
   // Read before the abort, off the curves the box is still riding.
   const previous = inFlight(element);
   abortContainerTransition(element);
 
   if (oldWidth === 0 || oldHeight === 0) {
     restoreSize(element);
-    return;
+    return null;
   }
 
   // WAAPI drives the size instead, sharing a start time with the items. Cleared, not
@@ -331,9 +355,17 @@ export function transitionContainerSize(
   element.style.transitionProperty = "none";
   element.style.width = "";
   element.style.height = "";
-  void element.offsetWidth;
+  return { oldWidth, oldHeight, previous };
+}
 
-  const { width: newWidth, height: newHeight } = layoutSize(element);
+/** Animates from the old size to the one the author's CSS gives, read once the size was released. */
+export function resizeContainer(
+  element: HTMLElement,
+  { oldWidth, oldHeight, previous }: ContainerResize,
+  { width: newWidth, height: newHeight }: { width: number; height: number },
+  duration: number,
+  ease: string,
+) {
   const base = parseEasing(ease);
 
   // One per axis: each carries its own momentum, so they need their own curves.

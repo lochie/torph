@@ -1225,3 +1225,42 @@ describe("a morph splits only the lines it changes", () => {
     expect(boxes(element).slice(-2)).toEqual(["c\u00A0d", "e\u00A0f"]);
   });
 });
+
+describe("queued updates", () => {
+  const items = (element: HTMLElement) =>
+    element.querySelectorAll(`[${ATTR_ITEM}]`).length;
+
+  it("waits for the microtask, then morphs every instance queued with it", async () => {
+    const a = mount();
+    const b = mount();
+    a.morph.update("one");
+    b.morph.update("two");
+    a.morph.queue("one more");
+    b.morph.queue("two more");
+    expect(items(a.element) + items(b.element)).toBe(0);
+    await Promise.resolve();
+    expect(items(a.element)).toBeGreaterThan(0);
+    expect(items(b.element)).toBeGreaterThan(0);
+  });
+
+  it("runs what is queued along with an update", () => {
+    const a = mount();
+    const b = mount();
+    a.morph.update("one");
+    b.morph.update("two");
+    a.morph.queue("one more");
+    b.morph.update("two more");
+    expect(items(a.element)).toBeGreaterThan(0);
+  });
+
+  it("drops a queued update when destroyed", async () => {
+    const { element, morph } = mount();
+    morph.update("one");
+    morph.queue("one more");
+    morph.destroy();
+    await Promise.resolve();
+    expect(items(element)).toBe(0);
+    expect(element.textContent).toContain("one");
+    expect(element.textContent).not.toContain("more");
+  });
+});
