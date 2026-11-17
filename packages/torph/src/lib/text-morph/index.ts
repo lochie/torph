@@ -456,6 +456,7 @@ export class TextMorph {
   // Set at rest: the value as one run of text, laid out by the browser rather than in boxes.
   private textNode: HTMLElement | null = null;
   private generation = 0;
+  private settling: ReturnType<typeof setTimeout> | undefined;
   private hasSetup = false;
   // From a morph's start until it settles: exactly one of complete and cancel ends it.
   private morphing = false;
@@ -511,6 +512,7 @@ export class TextMorph {
     this.steps = null;
     this.animations = null;
     this.generation++;
+    clearTimeout(this.settling);
     this.morphing = false;
     // With the stand-in gone, the text is the only copy left to read.
     this.textNode?.removeAttribute("aria-hidden");
@@ -921,7 +923,9 @@ export class TextMorph {
         }
       }
     };
-    queueMicrotask(check);
+    clearTimeout(this.settling);
+    // Not before the morph could be over: each getAnimations() walks every animation the page has made since its last GC.
+    this.settling = setTimeout(check, this.options.duration);
   }
 
   /** Where every moving box has got to, read before any animation starts so no write invalidates the rest. */
