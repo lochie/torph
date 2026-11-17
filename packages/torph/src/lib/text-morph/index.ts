@@ -517,13 +517,6 @@ export class TextMorph {
     const numbers = this.options.numbers !== false;
     const shaping = style && readShaping(style);
 
-    this.syncAccessibleText(value);
-    if (this.ownsDir) {
-      const dir = directionOf(value);
-      if (this.element.getAttribute("dir") !== dir)
-        this.element.setAttribute("dir", dir);
-    }
-
     let segments: Segment[];
     let splits: Map<string, Segment[]>;
 
@@ -562,6 +555,7 @@ export class TextMorph {
     const newIds = new Set(segments.map((b) => b.id));
 
     if (!oldSize) {
+      this.syncText(value);
       this.rest(value);
       this.previousSegments = diffed;
       this.renderedSegments = diffed;
@@ -595,6 +589,7 @@ export class TextMorph {
         fitLetters(element, cut, letters);
       }
     }
+    this.syncText(value);
     // Out of flow and unseen: the new value laid out by the browser, for the boxes to match.
     const twin = textOf(value);
     twin.style.cssText =
@@ -872,6 +867,16 @@ export class TextMorph {
   }
 
   /** Holds the value as plain text — the segments are split and aria-hidden, so unreadable. */
+  /** After the split has read the rest text — a write before it costs every instance a layout. */
+  private syncText(value: string) {
+    this.syncAccessibleText(value);
+    if (this.ownsDir) {
+      const dir = directionOf(value);
+      if (this.element.getAttribute("dir") !== dir)
+        this.element.setAttribute("dir", dir);
+    }
+  }
+
   private syncAccessibleText(value: string) {
     if (!this.srNode || this.srNode.parentNode !== this.element) {
       const node = document.createElement("span");
