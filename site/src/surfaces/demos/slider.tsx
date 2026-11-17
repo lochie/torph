@@ -49,9 +49,16 @@ const TAIL = 9; // px the tail hangs below the bubble — its tip is the pivot, 
 type Box = { half: number; top: number; bottom: number };
 type Pt = { x: number; y: number };
 
-const boxOf = (bubble: HTMLElement, kx: number, ky: number): Box => ({
-  half: (bubble.offsetWidth / 2) * kx,
-  top: -(TAIL + bubble.offsetHeight) * ky,
+type Size = { width: number; height: number };
+
+const sizeOf = (bubble: HTMLElement): Size => ({
+  width: bubble.offsetWidth,
+  height: bubble.offsetHeight,
+});
+
+const boxOf = (size: Size, kx: number, ky: number): Box => ({
+  half: (size.width / 2) * kx,
+  top: -(TAIL + size.height) * ky,
   bottom: -TAIL * ky,
 });
 
@@ -289,6 +296,11 @@ export const RangeShove = () => {
   const hiRef = React.useRef<HTMLDivElement>(null);
   const loBubbleRef = React.useRef<HTMLDivElement>(null);
   const hiBubbleRef = React.useRef<HTMLDivElement>(null);
+  // From a ResizeObserver: read per frame, the bubbles' size forces a layout after every morph's writes.
+  const sizes = React.useRef({
+    lo: { width: 0, height: 0 },
+    hi: { width: 0, height: 0 },
+  });
 
   const state = React.useRef({
     lo: { x: 0, lag: 0, vel: 0 },
@@ -312,6 +324,9 @@ export const RangeShove = () => {
     s.width = track.offsetWidth;
     s.lo.x = s.lo.lag = thumbX(s.range.lo, s.width);
     s.hi.x = s.hi.lag = thumbX(s.range.hi, s.width);
+    const size = sizes.current;
+    size.lo = sizeOf(loBubble);
+    size.hi = sizeOf(hiBubble);
 
     return {
       step: () => {
@@ -319,8 +334,7 @@ export const RangeShove = () => {
         swing(s.hi);
 
         // How pressed together the pair are, 0 to 1 — what lean and squash ride on.
-        const need =
-          (loBubble.offsetWidth + hiBubble.offsetWidth) / 2 + SHOVE_PAD;
+        const need = (size.lo.width + size.hi.width) / 2 + SHOVE_PAD;
         const target = Math.max(0, need - (s.hi.x - s.lo.x)) / need;
         s.shoveVel =
           (s.shoveVel + (target - s.shove) * SHOVE_STIFFNESS) * SHOVE_DAMPING;
@@ -340,12 +354,12 @@ export const RangeShove = () => {
         const loSwing = tiltOf(s.lo);
         const hiSwing = tiltOf(s.hi);
         const loBox = boxOf(
-          loBubble,
+          size.lo,
           scaleXof(loStretch, squash),
           1 + loStretch,
         );
         const hiBox = boxOf(
-          hiBubble,
+          size.hi,
           scaleXof(hiStretch, squash),
           1 + hiStretch,
         );
@@ -415,6 +429,27 @@ export const RangeShove = () => {
       wake();
     });
     observer.observe(track);
+
+    return () => observer.disconnect();
+  }, [wake]);
+
+  React.useEffect(() => {
+    const loBubble = loBubbleRef.current;
+    const hiBubble = hiBubbleRef.current;
+    if (!loBubble || !hiBubble) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const [box] = entry.borderBoxSize;
+        if (!box) continue;
+        const size = { width: box.inlineSize, height: box.blockSize };
+        if (entry.target === loBubble) sizes.current.lo = size;
+        else sizes.current.hi = size;
+      }
+      wake();
+    });
+    observer.observe(loBubble);
+    observer.observe(hiBubble);
 
     return () => observer.disconnect();
   }, [wake]);
