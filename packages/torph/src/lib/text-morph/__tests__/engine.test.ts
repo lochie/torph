@@ -882,6 +882,19 @@ describe("plain text at rest", () => {
 });
 
 describe("boxes sized to the text", () => {
+  // The engine's probe: points at its own `left` and `top`, as far from the origin as the scale puts them.
+  const probe = (fallback: Element["getBoundingClientRect"], scale = 1) =>
+    function (this: Element) {
+      if (this.tagName !== "I") return fallback.call(this);
+      const { left, top } = (this as HTMLElement).style;
+      return new DOMRect(
+        (parseFloat(left) || 0) * scale,
+        (parseFloat(top) || 0) * scale,
+        0,
+        0,
+      );
+    };
+
   // Every glyph 10px wide and "Co" kerned 2px tighter, as the browser would lay the run out.
   // `scale` stands in for a transformed ancestor: every rect on screen grows, the layout does not.
   function fakeLayout(scale = 1) {
@@ -899,12 +912,7 @@ describe("boxes sized to the text", () => {
         20 * scale,
       );
     };
-    // The engine's probe: a 100px line with no height.
-    Element.prototype.getBoundingClientRect = function (this: Element) {
-      return this.tagName === "I"
-        ? new DOMRect(0, 0, 100 * scale, 0)
-        : element.call(this);
-    };
+    Element.prototype.getBoundingClientRect = probe(element, scale);
     return () => {
       Range.prototype.getBoundingClientRect = range;
       Element.prototype.getBoundingClientRect = element;
@@ -944,11 +952,7 @@ describe("boxes sized to the text", () => {
       );
     };
     const element = Element.prototype.getBoundingClientRect;
-    Element.prototype.getBoundingClientRect = function (this: Element) {
-      return this.tagName === "I"
-        ? new DOMRect(0, 0, 100, 0)
-        : element.call(this);
-    };
+    Element.prototype.getBoundingClientRect = probe(element);
     try {
       const { element: root, morph } = mount();
       root.style.direction = "rtl";

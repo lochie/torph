@@ -13,5 +13,6 @@ Text at rest is plain text.
 #### Fixed
 
 - Letters no longer jump when a morph interrupts another part-way through a word.
+- Text inside a scaled or rotated parent no longer jumps when a morph starts.
 - Contextual alternates, like a colon raised between digits, hold their shape while text animates.
 - Devanagari, Thai and other scripts whose letters shape each other stay shaped while animating.

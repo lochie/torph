@@ -3,8 +3,11 @@ import { BASE_DEFAULTS, type Segment } from "../utils/types";
 import { resolveEase } from "../utils/spring";
 import { segmentText } from "./utils/segment";
 import {
+  type Frame,
   type Measures,
+  type Placed,
   measure,
+  placer,
   computeDelta,
   findNearestAnchor,
   resolveExitingAnchors,
@@ -108,8 +111,17 @@ function textOf(value: string): HTMLElement {
   const text = document.createElement("span");
   text.setAttribute(ATTR_TEXT, "");
   text.setAttribute("aria-hidden", "true");
+  // Three points, origin and a step along each axis, so a rotation's direction survives.
   const probe = document.createElement("i");
-  probe.style.cssText = `position: absolute; left: 0; top: 0; width: ${PROBE}px; height: 0`;
+  probe.style.cssText = "position: absolute; left: 0; top: 0";
+  for (const [left, top] of [
+    [PROBE, 0],
+    [0, PROBE],
+  ]) {
+    const point = document.createElement("i");
+    point.style.cssText = `position: absolute; left: ${left}px; top: ${top}px`;
+    probe.append(point);
+  }
   text.append(probe);
   // A zero-width space keeps an empty value's line box, as the boxes' stand-in does.
   (value || "\u200B").split("\n").forEach((line, i) => {
@@ -121,15 +133,19 @@ function textOf(value: string): HTMLElement {
 
 type Layout = {
   rects: (DOMRect | null)[];
-  /** A layout pixel along the line, on screen: scale times cos and |sin| of any rotation. */
-  along: number;
-  across: number;
   rtl: boolean;
+  frame: Frame;
 };
 
 /** Where each segment sits in the text — null for a line break. */
 function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
-  const unit = text.firstElementChild!.getBoundingClientRect();
+  const probe = text.firstElementChild!;
+  const origin = probe.getBoundingClientRect();
+  const [x, y] = Array.from(probe.children, (point) => {
+    const rect = point.getBoundingClientRect();
+    return [(rect.left - origin.left) / PROBE, (rect.top - origin.top) / PROBE];
+  });
+  const frame: Frame = { a: x![0]!, b: x![1]!, c: y![0]!, d: y![1]! };
   const lines = Array.from(text.childNodes).filter(
     (node): node is Text => node.nodeType === Node.TEXT_NODE,
   );
@@ -156,8 +172,6 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
     offset = end;
     return rect;
   });
-  const along = unit.width / PROBE;
-  const across = unit.height / PROBE;
   // WebKit places each segment a whole number of pixels from its line's start; its canvas has the fraction.
   const starts = new Map<number, DOMRect>();
   for (const span of spans)
@@ -171,8 +185,8 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
   if (
     whole &&
     spans.length > starts.size &&
-    Math.abs(along - 1) < 1e-3 &&
-    Math.abs(across) < 1e-3
+    Math.abs(frame.a - 1) < 1e-3 &&
+    Math.abs(frame.b) < 1e-3
   ) {
     const fine = refine(lines, spans, style, rtl);
     if (fine) {
@@ -181,7 +195,7 @@ function layoutOf(text: HTMLElement, segments: Segment[]): Layout {
         if (rects[i]) rects[i] = fine[k++]!;
     }
   }
-  return { rects, along, across, rtl };
+  return { rects, rtl, frame };
 }
 
 let ruler: CanvasRenderingContext2D | null | undefined;
@@ -246,32 +260,27 @@ function refine(
 /**
  * Sizes each box to the advance its segment has in the text — up to where the next one
  * starts, so the kerning between them comes with it and the boxes lay out as the text does.
- * Rects are on screen, so a transformed ancestor's scale and rotation are taken back out.
+ * Rects are on screen, so a transformed ancestor is taken back out first.
  */
-function fitBoxes(boxes: HTMLElement[], { rects, along, across, rtl }: Layout) {
-  const scale = Math.hypot(along, across);
-  const squash = along * along - across * across;
-  // No layout (display: none), or turned past 45°, where a bounding box no longer gives a width back.
-  if (!(scale > 0) || !(squash > 0)) return;
-  let line: DOMRect | null = null;
+function fitBoxes(boxes: HTMLElement[], { rects, frame, rtl }: Layout) {
+  const place = placer(frame);
+  // No layout (display: none), or turned 45°, where a bounding box no longer gives a width back.
+  if (!place) return;
+  let line: Placed | null = null;
   // Measured between leading edges: right to left, each segment starts on its right.
-  const from = (rect: DOMRect) =>
-    Math.hypot(
-      rtl ? line!.right - rect.right : rect.left - line!.left,
-      rect.top - line!.top,
-    ) / scale;
+  const from = (at: Placed) =>
+    rtl ? line!.x + line!.w - (at.x + at.w) : at.x - line!.x;
   boxes.forEach((box, i) => {
     const rect = rects[i];
     if (!rect || box.tagName === "BR") {
       line = null;
       return;
     }
-    line ??= rect;
+    const here = place(rect);
+    line ??= here;
     const next = rects[i + 1];
-    const start = from(rect);
-    const end = next
-      ? from(next)
-      : start + (rect.width * along - rect.height * across) / squash;
+    const start = from(here);
+    const end = next ? from(place(next)) : start + here.w;
     // Each edge snapped to the 1/64px layout unit, not each width: rounded widths add up along the line.
     const width = `${(Math.round(end * 64) - Math.round(start * 64)) / 64}px`;
     if (box.style.width !== width) box.style.width = width;
@@ -284,6 +293,7 @@ type Letters = Map<string, Layout & { motion: Animation[]; width: number }>;
 function lettersOf(
   element: HTMLElement,
   splits: Map<string, Segment[]>,
+  frame: Frame,
 ): Letters {
   const out: Letters = new Map();
   if (splits.size === 0) return out;
@@ -294,10 +304,12 @@ function lettersOf(
     const letters = id && splits.get(id);
     const node = word.firstChild;
     if (!letters || !node || node.nodeType !== Node.TEXT_NODE) continue;
+    const style = getComputedStyle(word);
     // A word caught mid-arrival is scaled; its letters' distances are scaled with it.
-    const along =
+    const own =
       word.getBoundingClientRect().width /
-      parseFloat(getComputedStyle(word).width);
+      (Math.abs(frame.a) * parseFloat(style.width) +
+        Math.abs(frame.c) * parseFloat(style.height));
     let offset = 0;
     const rects = letters.map((letter) => {
       range.setStart(node, offset);
@@ -308,9 +320,13 @@ function lettersOf(
     // Mid-morph, the box is on its way somewhere; its letters carry on from where it has got to.
     out.set(id, {
       rects,
-      along,
-      across: 0,
       rtl,
+      frame: {
+        a: frame.a * own,
+        b: frame.b * own,
+        c: frame.c * own,
+        d: frame.d * own,
+      },
       motion: [...animationsOf(word)],
       width: parseFloat(word.style.width),
     });
@@ -427,6 +443,8 @@ export class TextMorph {
 
   private currentMeasures: Measures = {};
   private prevMeasures: Measures = {};
+  /** The last morph's, for splitting its boxes in the next — only a morph lays out the twin that reads it. */
+  private frame: Frame = { a: 1, b: 0, c: 0, d: 1 };
   private previousSegments: Segment[] = [];
   // `previousSegments` with ligatures joined — what the DOM holds, and the diff never sees.
   private renderedSegments: Segment[] = [];
@@ -689,7 +707,9 @@ export class TextMorph {
     const outgoing = this.textNode
       ? this.readSplit(splits, shaping, runs.before)
       : null;
-    const reopenedLetters = outgoing ? null : lettersOf(element, reopened);
+    const reopenedLetters = outgoing
+      ? null
+      : lettersOf(element, reopened, this.frame);
     yield;
 
     // Only a new font changes these, so most morphs write nothing.
@@ -705,7 +725,7 @@ export class TextMorph {
     }
     yield;
 
-    const letters = outgoing ? null : lettersOf(element, splits);
+    const letters = outgoing ? null : lettersOf(element, splits, this.frame);
     yield;
 
     if (letters) {
@@ -720,8 +740,9 @@ export class TextMorph {
     element.append(twin);
     yield;
 
-    this.prevMeasures = measure(this.element);
     const target = layoutOf(twin, segments);
+    this.frame = target.frame;
+    this.prevMeasures = measure(this.element, target.frame);
     // The stand-in has no ID, so the exit path would claim it and animate it away.
     const oldChildren = (Array.from(element.children) as HTMLElement[]).filter(
       (child) => child !== twin && !child.hasAttribute(ATTR_SR),
@@ -753,7 +774,7 @@ export class TextMorph {
     fitBoxes(inFlowBoxes(element), target);
     yield;
 
-    this.currentMeasures = measure(this.element);
+    this.currentMeasures = measure(this.element, target.frame);
 
     // One line's worth. The root is nowrap, so a line exists only where the value put one.
     const lineCount = segments.reduce(
@@ -769,7 +790,7 @@ export class TextMorph {
     element.style.width = `${oldWidth}px`;
     yield;
 
-    const firstFrameMeasures = measure(this.element);
+    const firstFrameMeasures = measure(this.element, target.frame);
     const moving = this.readStyles();
     yield;
 
