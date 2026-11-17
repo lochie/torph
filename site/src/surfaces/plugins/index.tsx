@@ -13,9 +13,7 @@ import { TypewriterDemo } from "./typewriter";
 import { TokensDemo } from "./tokens";
 import { CountdownDemo, OdometerDemo } from "./odometer";
 import { WaveDemo } from "./wave";
-import { WipeDemo } from "./wipe";
 import { CaselessDemo } from "./caseless";
-import { AnagramDemo } from "./anagram";
 import { StackDemo } from "./stack";
 import { SquashDemo } from "./squash";
 import { RedlineCodeDemo, RedlineDemo } from "./redline";
@@ -23,10 +21,7 @@ import { CountupDemo } from "./countup";
 import { RowsDemo } from "./rows";
 import { TrendDemo } from "./trend";
 import { RevealDemo } from "./reveal";
-import { TryIt } from "./try";
-import { SkeletonDemo, StreamingReplyDemo } from "./skeleton";
-import { MagnetDemo } from "./magnet";
-import { WeightDemo } from "./weight";
+import { Mix } from "./mix";
 import styles from "./styles.module.scss";
 
 export type PluginName =
@@ -38,16 +33,11 @@ export type PluginName =
   | "tokens"
   | "odometer"
   | "wave"
-  | "wipe"
   | "caseless"
-  | "anagram"
   | "stack"
   | "squash"
   | "redline"
   | "countup"
-  | "skeleton"
-  | "magnet"
-  | "weight"
   | "rows"
   | "trend"
   | "reveal";
@@ -110,22 +100,10 @@ const PLUGINS: {
     Demo: WaveDemo,
   },
   {
-    name: "wipe",
-    summary:
-      "An edge crosses the value, wiping the old text away and revealing the new.",
-    Demo: WipeDemo,
-  },
-  {
     name: "caseless",
     summary:
       "A letter that only changes case keeps its box, and pops to the new one in place.",
     Demo: CaselessDemo,
-  },
-  {
-    name: "anagram",
-    summary:
-      "Every letter is reused wherever the new value needs it, across words and in any order.",
-    Demo: AnagramDemo,
   },
   {
     name: "stack",
@@ -136,7 +114,7 @@ const PLUGINS: {
   {
     name: "squash",
     summary:
-      "Moving text stretches along its path, then squashes as it lands, like rubber.",
+      "Like a cartoon: moving text winds up, stretches and lands with a squash and a wobble; new text drops in and splats.",
     Demo: SquashDemo,
   },
   {
@@ -155,29 +133,6 @@ const PLUGINS: {
     summary:
       "A figure counts through the values between, quick at first and slowing as it arrives.",
     Demo: CountupDemo,
-  },
-  {
-    name: "skeleton",
-    summary:
-      "While the value is empty a shimmering bar holds its place, and the text fades in over it.",
-    Demo: () => (
-      <>
-        <SkeletonDemo />
-        <StreamingReplyDemo />
-      </>
-    ),
-  },
-  {
-    name: "magnet",
-    summary:
-      "Letters near the pointer lean away from it, and settle back when it leaves.",
-    Demo: MagnetDemo,
-  },
-  {
-    name: "weight",
-    summary:
-      "Letter by letter, new text arrives heavy and relaxes to its weight; leaving text thins away.",
-    Demo: WeightDemo,
   },
   {
     name: "rows",
@@ -220,8 +175,12 @@ export const Plugins = ({
       </p>
 
       <section className={styles.plugin}>
-        <h2 className={styles.name}>try it</h2>
-        <TryIt />
+        <h2 className={styles.name}>mix them</h2>
+        <p className={styles.summary}>
+          torph&apos;s default set, classic(), is ticked. Add any of the others
+          in front of it, take parts of it away, or type your own text.
+        </p>
+        <Mix />
       </section>
 
       {PLUGINS.map(({ name, summary, Demo }) => (

@@ -230,29 +230,24 @@ slides, arriving text appears and leaving text goes.
 A new array on every render is fine: a plugin is matched by its name and
 options, and the morph is only rebuilt when those change.
 
-| Plugin                     | What it does                                                                                                                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `torph/plugins/blur`       | Letter by letter, text rises into focus and blurs away upwards. `{ amount, rise, stagger }`                                                                                     |
-| `torph/plugins/words`      | A changed word swaps whole, instead of morphing the letters it shares.                                                                                                          |
-| `torph/plugins/scramble`   | Letter by letter, arriving text scrambles into place and leaving text scrambles away. `{ glyphs, rate, stagger }`                                                               |
-| `torph/plugins/flap`       | Like a departure board, each place flips round to the new letter. `{ glyphs, flips }`                                                                                           |
-| `torph/plugins/typewriter` | Old text backspaces from the end, then the new text types in. `{ keystroke }`                                                                                                   |
-| `torph/plugins/tokens`     | Identifiers and paths change at their joins: `getUserName` → `getUserEmail` keeps `getUser`.                                                                                    |
-| `torph/plugins/odometer`   | Figures count like a car's odometer, every wheel turning the way the value went. `{ trend }`                                                                                    |
-| `torph/plugins/wave`       | Letter by letter, text drops in with a bounce and falls away under its own weight. `{ height, stagger }`                                                                        |
-| `torph/plugins/wipe`       | An edge crosses the value, wiping the old text away and revealing the new. `{ sweep }`                                                                                          |
-| `torph/plugins/caseless`   | A letter that only changes case keeps its box, and pops to the new one in place.                                                                                                |
-| `torph/plugins/anagram`    | Every letter is reused wherever the new value needs it, across words and in any order.                                                                                          |
-| `torph/plugins/stack`      | The whole value is one card: the old one slides up and away as the new one rises in. `{ rise }`                                                                                 |
-| `torph/plugins/squash`     | Moving text stretches along its path, then squashes as it lands. `{ stretch }`                                                                                                  |
-| `torph/plugins/redline`    | Like track changes: removed words stay struck through before they go, added words come underlined. Several lines diff a line at a time, like code. `{ linger, removed, added }` |
-| `torph/plugins/countup`    | A figure counts through the values between, quick at first and slowing as it arrives. `{ time, steps }`                                                                         |
-| `torph/plugins/skeleton`   | While the value is empty a shimmering bar holds its place, and the text fades in over it. `{ length, color }`                                                                   |
-| `torph/plugins/magnet`     | Letters near the pointer lean away from it, and settle back when it leaves. `{ radius, strength }`                                                                              |
-| `torph/plugins/weight`     | New text arrives heavy and relaxes to its weight; leaving text thins away. Needs a variable font. `{ heavy, light }`                                                            |
-| `torph/plugins/rows`       | Each line is one box, known by its key, so a reordered list slides every row to its new place. `{ key }`                                                                        |
-| `torph/plugins/trend`      | What changes in a figure flashes green as it rises and red as it falls. `{ up, down }`                                                                                          |
-| `torph/plugins/reveal`     | Each place turns over in place to its new character, like a masked value revealed. `{ stagger }`                                                                                |
+| Plugin                     | What it does                                                                                                                                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `torph/plugins/blur`       | Letter by letter, text rises into focus and blurs away upwards. `{ amount, rise, stagger }`                                                                                                     |
+| `torph/plugins/words`      | A changed word swaps whole, instead of morphing the letters it shares.                                                                                                                          |
+| `torph/plugins/scramble`   | Letter by letter, arriving text scrambles into place and leaving text scrambles away. `{ glyphs, rate, stagger }`                                                                               |
+| `torph/plugins/flap`       | Like a departure board, each place flips round to the new letter. `{ glyphs, flips }`                                                                                                           |
+| `torph/plugins/typewriter` | Old text backspaces from the end, then the new text types in. `{ keystroke }`                                                                                                                   |
+| `torph/plugins/tokens`     | Identifiers and paths change at their joins: `getUserName` → `getUserEmail` keeps `getUser`.                                                                                                    |
+| `torph/plugins/odometer`   | Figures count like a car's odometer, every wheel turning the way the value went. `{ trend }`                                                                                                    |
+| `torph/plugins/wave`       | Letter by letter, text drops in with a bounce and falls away under its own weight. `{ height, stagger }`                                                                                        |
+| `torph/plugins/caseless`   | A letter that only changes case keeps its box, and pops to the new one in place.                                                                                                                |
+| `torph/plugins/stack`      | The whole value is one card: the old one slides up and away as the new one rises in. `{ rise }`                                                                                                 |
+| `torph/plugins/squash`     | Like a cartoon: moving text winds up, stretches along its path and lands with a squash and a wobble; arriving text drops in and splats, leaving text squishes flat and zips away. `{ stretch }` |
+| `torph/plugins/redline`    | Like track changes: removed words stay struck through before they go, added words come underlined. Several lines diff a line at a time, like code. `{ linger, removed, added }`                 |
+| `torph/plugins/countup`    | A figure counts through the values between, quick at first and slowing as it arrives. `{ time, steps }`                                                                                         |
+| `torph/plugins/rows`       | Each line is one box, known by its key, so a reordered list slides every row to its new place. `{ key }`                                                                                        |
+| `torph/plugins/trend`      | What changes in a figure flashes green as it rises and red as it falls. `{ up, down }`                                                                                                          |
+| `torph/plugins/reveal`     | Each place turns over in place to its new character, like a masked value revealed. `{ stagger }`                                                                                                |
 
 ### Writing a plugin
 
@@ -294,14 +289,12 @@ export const rise: TorphPlugin = {
   `claim(word)` and `segment(word, ctx)` take over whole words. Mint IDs with `ctx.id()`, and give segments a `kind` to move them with
   hooks of your own under `kinds`.
 - **Context:** a hook gets its `index` among the boxes on its side, how many
-  are `arriving` and `leaving`, what a staying box `was`, the box an arriving
-  one `replaces`, where it rests (`at`) and how wide the value is (`extent`).
+  are `arriving` and `leaving`, what a staying box `was`, and the box an
+  arriving one `replaces`.
   An earlier plugin's hooks come before a later one's, the classic set's included. `decorate` hooks run alongside whatever moves a box.
 - **Over time:** `tween(from, to)` returns values to pass through on the way,
   each morphed in turn; a reader hears only the destination, and the callbacks
-  fire once. `mount(root)` runs for as long as the morph lives, for listeners
-  and the like, and returns its cleanup. An endless animation is ambient: a
-  morph never waits on it.
+  fire once. An endless animation is ambient: a morph never waits on it.
 - **At rest:** text is plain text between morphs, so boxes and their styles
   exist only while something moves. `boxes(value)` keeps a value in boxes at
   rest, for a plugin that styles or moves them there.

@@ -44,10 +44,6 @@ export type MotionContext<State> = {
   /** How many boxes arrive and leave in this morph. */
   arriving: number;
   leaving: number;
-  /** Where the box rests in the root, in layout px; a leaving box, where it stood. */
-  at?: { x: number; y: number; width: number };
-  /** How wide the value is, old and new together. */
-  extent: { width: number };
   /** What this box read before the morph; a staying box can change its text. */
   was?: string;
   /** The leaving box this one takes the place of, between the same unchanged neighbours. */
@@ -105,8 +101,6 @@ export type TorphPlugin<State = unknown> = {
     to: string,
     ctx: { duration: number },
   ): { value: string; at: number }[] | null;
-  /** Runs when the morph is set up on its root, for as long as it lives; return a cleanup. */
-  mount?(root: HTMLElement): (() => void) | void;
   /** Cuts the whole value itself, in place of the word-by-word diff. Return null to leave it to the diff. */
   whole?(value: string, ctx: WholeContext): Segment[] | null;
   /** Keeps `value` in boxes at rest, rather than plain text, for a plugin that styles or moves them there. */

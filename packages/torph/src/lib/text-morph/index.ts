@@ -130,10 +130,6 @@ type Scene = {
   pairs: Map<HTMLElement, HTMLElement>;
   // The previous morph's text per box, before the reconcile rewrote any of it.
   was: Map<string, string>;
-  // Where each box rests: in the new layout, and for a leaving one, where it stood.
-  now: Measures;
-  before: Measures;
-  extent: { width: number };
 };
 
 type Claimed = [AnyPlugin, HTMLElement[], DOMRect[]][];
@@ -521,7 +517,6 @@ export class TextMorph {
   private shown = "";
   private tween: AbortController | null = null;
   private tweening = false;
-  private unmounts: (() => void)[] = [];
 
   constructor(options: TextMorphOptions) {
     // A prop left off in JSX arrives as an explicit `undefined`, which would spread
@@ -568,10 +563,6 @@ export class TextMorph {
     // A box per letter has no direction of its own, so the root's orders them; it comes from the text.
     this.ownsDir = !this.element.hasAttribute("dir");
     addStyles(this.plugins.flatMap((plugin) => plugin.css ?? []));
-    this.unmounts = this.plugins.flatMap((plugin) => {
-      const unmount = plugin.mount?.(this.element);
-      return unmount ? [unmount] : [];
-    });
   }
 
   destroy() {
@@ -584,7 +575,6 @@ export class TextMorph {
     this.morphing = false;
     this.abort?.abort();
     this.stopTween();
-    for (const unmount of this.unmounts.splice(0)) unmount();
     // With the stand-in gone, the text is the only copy left to read.
     this.textNode?.removeAttribute("aria-hidden");
     this.textNode = null;
@@ -672,10 +662,7 @@ export class TextMorph {
           })
         : value;
 
-    // An empty first value is normally nothing to draw; a plugin that cuts the whole value may draw it.
-    const drawsEmpty =
-      this.isInitialRender && this.plugins.some((plugin) => plugin.whole);
-    if (formatted === this.data && !drawsEmpty) return;
+    if (formatted === this.data) return;
     this.data = formatted;
     this.stopTween();
 
@@ -1002,17 +989,6 @@ export class TextMorph {
       arriving: 0,
       leaving: leaving.length,
       was,
-      now: this.currentMeasures,
-      before: this.prevMeasures,
-      extent: {
-        width: Math.max(
-          0,
-          ...[
-            ...Object.values(this.currentMeasures),
-            ...Object.values(this.prevMeasures),
-          ].map((m) => m.x + m.width),
-        ),
-      },
       pairs: replacements(
         inFlow,
         exitingSet,
@@ -1371,8 +1347,6 @@ export class TextMorph {
       arriving: scene.arriving,
       leaving: scene.leaving,
       was: scene.was.get(id),
-      at: (name === "exit" ? scene.before : scene.now)[id],
-      extent: scene.extent,
       replaces: name === "enter" ? scene.pairs.get(box) : undefined,
       replacedBy: name === "exit" ? scene.pairs.get(box) : undefined,
     };

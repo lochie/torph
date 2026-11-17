@@ -6,7 +6,7 @@ import { Plugins, type PluginName } from "@/surfaces/plugins";
 export const metadata: Metadata = {
   title: "Plugins • Torph",
   description:
-    "Plugins change how torph cuts text up and how it moves: blur, words, scramble, flap, typewriter, tokens, odometer, wave, wipe, caseless, anagram, stack, squash, redline, countup, skeleton, magnet, weight, rows, trend and reveal, each with its source.",
+    "Plugins change how torph cuts text up and how it moves: blur, words, scramble, flap, typewriter, tokens, odometer, wave, caseless, stack, squash, redline, countup, rows, trend and reveal, each with its source.",
 };
 
 const NAMES: PluginName[] = [
@@ -18,16 +18,11 @@ const NAMES: PluginName[] = [
   "tokens",
   "odometer",
   "wave",
-  "wipe",
   "caseless",
-  "anagram",
   "stack",
   "squash",
   "redline",
   "countup",
-  "skeleton",
-  "magnet",
-  "weight",
   "rows",
   "trend",
   "reveal",

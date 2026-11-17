@@ -72,20 +72,10 @@
       "import": "./dist/plugins/wave/index.mjs",
       "require": "./dist/plugins/wave/index.js"
     },
-    "./plugins/wipe": {
-      "types": "./dist/plugins/wipe/index.d.ts",
-      "import": "./dist/plugins/wipe/index.mjs",
-      "require": "./dist/plugins/wipe/index.js"
-    },
     "./plugins/caseless": {
       "types": "./dist/plugins/caseless/index.d.ts",
       "import": "./dist/plugins/caseless/index.mjs",
       "require": "./dist/plugins/caseless/index.js"
-    },
-    "./plugins/anagram": {
-      "types": "./dist/plugins/anagram/index.d.ts",
-      "import": "./dist/plugins/anagram/index.mjs",
-      "require": "./dist/plugins/anagram/index.js"
     },
     "./plugins/stack": {
       "types": "./dist/plugins/stack/index.d.ts",
@@ -106,21 +96,6 @@
       "types": "./dist/plugins/countup/index.d.ts",
       "import": "./dist/plugins/countup/index.mjs",
       "require": "./dist/plugins/countup/index.js"
-    },
-    "./plugins/skeleton": {
-      "types": "./dist/plugins/skeleton/index.d.ts",
-      "import": "./dist/plugins/skeleton/index.mjs",
-      "require": "./dist/plugins/skeleton/index.js"
-    },
-    "./plugins/magnet": {
-      "types": "./dist/plugins/magnet/index.d.ts",
-      "import": "./dist/plugins/magnet/index.mjs",
-      "require": "./dist/plugins/magnet/index.js"
-    },
-    "./plugins/weight": {
-      "types": "./dist/plugins/weight/index.d.ts",
-      "import": "./dist/plugins/weight/index.mjs",
-      "require": "./dist/plugins/weight/index.js"
     },
     "./plugins/rows": {
       "types": "./dist/plugins/rows/index.d.ts",

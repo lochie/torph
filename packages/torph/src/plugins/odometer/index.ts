@@ -113,20 +113,31 @@ export function odometer({
         roll(ctx.mover, Number(ctx.was), Number(to), ctx),
       ]);
     },
-    // A new place, as the figure grows, turns from zero.
+    // A new place, as the figure grows, turns from zero, fading in so it doesn't pop up out of nowhere.
     enter: (_box, ctx) =>
-      roll(ctx.mover, 0, Number(ctx.mover.textContent), ctx),
+      Promise.all([
+        roll(ctx.mover, 0, Number(ctx.mover.textContent), ctx),
+        ctx.mover.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: ctx.duration / 2,
+          fill: "backwards",
+        }).finished,
+      ]),
     // A place the figure loses leaves the way the wheels turn.
-    exit: (_box, { mover, line, duration }) => [
-      mover.animate(
+    exit: (_box, { mover, line, duration, signal }) => {
+      const leave = mover.animate(
         {
           transform: `translateY(${latest === UP ? -line.height : line.height}px)`,
           opacity: 0,
           offset: 1,
         },
         { duration: duration / 2, fill: "both" },
-      ),
-    ],
+      );
+      // Cut short by the next change, it hurries off rather than sit under a place that arrives where it stood.
+      signal.addEventListener("abort", () => leave.updatePlaybackRate(4), {
+        once: true,
+      });
+      return [leave];
+    },
   };
 
   return {

@@ -440,24 +440,7 @@ describe("an author's override of a built-in kind", () => {
   });
 });
 
-describe("where a box rests", () => {
-  it("hands every hook its place and the value's extent", () => {
-    const seen: string[] = [];
-    const plugin: TorphPlugin = {
-      name: "where",
-      animate: {
-        text: {
-          enter: (_box, c) =>
-            void seen.push(`${typeof c.at?.x}:${typeof c.extent.width}`),
-        },
-      },
-    };
-    const { morph } = mount({ plugins: [plugin] });
-    morph.update("a");
-    morph.update("ab");
-    expect(seen).toEqual(["number:number"]);
-  });
-});
+describe("where a box rests", () => {});
 
 describe("whole", () => {
   it("lets a plugin cut the whole value, reusing what it likes", () => {
@@ -583,23 +566,6 @@ describe("tween", () => {
   });
 });
 
-describe("mount", () => {
-  it("runs when the morph is set up, and its cleanup on destroy", () => {
-    const calls: string[] = [];
-    const plugin: TorphPlugin = {
-      name: "life",
-      mount: () => {
-        calls.push("mount");
-        return () => calls.push("unmount");
-      },
-    };
-    const { morph } = mount({ plugins: [plugin] });
-    morph.update("a");
-    morph.destroy();
-    expect(calls).toEqual(["mount", "unmount"]);
-  });
-});
-
 describe("ambient animations", () => {
   it("doesn't hold a morph open for an endless one", async () => {
     const done: string[] = [];
@@ -623,25 +589,6 @@ describe("ambient animations", () => {
     morph.update("ab");
     await wait(150);
     expect(done).toEqual(["complete"]);
-  });
-});
-
-describe("an empty first value", () => {
-  it("is drawn when a plugin cuts the whole value", () => {
-    const plugin: TorphPlugin = {
-      name: "blank",
-      whole: (value, { id }) => [{ id: id(), string: value || "…" }],
-    };
-    const element = document.createElement("span");
-    document.body.appendChild(element);
-    const morph = new TextMorph({
-      element,
-      plugins: [plugin],
-      respectReducedMotion: false,
-    });
-    mounted.push(morph);
-    morph.update("");
-    expect(element.querySelector("[torph-text]")?.textContent).toBe("…");
   });
 });
 

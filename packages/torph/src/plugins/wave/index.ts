@@ -42,7 +42,8 @@ export function wave({
           ),
         ],
         // Falling, so it speeds up rather than settles.
-        exit: (box, { delta, duration, index, leaving }) => [
+        // All at once, with no stagger: leaving text gets out of the way of what arrives.
+        exit: (box, { delta, duration }) => [
           box.animate(
             {
               transform: `translate(${delta.x}px, calc(${delta.y}px + ${height} * 1.5)) rotate(10deg)`,
@@ -51,7 +52,6 @@ export function wave({
             },
             {
               duration: duration * 0.6,
-              delay: delay(index, leaving, duration * 0.6),
               easing: "cubic-bezier(0.55, 0, 1, 0.45)",
               fill: "both",
             },

@@ -13,16 +13,11 @@ import { typewriter } from "../typewriter";
 import { tokens } from "../tokens";
 import { odometer } from "../odometer";
 import { wave } from "../wave";
-import { wipe } from "../wipe";
 import { caseless } from "../caseless";
-import { anagram } from "../anagram";
 import { stack } from "../stack";
 import { squash } from "../squash";
 import { redline } from "../redline";
 import { countup } from "../countup";
-import { skeleton } from "../skeleton";
-import { magnet } from "../magnet";
-import { weight } from "../weight";
 import { rows } from "../rows";
 import { trend } from "../trend";
 import { reveal } from "../reveal";
@@ -429,18 +424,6 @@ describe("wave", () => {
   });
 });
 
-describe("wipe", () => {
-  it("clips the old text away and the new text in, numbers included", () => {
-    const { morph } = mount({ plugins: [wipe()] });
-    morph.update("a $5");
-    const calls = animations(() => morph.update("b $6"));
-    const wiped = calls
-      .filter((c) => c.frames.includes("inset("))
-      .map((c) => c.box.textContent);
-    expect(wiped.sort()).toEqual(["5", "6", "a", "b"]);
-  });
-});
-
 describe("caseless", () => {
   it("keeps every letter when a word changes case", () => {
     const { element, morph } = mount({ plugins: [caseless()] });
@@ -452,21 +435,6 @@ describe("caseless", () => {
         .join(""),
     ).toBe("Hello\u00A0World");
     expect(element.querySelectorAll("[torph-exiting]").length).toBe(0);
-  });
-});
-
-describe("anagram", () => {
-  it("reuses every letter, across words and in any order", () => {
-    const { element, morph } = mount({ plugins: [anagram()] });
-    morph.update("dormitory");
-    const before = boxes(element);
-    morph.update("dirty room");
-    const after = boxes(element);
-    expect(after.map((b) => b.textContent).join("")).toBe("dirty\u00A0room");
-    // Every letter of "dirty room" was already in "dormitory"; only the space is new.
-    expect(
-      after.filter((b) => !before.includes(b)).map((b) => b.textContent),
-    ).toEqual(["\u00A0"]);
   });
 });
 
@@ -572,76 +540,6 @@ describe("countup", () => {
   it("leaves text that isn't a figure to morph as usual", () => {
     const plugin = countup();
     expect(plugin.tween!("Saving", "Saved", { duration: 400 })).toBeNull();
-  });
-});
-
-describe("skeleton", () => {
-  it("holds an empty value's place with a shimmering bar, and swaps it for text", () => {
-    const element = document.createElement("span");
-    document.body.appendChild(element);
-    const morph = new TextMorph({
-      element,
-      plugins: [skeleton({ length: 4 })],
-      respectReducedMotion: false,
-    });
-    morph.update("");
-    const bone = element.querySelector("[torph-kind=bone]");
-    expect(bone?.textContent).toBe("\u2007".repeat(4));
-    morph.update("Ada");
-    expect(bone!.hasAttribute("torph-exiting")).toBe(true);
-    expect(
-      boxes(element)
-        .map((b) => b.textContent)
-        .join(""),
-    ).toBe("Ada");
-    morph.destroy();
-  });
-});
-
-describe("magnet", () => {
-  it("pushes letters near the pointer away, and lets go when it leaves", async () => {
-    const { element, morph } = mount({ plugins: [magnet({ radius: 50 })] });
-    morph.update("ab");
-    const rect = Element.prototype.getBoundingClientRect;
-    Element.prototype.getBoundingClientRect = function (this: Element) {
-      return this.textContent === "a"
-        ? new DOMRect(0, 0, 10, 20)
-        : rect.call(this);
-    };
-    try {
-      element.dispatchEvent(
-        new PointerEvent("pointermove", { clientX: 20, clientY: 10 }),
-      );
-      await wait(40);
-      const a = boxes(element).find((b) => b.textContent === "a")!;
-      // Pushed left, away from a pointer to its right.
-      expect(a.style.translate).toMatch(/^-/);
-      element.dispatchEvent(new PointerEvent("pointerleave"));
-      await wait(40);
-      expect(a.style.translate).toBe("");
-    } finally {
-      Element.prototype.getBoundingClientRect = rect;
-    }
-    morph.destroy();
-    expect(element.hasAttribute("torph-magnet")).toBe(false);
-  });
-});
-
-describe("weight", () => {
-  it("brings letters in heavy and thins leaving ones away", () => {
-    const { morph } = mount({ plugins: [weight()] });
-    morph.update("ab");
-    const calls = animations(() => morph.update("cb"));
-    expect(
-      calls
-        .filter((c) => c.frames.includes('"fontWeight":"900"'))
-        .map((c) => c.box.textContent),
-    ).toEqual(["c"]);
-    expect(
-      calls
-        .filter((c) => c.frames.includes('"fontWeight":"100"'))
-        .map((c) => c.box.textContent),
-    ).toEqual(["a"]);
   });
 });
 
@@ -762,14 +660,11 @@ describe("at rest", () => {
     tokens,
     odometer,
     wave,
-    wipe,
     caseless,
-    anagram,
     stack,
     squash,
     redline,
     countup,
-    weight,
     rows,
     trend,
     reveal,
@@ -790,34 +685,4 @@ describe("at rest", () => {
       expect(element.querySelectorAll("[torph-id]").length).toBe(0);
     });
   }
-
-  it("skeleton keeps its bone in a box, and the text at rest as plain text", async () => {
-    const { element, morph } = mount(
-      { plugins: [skeleton()], duration: 20 },
-      { rest: true },
-    );
-    morph.update("");
-    expect(element.querySelector('[torph-kind="bone"]')).not.toBe(null);
-    morph.update("Ready");
-    await wait(200);
-    expect(element.querySelector("[torph-text]")?.textContent).toBe("Ready");
-    morph.update("");
-    await wait(200);
-    expect(element.querySelector('[torph-kind="bone"]')).not.toBe(null);
-  });
-
-  it("magnet keeps a box per letter at rest", async () => {
-    const { element, morph } = mount(
-      { plugins: [magnet()], duration: 20 },
-      { rest: true },
-    );
-    morph.update("hi you");
-    expect(
-      Array.from(element.querySelectorAll("[torph-id]"), (b) => b.textContent),
-    ).toEqual(["h", "i", " ", "y", "o", "u"]);
-    morph.update("hi me");
-    await wait(200);
-    expect(element.querySelector("[torph-text]")).toBe(null);
-    expect(element.querySelectorAll("[torph-id]").length).toBe(5);
-  });
 });

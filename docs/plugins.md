@@ -285,7 +285,7 @@ New characters cycle through random glyphs before landing. This one needs things
 - **Writing only to `mover`**, so a slot box keeps its inner span.
 - **A stable width.** The box would change width on every glyph and reflow the line each frame, but the engine already fits every box to its text's width for the length of the morph.
 
-## Three more, and what they needed
+## Flap, typewriter and tokens
 
 - **`flap`** turns each place round a drum to its new letter, and nothing slides. It claims every word and keeps box _i_ for letter _i_, with an `affinity` of 1 so any word pairs with the one in its place. A staying box changes its text, so hooks get `was`, the text it had before the morph.
 - **`typewriter`** backspaces from the end, then types. Hooks get their `index` among the boxes on their side and how many are `arriving` and `leaving`, which is all the timing needs. Blur uses the same to spread its stagger.
@@ -293,38 +293,36 @@ New characters cycle through random glyphs before landing. This one needs things
 
 A plugin that claims a replaced run with no hook for it hands the run back to its boxes, so blur, flap and typewriter stay letter by letter where `groups()` would collapse a long run. Arriving and leaving boxes are also paired by the gap they share (`replaces` / `replacedBy`).
 
-## Four more again
+## Odometer, wave and caseless
 
 - **`odometer`** claims figures and keeps each place's box, lined up from the right, so a staying digit turns through every digit to its new one. It needs nothing new: `was` already says where to turn from.
 - **`wave`** drops letters in on its own bouncing spring, and lets them fall. Nothing new.
-- **`wipe`** times each box by where the edge crosses it, so hooks get `at` (where the box rests) and `extent` (how wide the value is), both from measurements the engine already takes. It wipes digits too: lookup now goes plugin by plugin, so an earlier plugin's override comes before a later plugin's own kind.
+- Hook lookup goes plugin by plugin, so an earlier plugin's override comes before a later plugin's own kind.
 - **`caseless`** needs the diff's letter matching to ignore case: `fold(char)` keys the matching, and `affinity` pairs words that differ only in case.
 
 Blur also gained `maxShift`: a word that would travel more than three characters leaves and arrives instead of sliding, as the reference effect does, and its stagger fits in 30% of the duration.
 
-## And four more
+## Stack, squash and redline
 
-- **`anagram`** reuses letters across the whole value in any order, and **`stack`** draws the whole value as one card. Both cut the entire value themselves through `whole(value, ctx)`, which runs in place of the word-by-word diff; the previous IDs are reserved so a fresh one can't collide.
+- **`stack`** draws the whole value as one card. It cuts the entire value itself through `whole(value, ctx)`, which runs in place of the word-by-word diff; the previous IDs are reserved so a fresh one can't collide.
 - **`squash`** stretches moving text along its path and squashes it on landing, from the `delta` hooks already get. Nothing new.
 - **`redline`** keeps removed words in the line, struck through, while added words arrive after them. `linger` holds leaving boxes in flow for that many durations, then the engine takes them out and closes the line up as its own small morph. A change that arrives sooner takes lingering text out at once, before anything is measured.
 
-## Four more, again
+## Countup, and endless animations
 
 - **`countup`** counts through the values between. `tween(from, to)` returns timed values; the engine morphs to each in turn, tells a reader only the destination, fires start and complete once for the whole count, and cancels the rest of it when the value changes again.
-- **`skeleton`** holds an empty value's place with a shimmering bar. An endless animation is ambient, so a morph never waits on it, and with a plugin that cuts the whole value, an empty first value is drawn rather than skipped. The shimmer is drawn on the bar's box, so `boxes(value)` keeps an empty value in boxes at rest.
-- **`magnet`** pushes letters away from the pointer. `mount(root)` runs for as long as the morph lives and returns its cleanup; it moves letters with `translate`, which composes with the morph's own transforms. It pushes letters at rest, so `boxes: () => true` keeps a box per letter there.
-- **`weight`** animates a variable font's weight. Nothing new: each box keeps its fitted width while its glyph grows and shrinks.
+- An endless animation is ambient: a morph never waits on it, so a plugin's looping CSS can't keep text from settling.
 
 **`redline`** also diffs several lines a line at a time, like code: an unchanged line keeps its boxes, a changed one is matched word by word against the line it replaced, and a removed line keeps its own row, line break included, until the line closes up.
 
-## Three more, and demos
+## Rows, trend and reveal
 
 - **`rows`** draws each line as one box, known by a key, so a reordered list slides its rows rather than retyping them. It cuts the whole value and reuses last value's IDs by key: `whole` holds back the previous IDs, so a box only carries over when the plugin hands its ID on.
 - **`trend`** flashes what changes green or red with the figure's direction, through `decorate` beside the numbers' own motion. Direction needs the value, so `read` now gets `{ from, to }`, the text on screen and the text it becomes.
 - **`reveal`** keeps each place's box and turns it over to its new character, like flap without the drum.
 - **`odometer`** takes a colon as a separator, so a clock counts down.
 
-The site gained a "try it" field that runs any plugin over typed text, a streaming reply through `skeleton()` and `blur()` together, and a countdown.
+The site gained a countdown, and a demo at the top of the plugins page that stacks any of them, starting from `classic()`.
 
 ## Decisions
 
