@@ -1131,6 +1131,32 @@ describe("direction", () => {
   });
 });
 
+describe("a hidden tab", () => {
+  it("swaps the text without animating, so no exits are left waiting on a frame", () => {
+    const { element, morph } = mount();
+    morph.update("hello");
+    const visibility = Object.getOwnPropertyDescriptor(
+      document,
+      "visibilityState",
+    );
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "hidden",
+    });
+    try {
+      morph.update("hello world");
+      morph.update("goodbye");
+      expect(element.textContent).toBe("goodbye");
+      expect(element.querySelector(`[${ATTR_EXITING}]`)).toBeNull();
+      expect(element.getAnimations({ subtree: true })).toEqual([]);
+    } finally {
+      if (visibility)
+        Object.defineProperty(document, "visibilityState", visibility);
+      else delete (document as { visibilityState?: unknown }).visibilityState;
+    }
+  });
+});
+
 describe("exactly one of complete and cancel per morph", () => {
   const settle = () => new Promise((resolve) => setTimeout(resolve, 250));
 

@@ -104,6 +104,7 @@ export const DEFAULT_TEXT_MORPH_OPTIONS = {
   numbers: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
+const STILL = 0.1; // px — a box that moved less keeps its running animation rather than a new one, which is garbage on every update
 const PROBE = 100; // px — a known layout length, to read an ancestor transform off the screen.
 
 /** The value as text, one node per line — empty ones included, so a line index finds its node. */
@@ -540,7 +541,11 @@ export class TextMorph {
 
   private isDisabled(): boolean {
     return Boolean(
-      this.options.disabled || this.reducedMotion?.prefersReducedMotion,
+      this.options.disabled ||
+        this.reducedMotion?.prefersReducedMotion ||
+        // A hidden tab draws no frames, so exits never finish and pile up in the DOM.
+        (typeof document !== "undefined" &&
+          document.visibilityState === "hidden"),
     );
   }
 
@@ -606,6 +611,7 @@ export class TextMorph {
         this.textNode = null;
         this.generation++;
         this.morphing = false;
+        clearContainerTransition(this.element);
         this.element.textContent = formatted;
         // A later diff against these would animate from elements no longer in the DOM.
         this.previousSegments = [];
@@ -1005,6 +1011,10 @@ export class TextMorph {
       const { dx: deltaX, dy: deltaY } = deltaKey
         ? computeDelta(this.prevMeasures, firstFrameMeasures, deltaKey)
         : { dx: 0, dy: 0 };
+
+      // Already heading where it rests, so left alone rather than restarted.
+      if (!isNew && Math.abs(deltaX) < STILL && Math.abs(deltaY) < STILL)
+        return;
 
       const kind = kinds.get(key);
 
