@@ -1201,7 +1201,7 @@ export class TextMorph {
       states.set(
         plugin,
         involved && plugin.read
-          ? plugin.read(this.element, style)
+          ? plugin.read(this.element, style, { from: this.shown, to: value })
           : plugin.idle,
       );
     }

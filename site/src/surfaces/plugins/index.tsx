@@ -11,7 +11,7 @@ import { WordsDemo } from "./words";
 import { FlapDemo } from "./flap";
 import { TypewriterDemo } from "./typewriter";
 import { TokensDemo } from "./tokens";
-import { OdometerDemo } from "./odometer";
+import { CountdownDemo, OdometerDemo } from "./odometer";
 import { WaveDemo } from "./wave";
 import { WipeDemo } from "./wipe";
 import { CaselessDemo } from "./caseless";
@@ -20,7 +20,11 @@ import { StackDemo } from "./stack";
 import { SquashDemo } from "./squash";
 import { RedlineCodeDemo, RedlineDemo } from "./redline";
 import { CountupDemo } from "./countup";
-import { SkeletonDemo } from "./skeleton";
+import { RowsDemo } from "./rows";
+import { TrendDemo } from "./trend";
+import { RevealDemo } from "./reveal";
+import { TryIt } from "./try";
+import { SkeletonDemo, StreamingReplyDemo } from "./skeleton";
 import { MagnetDemo } from "./magnet";
 import { WeightDemo } from "./weight";
 import styles from "./styles.module.scss";
@@ -43,7 +47,10 @@ export type PluginName =
   | "countup"
   | "skeleton"
   | "magnet"
-  | "weight";
+  | "weight"
+  | "rows"
+  | "trend"
+  | "reveal";
 
 const PLUGINS: {
   name: PluginName;
@@ -89,7 +96,12 @@ const PLUGINS: {
     name: "odometer",
     summary:
       "Figures count like a car's odometer, every wheel turning the way the value went.",
-    Demo: OdometerDemo,
+    Demo: () => (
+      <>
+        <OdometerDemo />
+        <CountdownDemo />
+      </>
+    ),
   },
   {
     name: "wave",
@@ -148,7 +160,12 @@ const PLUGINS: {
     name: "skeleton",
     summary:
       "While the value is empty a shimmering bar holds its place, and the text fades in over it.",
-    Demo: SkeletonDemo,
+    Demo: () => (
+      <>
+        <SkeletonDemo />
+        <StreamingReplyDemo />
+      </>
+    ),
   },
   {
     name: "magnet",
@@ -161,6 +178,24 @@ const PLUGINS: {
     summary:
       "Letter by letter, new text arrives heavy and relaxes to its weight; leaving text thins away.",
     Demo: WeightDemo,
+  },
+  {
+    name: "rows",
+    summary:
+      "Each line is one box, known by its key, so a reordered list slides every row to its new place.",
+    Demo: RowsDemo,
+  },
+  {
+    name: "trend",
+    summary:
+      "What changes in a figure flashes green as it rises and red as it falls, then fades back.",
+    Demo: TrendDemo,
+  },
+  {
+    name: "reveal",
+    summary:
+      "Each place keeps its box and turns over to its new character, like a masked value revealed.",
+    Demo: RevealDemo,
   },
 ];
 
@@ -182,6 +217,11 @@ export const Plugins = ({
         and grouped replacements are plugins too, on by default. Each one below
         is its whole source.
       </p>
+
+      <section className={styles.plugin}>
+        <h2 className={styles.name}>try it</h2>
+        <TryIt />
+      </section>
 
       {PLUGINS.map(({ name, summary, Demo }) => (
         <section key={name} className={styles.plugin}>

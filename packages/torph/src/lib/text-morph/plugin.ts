@@ -126,7 +126,12 @@ export type TorphPlugin<State = unknown> = {
   token?(word: string): string;
   /** 0–1, or null to defer to character similarity. Asked of every pair, claimed or not. */
   affinity?(from: string, to: string): number | null;
-  read?(root: HTMLElement, style: CSSStyleDeclaration): State;
+  /** Once per morph, before anything changes; `change` is the text on screen and the text it becomes. */
+  read?(
+    root: HTMLElement,
+    style: CSSStyleDeclaration,
+    change: { from: string; to: string },
+  ): State;
   /** Before the "before" measure, so both FLIP measures see it. */
   prepare?(root: HTMLElement, state: State): void;
   teardown?(root: HTMLElement): void;

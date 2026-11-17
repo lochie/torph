@@ -22,6 +22,9 @@ import { countup } from "../countup";
 import { skeleton } from "../skeleton";
 import { magnet } from "../magnet";
 import { weight } from "../weight";
+import { rows } from "../rows";
+import { trend } from "../trend";
+import { reveal } from "../reveal";
 
 // As in engine.test.ts: happy-dom rejects a cancelled animation's `finished` for real.
 beforeAll(() => {
@@ -673,6 +676,73 @@ describe("redline across lines", () => {
   });
 });
 
+describe("odometer, on a clock", () => {
+  it("takes a colon as a separator, and turns the places either side", () => {
+    const { element, morph } = mount({ plugins: [odometer()] });
+    morph.update("04:59");
+    const before = boxes(element);
+    morph.update("04:58");
+    expect(boxes(element)).toEqual(before);
+    expect(
+      before.filter((b) => b.getAttribute("torph-kind")?.startsWith("wheel-"))
+        .length,
+    ).toBe(4);
+  });
+});
+
+describe("rows", () => {
+  it("keeps each row's box by its key, wherever the row moves", () => {
+    const { element, morph } = mount({
+      plugins: [rows({ key: (line) => line.split(" ")[0]! })],
+    });
+    morph.update("Ada 30\nGrace 20\nKatherine 10");
+    const [ada, grace, katherine] = boxes(element).filter(
+      (b) => b.tagName !== "BR",
+    );
+    morph.update("Katherine 40\nAda 30\nGrace 20");
+    const after = boxes(element).filter((b) => b.tagName !== "BR");
+    expect(after).toEqual([katherine, ada, grace]);
+    expect(after[0]!.textContent).toBe("Katherine 40");
+  });
+});
+
+describe("trend", () => {
+  it("flashes arriving text green as the figure rises, red as it falls", () => {
+    const { morph } = mount({ plugins: [trend({ up: "lime", down: "red" })] });
+    morph.update("$1,200");
+    const rising = animations(() => morph.update("$1,250"));
+    expect(rising.some((c) => c.frames.includes("lime"))).toBe(true);
+    const falling = animations(() => morph.update("$1,100"));
+    expect(falling.some((c) => c.frames.includes("red"))).toBe(true);
+    expect(falling.some((c) => c.frames.includes("lime"))).toBe(false);
+  });
+
+  it("leaves text without a figure alone", () => {
+    const { morph } = mount({ plugins: [trend({ up: "lime", down: "red" })] });
+    morph.update("Loading");
+    const calls = animations(() => morph.update("Ready"));
+    expect(calls.some((c) => /lime|red/.test(c.frames))).toBe(false);
+  });
+});
+
+describe("reveal", () => {
+  it("keeps each place's box, and turns it over to the new character", async () => {
+    const { element, morph } = mount({
+      plugins: [reveal()],
+      duration: 60,
+    });
+    morph.update("••••");
+    const before = boxes(element);
+    const calls = animations(() => morph.update("abcd"));
+    expect(boxes(element)).toEqual(before);
+    // Still the old character until its turn.
+    expect(before.map((b) => b.textContent).join("")).toBe("••••");
+    expect(calls.filter((c) => c.frames.includes("rotateY")).length).toBe(4);
+    await wait(200);
+    expect(before.map((b) => b.textContent).join("")).toBe("abcd");
+  });
+});
+
 describe("at rest", () => {
   const all = {
     blur,
@@ -691,6 +761,9 @@ describe("at rest", () => {
     redline,
     countup,
     weight,
+    rows,
+    trend,
+    reveal,
   };
   for (const [name, make] of Object.entries(all)) {
     it(`${name} settles to the value as plain text`, async () => {

@@ -5,7 +5,7 @@ import type {
 } from "../../lib/text-morph/plugin";
 
 // A figure, with a few affix characters either side: "$1,299", "42%", "-3.5".
-const FIGURE = /^[^\d\s]{0,3}\d[\d.,'\u00A0\u202F]*[^\d\s]{0,3}$/;
+const FIGURE = /^[^\d\s]{0,3}\d[\d.,:'\u00A0\u202F]*[^\d\s]{0,3}$/;
 // Prefix, the run from the first digit to the last, suffix.
 const PARTS = /^(\D*)(\d(?:.*\d)?)(\D*)$/u;
 

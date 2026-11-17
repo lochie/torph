@@ -206,6 +206,47 @@ export const Filters = () => {
   );
 };
 
+// Left to right and right to left, joined scripts and none: the root takes its direction from each.
+export const GREETINGS = [
+  "Hello",
+  "Bonjour",
+  "مرحبا",
+  "Привет",
+  "שלום",
+  "こんにちは",
+  "नमस्ते",
+];
+
+export const Greetings = () => {
+  const index = useCycle(GREETINGS.length, 1800);
+
+  return (
+    <div className={styles.chip}>
+      <TextMorph>{GREETINGS[index]!}</TextMorph>
+    </div>
+  );
+};
+
+// Most of it stays: only the figure and the plural change.
+export const AGO = [
+  "just now",
+  "1 min ago",
+  "2 mins ago",
+  "3 mins ago",
+  "10 mins ago",
+  "1 hour ago",
+];
+
+export const RelativeTime = () => {
+  const index = useCycle(AGO.length, 1600);
+
+  return (
+    <span className={`${styles.stage} ${styles.stageSmall}`}>
+      Edited <TextMorph>{AGO[index]!}</TextMorph>
+    </span>
+  );
+};
+
 export const ANNOUNCED = [
   "Processing transaction",
   "Transaction confirmed",

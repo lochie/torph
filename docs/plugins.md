@@ -315,6 +315,15 @@ Blur also gained `maxShift`: a word that would travel more than three characters
 
 **`redline`** also diffs several lines a line at a time, like code: an unchanged line keeps its boxes, a changed one is matched word by word against the line it replaced, and a removed line keeps its own row, line break included, until the line closes up.
 
+## Three more, and demos
+
+- **`rows`** draws each line as one box, known by a key, so a reordered list slides its rows rather than retyping them. It cuts the whole value and reuses last value's IDs by key: `whole` holds back the previous IDs, so a box only carries over when the plugin hands its ID on.
+- **`trend`** flashes what changes green or red with the figure's direction, through `decorate` beside the numbers' own motion. Direction needs the value, so `read` now gets `{ from, to }`, the text on screen and the text it becomes.
+- **`reveal`** keeps each place's box and turns it over to its new character, like flap without the drum.
+- **`odometer`** takes a colon as a separator, so a clock counts down.
+
+The site gained a "try it" field that runs any plugin over typed text, a streaming reply through `skeleton()` and `blur()` together, and a countdown.
+
 ## Decisions
 
 1. **Group replacement is a plugin.** It becomes `groups()`, a built-in on by default, through the `runs` hooks above. Plugins can claim runs of their own kinds.

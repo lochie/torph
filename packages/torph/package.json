@@ -122,6 +122,21 @@
       "import": "./dist/plugins/weight/index.mjs",
       "require": "./dist/plugins/weight/index.js"
     },
+    "./plugins/rows": {
+      "types": "./dist/plugins/rows/index.d.ts",
+      "import": "./dist/plugins/rows/index.mjs",
+      "require": "./dist/plugins/rows/index.js"
+    },
+    "./plugins/trend": {
+      "types": "./dist/plugins/trend/index.d.ts",
+      "import": "./dist/plugins/trend/index.mjs",
+      "require": "./dist/plugins/trend/index.js"
+    },
+    "./plugins/reveal": {
+      "types": "./dist/plugins/reveal/index.d.ts",
+      "import": "./dist/plugins/reveal/index.mjs",
+      "require": "./dist/plugins/reveal/index.js"
+    },
     "./debug": {
       "types": "./dist/debug/index.d.ts",
       "import": "./dist/debug/index.mjs",

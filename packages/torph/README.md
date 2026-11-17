@@ -239,6 +239,9 @@ options, and the morph is only rebuilt when those change.
 | `torph/plugins/skeleton`   | While the value is empty a shimmering bar holds its place, and the text fades in over it. `{ length, color }`                                                                   |
 | `torph/plugins/magnet`     | Letters near the pointer lean away from it, and settle back when it leaves. `{ radius, strength }`                                                                              |
 | `torph/plugins/weight`     | New text arrives heavy and relaxes to its weight; leaving text thins away. Needs a variable font. `{ heavy, light }`                                                            |
+| `torph/plugins/rows`       | Each line is one box, known by its key, so a reordered list slides every row to its new place. `{ key }`                                                                        |
+| `torph/plugins/trend`      | What changes in a figure flashes green as it rises and red as it falls. `{ up, down }`                                                                                          |
+| `torph/plugins/reveal`     | Each place turns over in place to its new character, like a masked value revealed. `{ stagger }`                                                                                |
 
 ### Writing a plugin
 

@@ -32,6 +32,9 @@ const entries = [
   { name: "plugins/skeleton", path: "plugins/skeleton/index.mjs" },
   { name: "plugins/magnet", path: "plugins/magnet/index.mjs" },
   { name: "plugins/weight", path: "plugins/weight/index.mjs" },
+  { name: "plugins/rows", path: "plugins/rows/index.mjs" },
+  { name: "plugins/trend", path: "plugins/trend/index.mjs" },
+  { name: "plugins/reveal", path: "plugins/reveal/index.mjs" },
 ];
 
 // `null` for an entry that isn't there, so a missing size never reads as zero.
