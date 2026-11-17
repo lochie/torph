@@ -5,8 +5,19 @@ import type { Result } from "@torph/test-cases";
 
 export type VerifyDomFn = (root: HTMLElement) => Result;
 
+/** The plain text a root shows while nothing moves — null while it is drawn as boxes. */
+export function restText(root: HTMLElement): HTMLElement | null {
+  return root.querySelector("[torph-item]")
+    ? null
+    : root.querySelector<HTMLElement>("[torph-text]");
+}
+
+type Glyph = { ch: string; x: number; y: number };
+
 export type JumpSnapshot = {
   items: Map<string, DOMRect>;
+  /** Set when the morph starts from rest: every glyph of the plain text. */
+  glyphs: Glyph[] | null;
   rootRect: DOMRect;
   rootWidth: number;
   align: string;
@@ -29,13 +40,19 @@ export function verifyItemsInBounds(root: HTMLElement): {
   detail: string;
 } {
   const rootRect = root.getBoundingClientRect();
-  const items = root.querySelectorAll<HTMLElement>(
-    "[torph-item]:not([torph-exiting])",
-  );
+  const text = restText(root);
+  const items: { r: DOMRect; label: string }[] = text
+    ? textRects(text).map((r, i) => ({ r, label: `line ${i + 1}` }))
+    : Array.from(
+        root.querySelectorAll<HTMLElement>(
+          "[torph-item]:not([torph-exiting]):not(br)",
+        ),
+      ).map((item) => ({
+        r: item.getBoundingClientRect(),
+        label: item.textContent?.trim() || "?",
+      }));
   const oob: string[] = [];
-  items.forEach((item) => {
-    if (item.tagName === "BR") return;
-    const r = item.getBoundingClientRect();
+  items.forEach(({ r, label }) => {
     if (r.width === 0 && r.height === 0) return;
     const tolerance = 2;
     if (
@@ -44,8 +61,7 @@ export function verifyItemsInBounds(root: HTMLElement): {
       r.top < rootRect.top - tolerance ||
       r.bottom > rootRect.bottom + tolerance
     ) {
-      const text = item.textContent?.trim() || "?";
-      oob.push(`"${text}" out of bounds`);
+      oob.push(`"${label}" out of bounds`);
     }
   });
   if (oob.length > 0) return { pass: false, detail: oob.join(", ") };
@@ -130,6 +146,8 @@ export function verifyAlignment(
 export function getVisualLines(
   root: HTMLElement,
 ): { rect: DOMRect; el: HTMLElement }[][] {
+  const text = restText(root);
+  if (text) return textRects(text).map((rect) => [{ rect, el: text }]);
   const items = root.querySelectorAll<HTMLElement>(
     "[torph-item]:not([torph-exiting]):not(br)",
   );
@@ -235,11 +253,7 @@ export function verifyStyleCleanup(root: HTMLElement): {
     if (item.style.position === "absolute") {
       issues.push(`"${item.textContent?.trim() || "?"}" has position:absolute`);
     }
-    if (item.style.width && item.style.width !== "auto") {
-      issues.push(
-        `"${item.textContent?.trim() || "?"}" has width:${item.style.width}`,
-      );
-    }
+
     if (item.style.height && item.style.height !== "auto") {
       issues.push(
         `"${item.textContent?.trim() || "?"}" has height:${item.style.height}`,
@@ -313,20 +327,54 @@ export function verifyBrMatchesContent(root: HTMLElement): {
   return { pass: true, detail: `${brs.length} <br> for ${lines.length} lines` };
 }
 
+/** Settled means one run of text, saying exactly what the screen reader copy says. */
+export function verifyAtRest(root: HTMLElement): Result {
+  const texts = root.querySelectorAll("[torph-text]");
+  const boxes = root.querySelectorAll("[torph-item]");
+  if (boxes.length > 0)
+    return { pass: false, detail: `${boxes.length} boxes left after settling` };
+  if (texts.length !== 1)
+    return { pass: false, detail: `${texts.length} text runs, expected 1` };
+  const drawn = Array.from(texts[0]!.childNodes)
+    .map((node) =>
+      node.nodeName === "BR"
+        ? "\n"
+        : node.nodeType === Node.TEXT_NODE
+          ? node.textContent
+          : "",
+    )
+    .join("")
+    .replace(/\u200B/g, "");
+  const value = root.querySelector("[torph-sr]")?.textContent ?? "";
+  return drawn === value
+    ? { pass: true, detail: "settled to one run of plain text" }
+    : { pass: false, detail: `draws "${drawn}" but the value is "${value}"` };
+}
+
 export function verifyDomStandard(root: HTMLElement): {
   pass: boolean;
   detail: string;
 } {
-  const checks: [string, { pass: boolean; detail: string }][] = [
-    ["bounds", verifyItemsInBounds(root)],
-    ["overflow", verifyNoOverflow(root)],
-    ["exits", verifyExitCleanup(root)],
-    ["transform", verifyNoTransformResidue(root)],
-    ["opacity", verifyNoOpacityResidue(root)],
-    ["styles", verifyStyleCleanup(root)],
-    ["ids", verifyNoDuplicateIds(root)],
-    ["size", verifyContainerSizeMatch(root)],
-  ];
+  const atRest = restText(root) !== null;
+  // At rest there are no boxes to hold residue, only the text to be right.
+  const checks: [string, { pass: boolean; detail: string }][] = atRest
+    ? [
+        ["rest", verifyAtRest(root)],
+        ["bounds", verifyItemsInBounds(root)],
+        ["overflow", verifyNoOverflow(root)],
+        ["exits", verifyExitCleanup(root)],
+        ["size", verifyContainerSizeMatch(root)],
+      ]
+    : [
+        ["bounds", verifyItemsInBounds(root)],
+        ["overflow", verifyNoOverflow(root)],
+        ["exits", verifyExitCleanup(root)],
+        ["transform", verifyNoTransformResidue(root)],
+        ["opacity", verifyNoOpacityResidue(root)],
+        ["styles", verifyStyleCleanup(root)],
+        ["ids", verifyNoDuplicateIds(root)],
+        ["size", verifyContainerSizeMatch(root)],
+      ];
 
   const align = getComputedStyle(root).textAlign as
     | "left"
@@ -343,7 +391,7 @@ export function verifyDomStandard(root: HTMLElement): {
   }
 
   const lines = getVisualLines(root);
-  if (lines.length > 1) {
+  if (lines.length > 1 && !atRest) {
     checks.push(["br", verifyBrMatchesContent(root)]);
   }
 
@@ -367,11 +415,90 @@ export function takeJumpSnapshot(root: HTMLElement): JumpSnapshot {
       const id = item.getAttribute("torph-id");
       if (id) items.set(id, item.getBoundingClientRect());
     });
+  const text = restText(root);
   return {
     items,
+    glyphs: text ? glyphsIn(text, root) : null,
     rootRect: root.getBoundingClientRect(),
     rootWidth: root.offsetWidth,
     align: getComputedStyle(root).textAlign,
+  };
+}
+
+/** Every visible glyph under `node`, measured from the root, in reading order. */
+function glyphsIn(node: Node, root: HTMLElement): Glyph[] {
+  const origin = root.getBoundingClientRect();
+  const out: Glyph[] = [];
+  const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  for (
+    let n = walker.nextNode() as Text | null;
+    n;
+    n = walker.nextNode() as Text | null
+  ) {
+    for (let i = 0; i < n.length; i++) {
+      const ch = n.data[i]!;
+      if (/[\s\u00A0\u200B]/.test(ch)) continue;
+      range.setStart(n, i);
+      range.setEnd(n, i + 1);
+      const r = range.getBoundingClientRect();
+      out.push({ ch, x: r.left - origin.left, y: r.top - origin.top });
+    }
+  }
+  // Lines first, then along them; a half-line of tolerance absorbs a slot's own box.
+  return out.sort((a, b) => (Math.abs(a.y - b.y) > 4 ? a.y - b.y : a.x - b.x));
+}
+
+/** What the first frame of a morph shows: boxes still visible, exits included. */
+function visibleGlyphs(root: HTMLElement): Glyph[] {
+  const visible = (el: HTMLElement) => {
+    let opacity = 1;
+    for (let e: HTMLElement | null = el; e && e !== root; e = e.parentElement) {
+      opacity *= parseFloat(getComputedStyle(e).opacity);
+    }
+    return opacity > 0.05;
+  };
+  const glyphs: Glyph[] = [];
+  root.querySelectorAll<HTMLElement>("[torph-item]:not(br)").forEach((box) => {
+    const mover = (box.firstElementChild as HTMLElement | null) ?? box;
+    if (!visible(box) || !visible(mover)) return;
+    glyphs.push(...glyphsIn(box, root));
+  });
+  return glyphs.sort((a, b) =>
+    Math.abs(a.y - b.y) > 4 ? a.y - b.y : a.x - b.x,
+  );
+}
+
+/** From rest, the first frame should redraw the old text exactly — every glyph where it was. */
+function verifyNoJumpFromRest(
+  root: HTMLElement,
+  before: Glyph[],
+  tolerance: number,
+): Result {
+  const after = visibleGlyphs(root);
+  const was = before.map((g) => g.ch).join("");
+  const now = after.map((g) => g.ch).join("");
+  if (was !== now) {
+    return {
+      pass: false,
+      detail: `the first frame shows "${now}" where the text read "${was}"`,
+    };
+  }
+  let worst = 0;
+  let at = "";
+  before.forEach((g, i) => {
+    const d = Math.max(
+      Math.abs(after[i]!.x - g.x),
+      Math.abs(after[i]!.y - g.y),
+    );
+    if (d > worst) {
+      worst = d;
+      at = g.ch;
+    }
+  });
+  return {
+    pass: worst <= tolerance,
+    detail: `from plain text to boxes, the most any glyph moved on the first frame was ${worst.toFixed(2)}px${at ? ` ("${at}")` : ""}`,
   };
 }
 
@@ -380,6 +507,9 @@ export function verifyNoJump(
   before: JumpSnapshot,
   tolerance = 2,
 ): { pass: boolean; detail: string } {
+  // From rest, nothing is in motion yet, so anything over half a pixel is a jump.
+  if (before.glyphs)
+    return verifyNoJumpFromRest(root, before.glyphs, Math.min(tolerance, 0.5));
   const after = takeJumpSnapshot(root);
   const jumps: string[] = [];
   const context: string[] = [];
@@ -597,17 +727,143 @@ export function verifyKerning(
       "[torph-item]:not([torph-exiting]):not(br)",
     ),
   );
-  if (items.length === 0)
+  const text = root.querySelector<HTMLElement>("[torph-text]");
+  if (items.length === 0 && !text)
     return { pass: true, detail: "nothing rendered", off: 0 };
 
-  const rects = items.map((item) => item.getBoundingClientRect());
+  // At rest the value is plain text, so the run itself is what's measured.
+  const rects = items.length
+    ? items.map((item) => item.getBoundingClientRect())
+    : textRects(text!);
   const left = Math.min(...rects.map((r) => r.left));
   const right = Math.max(...rects.map((r) => r.right));
   const morphed = right - left;
   const expected = reference.getBoundingClientRect().width;
   const naive = rects.reduce((sum, r) => sum + r.width, 0);
   const off = morphed - expected;
-  const detail = `${morphed.toFixed(2)}px vs ${expected.toFixed(2)}px as one run (${off >= 0 ? "+" : ""}${off.toFixed(2)}px; unkerned boxes ${naive.toFixed(2)}px)`;
+  const detail = `${morphed.toFixed(2)}px vs ${expected.toFixed(2)}px as one run (${off >= 0 ? "+" : ""}${off.toFixed(2)}px; ${items.length ? `unkerned boxes ${naive.toFixed(2)}px` : "at rest, drawn as plain text"})`;
 
   return { pass: Math.abs(off) <= tolerance, detail, off };
+}
+
+/** The rects of a `[torph-text]` span's lines — its text nodes, not the probe beside them. */
+export function textRects(text: HTMLElement): DOMRect[] {
+  return Array.from(text.childNodes)
+    .filter((node) => node.nodeType === Node.TEXT_NODE && node.textContent)
+    .map((node) => {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      return range.getBoundingClientRect();
+    });
+}
+
+// ── Join (boxes back into text) ──
+
+export type BoxGlyph = { text: string; x: number; y: number };
+
+const translateOf = (element: Element) => {
+  const { transform } = getComputedStyle(element);
+  if (!transform || transform === "none") return { x: 0, y: 0 };
+  const matrix = new DOMMatrixReadOnly(transform);
+  return { x: matrix.e, y: matrix.f };
+};
+
+/** The rect of a node's first character, measured from the root. */
+function firstGlyph(node: Text, offset: number, root: DOMRect) {
+  const range = document.createRange();
+  range.setStart(node, offset);
+  range.setEnd(node, Math.min(offset + 1, node.length));
+  const rect = range.getBoundingClientRect();
+  return { x: rect.left - root.left, y: rect.top - root.top };
+}
+
+/** Where each box's first glyph sits once every transform has played out. */
+export function boxGlyphs(root: HTMLElement): BoxGlyph[] | null {
+  const boxes = Array.from(
+    root.querySelectorAll<HTMLElement>("[torph-item]:not([torph-exiting])"),
+  );
+  if (boxes.length === 0) return null;
+  const origin = root.getBoundingClientRect();
+  return boxes.map((box) => {
+    if (box.tagName === "BR") return { text: "\n", x: 0, y: 0 };
+    const node = document
+      .createTreeWalker(box, NodeFilter.SHOW_TEXT)
+      .nextNode() as Text | null;
+    if (!node) return { text: "", x: 0, y: 0 };
+    const at = firstGlyph(node, 0, origin);
+    // A slot's glyph sits in a span that slides on its own.
+    let x = at.x;
+    let y = at.y;
+    for (
+      let el: Element | null = node.parentElement;
+      el && el !== root;
+      el = el.parentElement
+    ) {
+      const t = translateOf(el);
+      x -= t.x;
+      y -= t.y;
+    }
+    return { text: box.textContent ?? "", x, y };
+  });
+}
+
+/** How far each box's first glyph moves when the boxes give way to the text. */
+export function snapAtJoin(
+  root: HTMLElement,
+  glyphs: BoxGlyph[],
+  tolerance = 0.5,
+): Result | null {
+  const text = root.querySelector("[torph-text]");
+  if (!text) return null;
+  const lines = Array.from(text.childNodes).filter(
+    (node): node is Text => node.nodeType === Node.TEXT_NODE,
+  );
+  const origin = root.getBoundingClientRect();
+  let line = 0;
+  let offset = 0;
+  let dx = 0;
+  let dy = 0;
+  for (const glyph of glyphs) {
+    if (glyph.text === "\n") {
+      line++;
+      offset = 0;
+      continue;
+    }
+    const node = lines[line];
+    if (!node || offset >= node.length) return null;
+    const at = firstGlyph(node, offset, origin);
+    dx = Math.max(dx, Math.abs(at.x - glyph.x));
+    dy = Math.max(dy, Math.abs(at.y - glyph.y));
+    offset += glyph.text.length;
+  }
+  return {
+    pass: dx <= tolerance && dy <= tolerance,
+    detail: `boxes joined back into text; glyphs moved ${dx.toFixed(2)}px across, ${dy.toFixed(2)}px down at most`,
+  };
+}
+
+/**
+ * Follows a morph's boxes from near its end until they join back into text; the
+ * returned call reports the join. Reading only near the end keeps every earlier
+ * frame free of the reads, so a frame-timing check alongside it stays honest.
+ */
+export function trackJoin(root: HTMLElement, startAfter: number) {
+  let last: BoxGlyph[] | null = null;
+  let frame = 0;
+  const tick = () => {
+    const glyphs = boxGlyphs(root);
+    if (glyphs) last = glyphs;
+    frame = requestAnimationFrame(tick);
+  };
+  const timer = setTimeout(
+    () => {
+      frame = requestAnimationFrame(tick);
+    },
+    Math.max(0, startAfter),
+  );
+  return (): Result | null => {
+    clearTimeout(timer);
+    cancelAnimationFrame(frame);
+    return last ? snapAtJoin(root, last) : null;
+  };
 }

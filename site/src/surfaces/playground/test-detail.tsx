@@ -13,6 +13,7 @@ import type { JumpSnapshot, PerfResult } from "./verify-dom";
 import {
   FrameMonitor,
   takeJumpSnapshot,
+  trackJoin,
   verifyDomStandard,
   verifyMultiline,
   verifyNoJump,
@@ -100,6 +101,8 @@ export function TestDetail({
 
   const [dom, setDom] = React.useState<Result | null>(null);
   const [jump, setJump] = React.useState<Result | null>(null);
+  const [join, setJoin] = React.useState<Result | null>(null);
+  const joinRef = React.useRef<(() => Result | null) | null>(null);
   const [perf, setPerf] = React.useState<PerfResult | null>(null);
 
   const stageRef = React.useRef<HTMLDivElement | null>(null);
@@ -118,6 +121,7 @@ export function TestDetail({
     setCopied(false);
     setDom(null);
     setJump(null);
+    setJoin(null);
     setPerf(null);
   }, [test.label]);
 
@@ -137,6 +141,8 @@ export function TestDetail({
     const el = root();
     if (!el) return;
     preMorph.current = takeJumpSnapshot(el);
+    joinRef.current?.();
+    joinRef.current = trackJoin(el, SPEEDS[speed] - 150);
     // Reported on completion: a state update mid-morph re-renders what it measures.
     requestAnimationFrame(() => {
       if (preMorph.current) {
@@ -152,10 +158,15 @@ export function TestDetail({
       setJump(pendingJump.current);
       pendingJump.current = null;
     }
+    if (joinRef.current) {
+      setJoin(joinRef.current());
+      joinRef.current = null;
+    }
     const el = root();
     if (!el) return;
     setDom(
-      test.minLines
+      // Only a step whose value has a break can be held to a line count.
+      test.minLines && test.values[index]!.includes("\n")
         ? combineResults(
             verifyDomStandard(el),
             verifyMultiline(el, test.minLines),
@@ -289,6 +300,7 @@ export function TestDetail({
             [
               ["DOM", dom],
               ["JUMP", jump],
+              ["JOIN", join],
               [
                 "FRAMES",
                 perf

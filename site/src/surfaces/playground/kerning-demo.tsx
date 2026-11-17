@@ -52,13 +52,13 @@ const PAIRS = [
 const inter = Inter({ subsets: ["latin"] });
 const playfair = Playfair_Display({ subsets: ["latin"] });
 
-const FONTS = {
+export const FONTS = {
   inter: inter.style.fontFamily,
   playfair: playfair.style.fontFamily,
   site: "var(--font-secondary)",
   system: "system-ui, sans-serif",
 } as const;
-type FontKey = keyof typeof FONTS;
+export type FontKey = keyof typeof FONTS;
 
 type Checked = Result & { off: number };
 

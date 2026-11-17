@@ -20,7 +20,8 @@ export class MorphController {
   update(text: string | number, cursorIndex?: number) {
     this.lastText = text;
     this.lastCursorIndex = cursorIndex;
-    this.instance?.update(text, cursorIndex);
+    // Queued, so every instance a render updates shares one layout pass.
+    this.instance?.queue(text, cursorIndex);
   }
 
   needsRecreate(options: Omit<TextMorphOptions, "element">): boolean {

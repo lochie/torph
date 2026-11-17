@@ -1,8 +1,22 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TextMorph } from "../index";
 import { animateEnterOrPersist } from "../utils/animate";
 import { ATTR_EXITING, ATTR_ID, ATTR_SR } from "../../utils/constants";
+
+// happy-dom rejects a cancelled animation's `finished` for real, where a browser leaves it handled.
+beforeAll(() => {
+  const original = Element.prototype.animate;
+  Element.prototype.animate = function (
+    this: Element,
+    keyframes: unknown,
+    options: unknown,
+  ) {
+    const animation = original.call(this, keyframes as never, options as never);
+    animation.finished?.catch(() => {});
+    return animation;
+  } as typeof Element.prototype.animate;
+});
 
 const mounted: TextMorph[] = [];
 afterEach(() => {
@@ -87,15 +101,19 @@ describe("engine work budgets", () => {
     expect(animate).not.toHaveBeenCalled();
   });
 
-  it("keeps unchanged text nodes attached when another part of the value changes", () => {
+  it("keeps unchanged text nodes attached when an interrupting morph changes another part", () => {
     const element = document.createElement("span");
     document.body.append(element);
     const morph = new TextMorph({ element, respectReducedMotion: false });
     mounted.push(morph);
+    morph.update("You have 9 unread messages");
+    // At rest the value is one run of text; the boxes this reuses exist only mid-morph.
     morph.update("You have 10 unread messages");
-    const word = Array.from(element.children).find(
-      (child) => child.textContent === "unread",
+    // Left alone by every morph here, so it is a run: one box holding the words.
+    const word = Array.from(element.querySelectorAll("[torph-item]")).find(
+      (child) => child.textContent?.includes("unread"),
     )!;
+    const id = word.getAttribute(ATTR_ID);
     const textNode = word.firstChild;
     const observer = new MutationObserver(() => {});
     observer.observe(element, { childList: true, subtree: true });
@@ -105,7 +123,7 @@ describe("engine work budgets", () => {
     expect(word.firstChild).toBe(textNode);
     expect(word.parentElement).toBe(element);
     expect(word.hasAttribute(ATTR_EXITING)).toBe(false);
-    expect(word.getAttribute(ATTR_ID)).toBe("unread");
+    expect(word.getAttribute(ATTR_ID)).toBe(id);
     expect(
       records.some((record) => Array.from(record.removedNodes).includes(word)),
     ).toBe(false);

@@ -39,21 +39,31 @@ function createItem(tagName: "span" | "br", id: string): HTMLElement {
   return element;
 }
 
+type Detached = Map<
+  HTMLElement,
+  {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    opacity: number;
+    scale: string;
+  }
+>;
+
 export function detachFromFlow(
   container: HTMLElement,
   elements: HTMLElement[],
 ) {
-  const snapshots = new Map<
-    HTMLElement,
-    {
-      left: number;
-      top: number;
-      width: number;
-      height: number;
-      opacity: number;
-      scale: string;
-    }
-  >();
+  placeDetached(elements, readDetached(container, elements));
+}
+
+/** Where each exit stands, read before anything is written. */
+export function readDetached(
+  container: HTMLElement,
+  elements: HTMLElement[],
+): Detached {
+  const snapshots: Detached = new Map();
   const frame = elements.length ? container.getBoundingClientRect() : null;
   const box = frame && layoutSize(container);
   // Undistorted, the screen is layout: unlike offsets, it keeps the fraction, so a box leaves from exactly where it stood.
@@ -92,7 +102,11 @@ export function detachFromFlow(
       scale: withoutTranslation(style.transform),
     });
   }
+  return snapshots;
+}
 
+/** Takes the exits out of the flow, pinned where `readDetached` found them. */
+export function placeDetached(elements: HTMLElement[], snapshots: Detached) {
   // Only once every exit is read: a cancel dirties style, and the next read would recompute it.
   for (const child of snapshots.keys()) {
     cancelAll(child);

@@ -64,7 +64,7 @@ One engine. `TextMorph` handles text and numbers both; numbers are a `kind` (`"d
 
 **Segment IDs are the only identity** used for FLIP tracking and DOM reconciliation. A duplicate ID means visible text loss, because reconciliation hands one element to two segments. `createIdAllocator()` in [segment.ts](packages/torph/src/lib/text-morph/utils/segment.ts) is the single source of uniqueness for text; `unique-ids.test.ts` asserts the invariant. Don't mint text IDs outside it.
 
-There are two exceptions. Numbers: `mintId()` in [number.ts](packages/torph/src/lib/text-morph/utils/number.ts) issues `\u0000n<counter>`: text IDs are derived from the text, so a NULL prefix cannot collide with one, and a counter that only climbs cannot collide with an ID a number is still carrying from an earlier morph. Ligatures: `ligate()` in [kerning.ts](packages/torph/src/lib/text-morph/utils/kerning.ts) joins segments the font draws as one glyph into one box with the ID `\u0000l` plus its parts' IDs joined by NULL — off every text ID by the NULL, off every number's by the `l`, and unique because its parts are. Ligated segments exist only in the DOM; the diff always sees the unjoined ones. Any further ID source has to argue for its own disjointness the same way.
+There are two exceptions. Numbers: `mintId()` in [number.ts](packages/torph/src/lib/text-morph/utils/number.ts) issues `\u0000n<counter>`: text IDs are derived from the text, so a NULL prefix cannot collide with one, and a counter that only climbs cannot collide with an ID a number is still carrying from an earlier morph. Ligatures: `ligate()` in [ligature.ts](packages/torph/src/lib/text-morph/utils/ligature.ts) joins segments the font draws as one glyph into one box with the ID `\u0000l` plus its parts' IDs joined by NULL — off every text ID by the NULL, off every number's by the `l`, and unique because its parts are. Ligated segments exist only in the DOM; the diff always sees the unjoined ones. Any further ID source has to argue for its own disjointness the same way.
 
 **Adding a file under `src/lib/`** — `tsup.config.ts`'s `aliasCorePlugin` externalises only paths matching `../lib/text-morph`. Anything else imported from a framework wrapper gets inlined into that wrapper's bundle. This once cost the React entry 4.6 kB gzip.
 
@@ -93,6 +93,7 @@ happy-dom has **no layout** — every rect is zero. Assert intent (a transform w
 - `@/` aliases `site/src/`.
 - `hooks/` — shared React hooks. One per file, named for the hook.
 - `"use client"` goes on the surface root (`surfaces/homepage/index.tsx`), and the demos under it inherit the boundary. Don't repeat it per file.
+- Keep layout reads out of a demo's per-frame loop; take sizes from a `ResizeObserver`, as `RangeShove` in [slider.tsx](site/src/surfaces/demos/slider.tsx) does.
 - Reduced motion is the library's own affair — `TextMorph` reads the query live and swaps text without animating. The site adds no hook of its own.
 
 The site consumes `torph` as a workspace dep — run `pnpm dev` (not just `site:dev`) so library edits rebuild.

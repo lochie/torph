@@ -4,6 +4,7 @@ import {
   ATTR_DEBUG,
   ATTR_SLOT,
   ATTR_SR,
+  ATTR_TEXT,
   VAR_INK_TOP,
   VAR_INK_BOTTOM,
 } from "./constants";
@@ -20,10 +21,13 @@ const TORPH_CSS =
   text-align: inherit;
 }
 
+[${ATTR_TEXT}] {
+  white-space: pre;
+}
+
 [${ATTR_ITEM}]:not(br) {
   display: inline-block;
   position: relative;
-  will-change: opacity, transform;
   transform: none;
   opacity: 1;
 }
@@ -102,7 +106,6 @@ const TORPH_CSS =
 
 [${ATTR_SLOT}] > span {
   display: inline-block;
-  will-change: opacity, transform;
 }
 ` +
   /*
