@@ -61,6 +61,7 @@ export type Motion = Animation[] | Promise<unknown> | void;
 
 export type Hooks<State> = {
   enter(box: HTMLElement, ctx: MotionContext<State>): Motion;
+  /** Not called for a box that neither moved nor changed its text: its running motion carries on. */
   persist(box: HTMLElement, ctx: MotionContext<State>): Motion;
   exit(box: HTMLElement, ctx: MotionContext<State>): Motion;
 };

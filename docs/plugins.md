@@ -194,6 +194,8 @@ Every box is fitted to its text's own width for the length of a morph, so a plug
 
 ### Settling and interruption
 
+A staying box that neither moved nor changed its text is left alone: its `persist` hook isn't called, and whatever it was doing carries on, rather than restarting on every update.
+
 Hooks return what the engine has to wait on. WAAPI animations are already found by `getAnimations({ subtree: true })`. A returned promise covers anything that isn't one, like a rAF loop. The morph completes when both have settled.
 
 When a later morph interrupts, the engine aborts `ctx.signal` before it reconciles. A plugin stops writing when its signal aborts and doesn't restore anything; the next morph's reconcile owns the box's content from then on. On exit, the engine removes the box once its motion settles, so plugins never call `remove()`.

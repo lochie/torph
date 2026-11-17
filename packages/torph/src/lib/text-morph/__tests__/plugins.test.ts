@@ -342,7 +342,7 @@ describe("runs handed back", () => {
 });
 
 describe("ctx.was", () => {
-  it("tells a staying box what it read before the morph", () => {
+  it("tells a staying box what it read before the morph, and skips one that didn't change", () => {
     const seen: string[] = [];
     const positional: TorphPlugin = {
       name: "places",
@@ -362,7 +362,8 @@ describe("ctx.was", () => {
     const { morph } = mount({ plugins: [positional] });
     morph.update("cat");
     morph.update("cut");
-    expect(seen).toEqual(["c>c", "a>u", "t>t"]);
+    // "c" and "t" neither moved nor changed, so their hook isn't called.
+    expect(seen).toEqual(["a>u"]);
   });
 });
 
