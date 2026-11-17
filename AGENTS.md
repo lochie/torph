@@ -93,7 +93,7 @@ happy-dom has **no layout** — every rect is zero. Assert intent (a transform w
 - `@/` aliases `site/src/`.
 - `hooks/` — shared React hooks. One per file, named for the hook.
 - `"use client"` goes on the surface root (`surfaces/homepage/index.tsx`), and the demos under it inherit the boundary. Don't repeat it per file.
-- A demo's per-frame loop reads no layout — `offsetWidth` after a morph's writes forces a layout every frame. Take sizes from a `ResizeObserver`, as `RangeShove` in [slider.tsx](site/src/surfaces/demos/slider.tsx) does.
+- Keep layout reads out of a demo's per-frame loop; take sizes from a `ResizeObserver`, as `RangeShove` in [slider.tsx](site/src/surfaces/demos/slider.tsx) does.
 - Reduced motion is the library's own affair — `TextMorph` reads the query live and swaps text without animating. The site adds no hook of its own.
 
 The site consumes `torph` as a workspace dep — run `pnpm dev` (not just `site:dev`) so library edits rebuild.
