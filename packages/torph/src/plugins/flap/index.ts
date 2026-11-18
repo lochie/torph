@@ -34,7 +34,8 @@ export function flap({
   ) => {
     const faces = drum(from, face.textContent ?? "");
     // A tile, like the board's: a wide glyph on the drum can't paint over its neighbours, nor show its back.
-    face.style.overflow = "clip";
+    // Not `overflow: clip`: WebKit then moves an inline-block's baseline to its bottom edge, lifting the letter.
+    face.style.clipPath = "inset(0)";
     face.style.backfaceVisibility = "hidden";
     const each = duration / faces.length;
     return faces.reduce<Promise<unknown>>(
