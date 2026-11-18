@@ -8,12 +8,7 @@ const PLUGINS = [odometer()];
 const VALUES = ["$1,299", "$1,300", "$1,450", "$998"];
 
 export const OdometerDemo = () => (
-  <Compare
-    values={VALUES}
-    plugins={PLUGINS}
-    label="odometer()"
-    duration={700}
-  />
+  <Compare values={VALUES} plugins={PLUGINS} duration={700} />
 );
 
 const FROM = 5 * 60;
@@ -35,13 +30,5 @@ export const CountdownDemo = () => {
     return () => window.clearInterval(id);
   }, [reducedMotion]);
 
-  return (
-    <Live
-      value={clock(left)}
-      plugins={PLUGINS}
-      label="odometer()"
-      duration={600}
-      mono
-    />
-  );
+  return <Live value={clock(left)} plugins={PLUGINS} duration={600} mono />;
 };

@@ -20,37 +20,34 @@ import { words } from "torph/plugins/words";
 
 import { CodeBlock } from "@/components/codeblock";
 import styles from "../styles.module.scss";
+import { hidden } from "./hidden";
 
-// In the order they're applied: torph's own set last, so anything picked above it overrides it.
-const CLASSIC: Record<string, () => TorphPlugin> = {
-  numbers,
-  groups,
-  fade,
-  scale,
-};
-const MORE: Record<string, () => TorphPlugin> = {
-  blur: () => blur(),
-  words: () => words(),
-  scramble: () => scramble(),
-  flap: () => flap(),
-  typewriter: () => typewriter(),
-  tokens: () => tokens(),
-  odometer: () => odometer(),
-  wave: () => wave(),
-  caseless: () => caseless(),
-  stack: () => stack(),
-  squash: () => squash(),
-  redline: () => redline(),
-  countup: () => countup(),
-  rows: () => rows(),
-  trend: () => trend(),
-  reveal: () => reveal(),
-};
-const ORDER = [...Object.keys(MORE), ...Object.keys(CLASSIC)];
 // Built once: a morph is matched by its plugins' names and options, so a new list each render is fine.
-const BUILT = Object.fromEntries(
-  Object.entries({ ...MORE, ...CLASSIC }).map(([name, make]) => [name, make()]),
-);
+const CLASSIC: Record<string, TorphPlugin> = {
+  numbers: numbers(),
+  groups: groups(),
+  fade: fade(),
+  scale: scale(),
+};
+const MORE: Record<string, TorphPlugin> = {
+  blur: blur(),
+  words: words(),
+  scramble: scramble(),
+  flap: flap(),
+  typewriter: typewriter(),
+  tokens: tokens(),
+  odometer: odometer(),
+  wave: wave(),
+  caseless: caseless(),
+  stack: stack(),
+  squash: squash(),
+  redline: redline(),
+  countup: countup(),
+  rows: rows(),
+  trend: trend(),
+  reveal: reveal(),
+};
+const BUILT = { ...MORE, ...CLASSIC };
 
 // Pairs that each change something different: words, figures, identifiers, lines.
 const EXAMPLES = [
@@ -81,40 +78,55 @@ function usage(picked: string[]) {
 const Toggle = ({
   name,
   on,
+  by,
   flip,
 }: {
   name: string;
   on: boolean;
+  by?: string[];
   flip: () => void;
-}) => (
-  <button
-    type="button"
-    role="checkbox"
-    aria-checked={on}
-    className={styles.choice}
-    onClick={flip}
-  >
-    {name}()
-  </button>
-);
+}) => {
+  const note = by && `hidden by ${by.map((n) => `${n}()`).join(", ")}`;
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-description={note}
+      title={note}
+      className={styles.choice}
+      data-hidden={by ? "" : undefined}
+      onClick={flip}
+    >
+      {name}()
+    </button>
+  );
+};
 
 /** Any plugins together, on your own text: starts as torph's default set. */
 export const Mix = () => {
   const [example, setExample] = React.useState(0);
   const [text, setText] = React.useState(EXAMPLES[0]!);
-  const [chosen, setChosen] = React.useState<Set<string>>(
-    () => new Set(Object.keys(CLASSIC)),
+  // Newest first: the plugin picked last goes in front, so it's the one you see.
+  const [chosen, setChosen] = React.useState<string[]>(() =>
+    Object.keys(CLASSIC),
   );
-  const picked = ORDER.filter((name) => chosen.has(name));
+  const picked = [
+    ...chosen.filter((name) => name in MORE),
+    ...Object.keys(CLASSIC).filter((name) => chosen.includes(name)),
+  ];
   const plugins = picked.map((name) => BUILT[name]!);
+  const covered = hidden(
+    picked.map((name) => [name, BUILT[name]!]),
+    text,
+  );
 
   const flip = (name: string) =>
-    setChosen((current) => {
-      const next = new Set(current);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
+    setChosen((current) =>
+      current.includes(name)
+        ? current.filter((n) => n !== name)
+        : [name, ...current],
+    );
   const nextExample = () => {
     const i = (example + 1) % EXAMPLES.length;
     setExample(i);
@@ -125,16 +137,14 @@ export const Mix = () => {
     <div className={styles.try}>
       <button
         type="button"
-        className={styles.compare}
+        className={styles.stage}
+        data-mix=""
         onClick={nextExample}
         aria-label="Next example"
       >
         <TextMorph className={styles.morph} plugins={plugins}>
           {text}
         </TextMorph>
-        <span className={styles.hint} aria-hidden>
-          Click for the next example
-        </span>
       </button>
       <textarea
         className={styles.tryInput}
@@ -151,7 +161,8 @@ export const Mix = () => {
             <Toggle
               key={name}
               name={name}
-              on={chosen.has(name)}
+              on={chosen.includes(name)}
+              by={covered.get(name)}
               flip={() => flip(name)}
             />
           ))}
@@ -164,12 +175,23 @@ export const Mix = () => {
             <Toggle
               key={name}
               name={name}
-              on={chosen.has(name)}
+              on={chosen.includes(name)}
+              by={covered.get(name)}
               flip={() => flip(name)}
             />
           ))}
         </div>
       </div>
+      {covered.size > 0 && (
+        <p className={styles.hiddenNote}>
+          {[...covered]
+            .map(
+              ([name, by]) =>
+                `${name}() is hidden by ${by.map((n) => `${n}()`).join(", ")}`,
+            )
+            .join(" · ")}
+        </p>
+      )}
       <CodeBlock code={usage(picked)} />
     </div>
   );

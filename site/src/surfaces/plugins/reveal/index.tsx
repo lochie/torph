@@ -6,5 +6,5 @@ const PLUGINS = [reveal()];
 const VALUES = ["•••• •••• •••• 4242", "4929 1038 5521 4242"];
 
 export const RevealDemo = () => (
-  <Compare values={VALUES} plugins={PLUGINS} label="reveal()" mono />
+  <Compare values={VALUES} plugins={PLUGINS} mono />
 );

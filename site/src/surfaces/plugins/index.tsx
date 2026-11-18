@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentType } from "react";
+import React, { type ComponentType } from "react";
 
 import { CodeBlock } from "@/components/codeblock";
 import { Footer } from "@/components/footer";
@@ -22,6 +22,7 @@ import { RowsDemo } from "./rows";
 import { TrendDemo } from "./trend";
 import { RevealDemo } from "./reveal";
 import { Mix } from "./mix";
+import { ShowDefault } from "./compare";
 import styles from "./styles.module.scss";
 
 export type PluginName =
@@ -46,119 +47,153 @@ const PLUGINS: {
   name: PluginName;
   summary: string;
   Demo: ComponentType;
+  /** Too wide for half the grid. */
+  wide?: boolean;
 }[] = [
   {
     name: "blur",
-    summary: "Letter by letter, text rises into focus and blurs away upwards.",
+    summary: "Letters rise into focus and blur away.",
     Demo: BlurDemo,
   },
-  {
-    name: "words",
-    summary:
-      "A changed word swaps whole, instead of morphing the letters it shares.",
-    Demo: WordsDemo,
-  },
+  { name: "words", summary: "A changed word swaps whole.", Demo: WordsDemo },
   {
     name: "scramble",
-    summary:
-      "Letter by letter, arriving text scrambles into place and leaving text scrambles away.",
+    summary: "Letters scramble in and out.",
     Demo: ScrambleDemo,
   },
   {
     name: "flap",
-    summary:
-      "Like a departure board, each changing letter flips round to the new one.",
+    summary: "Letters flip like a departure board.",
     Demo: FlapDemo,
   },
   {
     name: "typewriter",
-    summary:
-      "Old text backspaces from the end, then the new text types in, caret and all.",
+    summary: "Backspaces, then types the new text.",
     Demo: TypewriterDemo,
   },
   {
     name: "tokens",
-    summary:
-      "Identifiers and paths change at their joins, so the parts that stay put stay put.",
+    summary: "Identifiers change at their joins.",
     Demo: TokensDemo,
   },
   {
     name: "odometer",
-    summary:
-      "Figures count like a car's odometer, every wheel turning the way the value went.",
+    summary: "Each wheel turns the way the value went.",
     Demo: () => (
       <>
         <OdometerDemo />
         <CountdownDemo />
       </>
     ),
+    wide: true,
   },
-  {
-    name: "wave",
-    summary:
-      "Letter by letter, text drops in with a bounce and falls away under its own weight.",
-    Demo: WaveDemo,
-  },
+  { name: "wave", summary: "Letters drop in with a bounce.", Demo: WaveDemo },
   {
     name: "caseless",
-    summary:
-      "A letter that only changes case keeps its box, and pops to the new one in place.",
+    summary: "A change of case pops in place.",
     Demo: CaselessDemo,
   },
   {
     name: "stack",
-    summary:
-      "The whole value is one card: the old one slides up and away as the new one rises in.",
+    summary: "The whole value slides like a card.",
     Demo: StackDemo,
   },
+  { name: "squash", summary: "Stretch, squash and splat.", Demo: SquashDemo },
   {
-    name: "squash",
-    summary:
-      "Like a cartoon: moving text winds up, stretches and lands with a squash and a wobble; new text drops in and splats.",
-    Demo: SquashDemo,
+    name: "countup",
+    summary: "Counts through the values between.",
+    Demo: CountupDemo,
+  },
+  {
+    name: "rows",
+    summary: "Reordered lines slide to their place.",
+    Demo: RowsDemo,
+  },
+  { name: "trend", summary: "Flashes green up, red down.", Demo: TrendDemo },
+  {
+    name: "reveal",
+    summary: "Each place turns over to its new character.",
+    Demo: RevealDemo,
   },
   {
     name: "redline",
-    summary:
-      "Like track changes: removed words stay struck through before they go, added words come underlined.",
+    summary: "Track changes: struck out, then underlined.",
     Demo: () => (
       <>
         <RedlineDemo />
         <RedlineCodeDemo />
       </>
     ),
-  },
-  {
-    name: "countup",
-    summary:
-      "A figure counts through the values between, quick at first and slowing as it arrives.",
-    Demo: CountupDemo,
-  },
-  {
-    name: "rows",
-    summary:
-      "Each line is one box, known by its key, so a reordered list slides every row to its new place.",
-    Demo: RowsDemo,
-  },
-  {
-    name: "trend",
-    summary:
-      "What changes in a figure flashes green as it rises and red as it falls, then fades back.",
-    Demo: TrendDemo,
-  },
-  {
-    name: "reveal",
-    summary:
-      "Each place keeps its box and turns over to its new character, like a masked value revealed.",
-    Demo: RevealDemo,
+    wide: true,
   },
 ];
 
-const usage = (name: PluginName) =>
-  `import { classic } from "torph";
-import { ${name} } from "torph/plugins/${name}";
+const INTRO = `import { classic } from "torph";
+import { blur } from "torph/plugins/blur";
 
-<TextMorph plugins={[${name}(), ...classic()]}>{value}</TextMorph>`;
+<TextMorph plugins={[blur(), ...classic()]}>
+  {value}
+</TextMorph>`;
+
+const usage = (name: PluginName) =>
+  `import { ${name} } from "torph/plugins/${name}";
+
+plugins={[${name}(), ...classic()]}`;
+
+const Card = ({
+  name,
+  summary,
+  Demo,
+  wide,
+  source,
+}: (typeof PLUGINS)[number] & { source: string }) => {
+  const [showDefault, setShowDefault] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
+  return (
+    <div
+      id={name}
+      className={styles.card}
+      data-wide={wide || open || undefined}
+    >
+      <div className={styles.stages}>
+        <ShowDefault.Provider value={showDefault}>
+          <Demo />
+        </ShowDefault.Provider>
+      </div>
+      <div className={styles.meta}>
+        <div className={styles.title}>
+          <h2 className={styles.name}>{name}()</h2>
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={styles.action}
+              aria-pressed={showDefault}
+              onClick={() => setShowDefault((v) => !v)}
+            >
+              vs default
+            </button>
+            <button
+              type="button"
+              className={styles.action}
+              aria-pressed={open}
+              aria-label={`${name} source`}
+              onClick={() => setOpen((v) => !v)}
+            >
+              {"</>"}
+            </button>
+          </div>
+        </div>
+        <p className={styles.summary}>{summary}</p>
+      </div>
+      {open && (
+        <div className={styles.source}>
+          <CodeBlock code={usage(name)} />
+          <CodeBlock code={source} />
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Plugins = ({
   sources,
@@ -168,30 +203,27 @@ export const Plugins = ({
   <div className={styles.page}>
     <div className={styles.container}>
       <Header />
-      <p className={styles.intro}>
-        A plugin changes how torph cuts text up, how it moves, or both.
-        torph&apos;s own look is a set of plugins too, classic(), and each one
-        below is added in front of it. Each is its whole source.
-      </p>
+      <section className={styles.intro}>
+        <p>
+          A plugin changes how torph cuts text up, how it moves, or both. Put
+          one in front of classic(), torph&apos;s default set.
+        </p>
+        <CodeBlock code={INTRO} />
+      </section>
 
-      <section className={styles.plugin}>
-        <h2 className={styles.name}>mix them</h2>
+      <div className={styles.grid}>
+        {PLUGINS.map((plugin) => (
+          <Card key={plugin.name} {...plugin} source={sources[plugin.name]} />
+        ))}
+      </div>
+
+      <section className={styles.mix}>
+        <h2 className={styles.heading}>Mix them</h2>
         <p className={styles.summary}>
-          torph&apos;s default set, classic(), is ticked. Add any of the others
-          in front of it, take parts of it away, or type your own text.
+          Any of them together, on your own text.
         </p>
         <Mix />
       </section>
-
-      {PLUGINS.map(({ name, summary, Demo }) => (
-        <section key={name} className={styles.plugin}>
-          <h2 className={styles.name}>{name}</h2>
-          <p className={styles.summary}>{summary}</p>
-          <Demo />
-          <CodeBlock code={usage(name)} />
-          <CodeBlock code={sources[name]} />
-        </section>
-      ))}
 
       <Footer />
     </div>

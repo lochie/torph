@@ -6,6 +6,4 @@ const PLUGINS = [blur()];
 // "Transaction" moves to the front while the words around it blur in and out.
 const VALUES = ["Processing Transaction", "Transaction Safe"];
 
-export const BlurDemo = () => (
-  <Compare values={VALUES} plugins={PLUGINS} label="blur()" />
-);
+export const BlurDemo = () => <Compare values={VALUES} plugins={PLUGINS} />;

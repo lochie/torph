@@ -10,6 +10,4 @@ const VALUES = [
   "Ship it Sunday",
 ];
 
-export const WordsDemo = () => (
-  <Compare values={VALUES} plugins={PLUGINS} label="words()" />
-);
+export const WordsDemo = () => <Compare values={VALUES} plugins={PLUGINS} />;

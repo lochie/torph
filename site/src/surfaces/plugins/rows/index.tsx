@@ -41,5 +41,5 @@ const VALUES = STANDINGS.map((standing) =>
 );
 
 export const RowsDemo = () => (
-  <Compare values={VALUES} plugins={PLUGINS} label="rows()" code />
+  <Compare values={VALUES} plugins={PLUGINS} code />
 );

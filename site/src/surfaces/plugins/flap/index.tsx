@@ -6,11 +6,5 @@ const PLUGINS = [flap()];
 const VALUES = ["DEPARTING", "BOARDING", "DELAYED", "ON TIME"];
 
 export const FlapDemo = () => (
-  <Compare
-    values={VALUES}
-    plugins={PLUGINS}
-    label="flap()"
-    duration={900}
-    mono
-  />
+  <Compare values={VALUES} plugins={PLUGINS} duration={900} mono />
 );

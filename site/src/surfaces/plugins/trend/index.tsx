@@ -27,5 +27,5 @@ export const TrendDemo = () => {
     return () => window.clearInterval(id);
   }, [reducedMotion]);
 
-  return <Live value={price(cents)} plugins={PLUGINS} label="trend()" />;
+  return <Live value={price(cents)} plugins={PLUGINS} />;
 };

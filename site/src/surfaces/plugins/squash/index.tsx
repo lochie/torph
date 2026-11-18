@@ -6,5 +6,5 @@ const PLUGINS = [squash()];
 const VALUES = ["Red Green Blue", "Blue Red Green", "Green Blue Red"];
 
 export const SquashDemo = () => (
-  <Compare values={VALUES} plugins={PLUGINS} label="squash()" duration={600} />
+  <Compare values={VALUES} plugins={PLUGINS} duration={600} />
 );

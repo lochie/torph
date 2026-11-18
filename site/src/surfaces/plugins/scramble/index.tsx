@@ -5,10 +5,5 @@ const PLUGINS = [scramble()];
 const VALUES = ["Connecting", "Connected", "Signal lost"];
 
 export const ScrambleDemo = () => (
-  <Compare
-    values={VALUES}
-    plugins={PLUGINS}
-    label="scramble()"
-    duration={700}
-  />
+  <Compare values={VALUES} plugins={PLUGINS} duration={700} />
 );

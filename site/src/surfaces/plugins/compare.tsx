@@ -4,25 +4,26 @@ import { TextMorph } from "torph/react";
 
 import styles from "./styles.module.scss";
 
+/** Set by the card's "vs default" toggle: every stage in it adds a row as torph draws it. */
+export const ShowDefault = React.createContext(false);
+
 type Look = {
   plugins: readonly TorphPlugin[];
-  label: string;
   duration?: number;
-  /** Both rows in the monospace font. */
+  /** In the monospace font. */
   mono?: boolean;
   /** Smaller monospace, for a few lines of code. */
   code?: boolean;
 };
 
-/** One value twice: as torph draws it, and through the plugins. */
-const Pair = ({
+const Rows = ({
   value,
   plugins,
-  label,
   duration,
   mono,
   code,
 }: Look & { value: string }) => {
+  const showDefault = React.useContext(ShowDefault);
   const morph = [
     styles.morph,
     (mono || code) && styles.mono,
@@ -32,47 +33,43 @@ const Pair = ({
     .join(" ");
   return (
     <>
-      <span className={styles.row}>
-        <span className={styles.tag}>default</span>
-        <TextMorph className={morph} duration={duration}>
-          {value}
-        </TextMorph>
-      </span>
-      <span className={styles.row}>
-        <span className={styles.tag}>{label}</span>
-        <TextMorph
-          className={morph}
-          duration={duration}
-          plugins={[...plugins, ...classic()]}
-        >
-          {value}
-        </TextMorph>
-      </span>
+      <TextMorph
+        className={morph}
+        duration={duration}
+        plugins={[...plugins, ...classic()]}
+      >
+        {value}
+      </TextMorph>
+      {showDefault && (
+        <span className={styles.default}>
+          <span className={styles.defaultTag}>default</span>
+          <TextMorph className={morph} duration={duration}>
+            {value}
+          </TextMorph>
+        </span>
+      )}
     </>
   );
 };
 
-/** The same values twice, once as torph draws them and once through the plugin; a click swaps both. */
+/** Values that a click steps through. */
 export const Compare = ({ values, ...look }: Look & { values: string[] }) => {
   const [index, setIndex] = React.useState(0);
-
   return (
     <button
       type="button"
-      className={styles.compare}
+      className={styles.stage}
       onClick={() => setIndex((i) => (i + 1) % values.length)}
+      aria-label="Next value"
     >
-      <Pair value={values[index]!} {...look} />
-      <span className={styles.hint} aria-hidden>
-        Click to swap
-      </span>
+      <Rows value={values[index]!} {...look} />
     </button>
   );
 };
 
 /** As `Compare`, for a value that changes by itself. */
 export const Live = ({ value, ...look }: Look & { value: string }) => (
-  <div className={styles.compare} data-live="">
-    <Pair value={value} {...look} />
+  <div className={styles.stage} data-live="">
+    <Rows value={value} {...look} />
   </div>
 );

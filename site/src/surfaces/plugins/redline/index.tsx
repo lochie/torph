@@ -8,9 +8,7 @@ const VALUES = [
   "A quick red fox",
 ];
 
-export const RedlineDemo = () => (
-  <Compare values={VALUES} plugins={PLUGINS} label="redline()" />
-);
+export const RedlineDemo = () => <Compare values={VALUES} plugins={PLUGINS} />;
 
 // A function edited twice, so whole lines and single words change between versions.
 const CODE = [
@@ -27,5 +25,5 @@ const CODE = [
 ];
 
 export const RedlineCodeDemo = () => (
-  <Compare values={CODE} plugins={PLUGINS} label="redline()" code />
+  <Compare values={CODE} plugins={PLUGINS} code />
 );
