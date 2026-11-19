@@ -10,6 +10,9 @@
     "lint:fix": "eslint --fix"
   },
   "dependencies": {
+    "@mdx-js/loader": "^3.1.1",
+    "@mdx-js/react": "^3.1.1",
+    "@next/mdx": "^16.3.4",
     "@torph/test-cases": "workspace:*",
     "@vercel/analytics": "^2.0.1",
     "motion": "^13.2.0",
@@ -17,10 +20,12 @@
     "numora": "^5.0.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "remark-gfm": "^4.0.1",
     "torph": "workspace:*",
     "web-haptics": "^0.0.6"
   },
   "devDependencies": {
+    "@types/mdx": "^2.0.14",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",

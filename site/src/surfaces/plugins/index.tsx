@@ -39,79 +39,20 @@ import { DissolveDemo } from "./dissolve";
 import { RippleDemo } from "./ripple";
 import { Mix } from "./mix";
 import { ShowDefault } from "./compare";
+import { GROUPS, type PluginName } from "./catalog";
 import styles from "./styles.module.scss";
 
-export type PluginName =
-  | "blur"
-  | "words"
-  | "scramble"
-  | "flap"
-  | "typewriter"
-  | "tokens"
-  | "odometer"
-  | "wave"
-  | "caseless"
-  | "stack"
-  | "squash"
-  | "redline"
-  | "countup"
-  | "rows"
-  | "trend"
-  | "reveal"
-  | "smoke"
-  | "glitch"
-  | "neon"
-  | "shatter"
-  | "stamp"
-  | "roll"
-  | "lookalike"
-  | "mask"
-  | "fadeUp"
-  | "cascade"
-  | "ticker"
-  | "fadeThrough"
-  | "sharedAxis"
-  | "slot"
-  | "dissolve"
-  | "ripple"
-  | "caret";
-
-const PLUGINS: {
-  name: PluginName;
-  summary: string;
-  Demo: ComponentType;
-  /** Too wide for half the grid. */
-  wide?: boolean;
-}[] = [
-  {
-    name: "blur",
-    summary: "Letters rise into focus and blur away.",
-    Demo: BlurDemo,
-  },
-  { name: "words", summary: "A changed word swaps whole.", Demo: WordsDemo },
-  {
-    name: "scramble",
-    summary: "Letters scramble in and out.",
-    Demo: ScrambleDemo,
-  },
-  {
-    name: "flap",
-    summary: "Letters flip like a departure board.",
-    Demo: FlapDemo,
-  },
-  {
-    name: "typewriter",
-    summary: "Backspaces, then types the new text.",
-    Demo: TypewriterDemo,
-  },
-  {
-    name: "tokens",
-    summary: "Identifiers change at their joins.",
-    Demo: TokensDemo,
-  },
-  {
-    name: "odometer",
-    summary: "Each wheel turns the way the value went.",
+/** Each plugin's demo; a missing one is a type error. `wide` is too wide for half the grid. */
+const DEMOS: Record<PluginName, { Demo: ComponentType; wide?: boolean }> = {
+  mask: { Demo: MaskDemo, wide: true },
+  fadeUp: { Demo: FadeUpDemo },
+  cascade: { Demo: CascadeDemo },
+  ticker: { Demo: TickerDemo },
+  fadeThrough: { Demo: FadeThroughDemo },
+  sharedAxis: { Demo: SharedAxisDemo },
+  blur: { Demo: BlurDemo },
+  words: { Demo: WordsDemo },
+  odometer: {
     Demo: () => (
       <>
         <OdometerDemo />
@@ -120,118 +61,13 @@ const PLUGINS: {
     ),
     wide: true,
   },
-  { name: "wave", summary: "Letters drop in with a bounce.", Demo: WaveDemo },
-  {
-    name: "caseless",
-    summary: "A change of case pops in place.",
-    Demo: CaselessDemo,
-  },
-  {
-    name: "stack",
-    summary: "The whole value slides like a card.",
-    Demo: StackDemo,
-  },
-  { name: "squash", summary: "Stretch, squash and splat.", Demo: SquashDemo },
-  {
-    name: "countup",
-    summary: "Counts through the values between.",
-    Demo: CountupDemo,
-  },
-  {
-    name: "rows",
-    summary: "Reordered lines slide to their place.",
-    Demo: RowsDemo,
-  },
-  { name: "trend", summary: "Flashes green up, red down.", Demo: TrendDemo },
-  {
-    name: "reveal",
-    summary: "Each place turns over to its new character.",
-    Demo: RevealDemo,
-  },
-  {
-    name: "slot",
-    summary: "Changes roll through a window.",
-    Demo: SlotDemo,
-  },
-  {
-    name: "dissolve",
-    summary: "Letters break into dots and gather.",
-    Demo: DissolveDemo,
-  },
-  {
-    name: "ripple",
-    summary: "New letters ripple out from the change.",
-    Demo: RippleDemo,
-  },
-  {
-    name: "smoke",
-    summary: "Old text wisps away like smoke.",
-    Demo: SmokeDemo,
-  },
-  {
-    name: "glitch",
-    summary: "Changes come through a glitch.",
-    Demo: GlitchDemo,
-  },
-  {
-    name: "neon",
-    summary: "Flickers on like a neon tube.",
-    Demo: NeonDemo,
-  },
-  {
-    name: "shatter",
-    summary: "Old text cracks into falling shards.",
-    Demo: ShatterDemo,
-  },
-  {
-    name: "stamp",
-    summary: "New text slams down like a stamp.",
-    Demo: StampDemo,
-  },
-  {
-    name: "roll",
-    summary: "The value rolls round like a barrel.",
-    Demo: RollDemo,
-  },
-  {
-    name: "lookalike",
-    summary: "Letters step through lookalike glyphs.",
-    Demo: LookalikeDemo,
-  },
-  {
-    name: "mask",
-    summary: "New text rises into place behind a mask.",
-    Demo: MaskDemo,
-    wide: true,
-  },
-  {
-    name: "fadeUp",
-    summary: "New text fades up into place.",
-    Demo: FadeUpDemo,
-  },
-  {
-    name: "cascade",
-    summary: "Text arrives a line at a time.",
-    Demo: CascadeDemo,
-  },
-  {
-    name: "ticker",
-    summary: "New text pushes the old out.",
-    Demo: TickerDemo,
-  },
-  {
-    name: "fadeThrough",
-    summary: "Fades out, then fades in growing.",
-    Demo: FadeThroughDemo,
-  },
-  {
-    name: "sharedAxis",
-    summary: "Old leaves one way, new arrives the other.",
-    Demo: SharedAxisDemo,
-  },
-  {
-    name: "redline",
-    summary: "Track changes: struck out, then underlined.",
+  countup: { Demo: CountupDemo },
+  trend: { Demo: TrendDemo },
+  roll: { Demo: RollDemo },
+  slot: { Demo: SlotDemo },
+  reveal: { Demo: RevealDemo },
+  flap: { Demo: FlapDemo },
+  redline: {
     Demo: () => (
       <>
         <RedlineDemo />
@@ -240,7 +76,23 @@ const PLUGINS: {
     ),
     wide: true,
   },
-];
+  rows: { Demo: RowsDemo },
+  tokens: { Demo: TokensDemo },
+  caseless: { Demo: CaselessDemo },
+  typewriter: { Demo: TypewriterDemo },
+  squash: { Demo: SquashDemo },
+  wave: { Demo: WaveDemo },
+  stamp: { Demo: StampDemo },
+  stack: { Demo: StackDemo },
+  scramble: { Demo: ScrambleDemo },
+  lookalike: { Demo: LookalikeDemo },
+  smoke: { Demo: SmokeDemo },
+  glitch: { Demo: GlitchDemo },
+  neon: { Demo: NeonDemo },
+  shatter: { Demo: ShatterDemo },
+  dissolve: { Demo: DissolveDemo },
+  ripple: { Demo: RippleDemo },
+};
 
 const INTRO = `import { classic } from "torph";
 import { blur } from "torph/plugins/blur";
@@ -260,7 +112,13 @@ const Card = ({
   Demo,
   wide,
   source,
-}: (typeof PLUGINS)[number] & { source: string }) => {
+}: {
+  name: PluginName;
+  summary: string;
+  Demo: ComponentType;
+  wide?: boolean;
+  source: string;
+}) => {
   const [showDefault, setShowDefault] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   return (
@@ -325,13 +183,48 @@ export const Plugins = ({
         <CodeBlock code={INTRO} />
       </section>
 
-      <div className={styles.grid}>
-        {PLUGINS.map((plugin) => (
-          <Card key={plugin.name} {...plugin} source={sources[plugin.name]} />
+      <nav className={styles.index} aria-label="Plugins">
+        {GROUPS.map((group) => (
+          <div key={group.id} className={styles.indexGroup}>
+            <a href={`#${group.id}`} className={styles.indexTitle}>
+              {group.title}
+            </a>
+            <div className={styles.indexNames}>
+              {group.plugins.map(({ name }) => (
+                <a key={name} href={`#${name}`} className={styles.indexName}>
+                  {name}
+                </a>
+              ))}
+            </div>
+          </div>
         ))}
-      </div>
+        <div className={styles.indexGroup}>
+          <a href="#mix" className={styles.indexTitle}>
+            Mix them
+          </a>
+        </div>
+      </nav>
 
-      <section className={styles.mix}>
+      {GROUPS.map((group) => (
+        <section key={group.id} id={group.id} className={styles.section}>
+          <div className={styles.sectionHead}>
+            <h2 className={styles.heading}>{group.title}</h2>
+            <p className={styles.summary}>{group.summary}</p>
+          </div>
+          <div className={styles.grid}>
+            {group.plugins.map((plugin) => (
+              <Card
+                key={plugin.name}
+                {...plugin}
+                {...DEMOS[plugin.name]}
+                source={sources[plugin.name]}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      <section id="mix" className={styles.mix}>
         <h2 className={styles.heading}>Mix them</h2>
         <p className={styles.summary}>
           Any of them together, on your own text.

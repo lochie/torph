@@ -1,0 +1,28 @@
+export const metadata = {
+  title: "Debugging • Torph",
+  description: "See the boxes torph moves, and catch plugin hooks that read layout.",
+};
+
+# Debugging
+
+Set `debug` on a component to see the boxes torph moves while it morphs.
+
+```tsx
+<TextMorph debug>{text}</TextMorph>
+```
+
+## Checking plugins
+
+Hooks should only write. A hook that reads layout makes the browser lay the page out again for every box it moves, which gets slow with a lot of text.
+
+Turn on the checks once, before anything morphs:
+
+```ts
+import { enableDebug } from "torph/debug";
+
+enableDebug();
+```
+
+Then, on any instance with `debug` on, the first hook that reads layout logs a warning naming the plugin and the hook. Move that read into the plugin's [`read`](/docs/writing-plugins#reading-the-page).
+
+The checks live in their own import, so they cost nothing unless you load them.
