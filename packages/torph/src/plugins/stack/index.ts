@@ -16,8 +16,9 @@ export function stack({ rise = "0.8em" }: StackOptions = {}): TorphPlugin {
     css: `[torph-kind="card"] { white-space: pre; }`,
     kinds: {
       card: {
-        enter: (box, { duration, ease }) => [
-          box.animate(
+        enter: (box, { duration, ease, animate }) => [
+          animate(
+            box,
             [
               { transform: `translateY(${rise})`, opacity: 0 },
               { transform: "none", opacity: 1 },
@@ -25,8 +26,9 @@ export function stack({ rise = "0.8em" }: StackOptions = {}): TorphPlugin {
             { duration, easing: ease, fill: "backwards" },
           ),
         ],
-        exit: (box, { duration, ease }) => [
-          box.animate(
+        exit: (box, { duration, ease, animate }) => [
+          animate(
+            box,
             { transform: `translateY(-${rise})`, opacity: 0, offset: 1 },
             { duration, easing: ease, fill: "both" },
           ),

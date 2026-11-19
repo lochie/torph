@@ -36,8 +36,12 @@ export function blur({
     runs: { claim: () => true },
     animate: {
       text: {
-        enter: (box, { delta, from, duration, ease, index, arriving }) => [
-          box.animate(
+        enter: (
+          box,
+          { delta, from, duration, ease, index, arriving, animate },
+        ) => [
+          animate(
+            box,
             [
               {
                 transform: away(
@@ -58,8 +62,9 @@ export function blur({
             },
           ),
         ],
-        exit: (box, { delta, duration, ease, index, leaving }) => [
-          box.animate(
+        exit: (box, { delta, duration, ease, index, leaving, animate }) => [
+          animate(
+            box,
             {
               transform: away(delta.x, delta.y, "-"),
               filter,

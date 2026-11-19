@@ -24,8 +24,12 @@ export function wave({
     runs: { claim: () => true },
     animate: {
       text: {
-        enter: (box, { delta, from, duration, ease, index, arriving }) => [
-          box.animate(
+        enter: (
+          box,
+          { delta, from, duration, ease, index, arriving, animate },
+        ) => [
+          animate(
+            box,
             [
               {
                 transform: `translate(${delta.x + (from?.tx ?? 0)}px, calc(${delta.y + (from?.ty ?? 0)}px - ${height})) rotate(-6deg)`,
@@ -41,20 +45,25 @@ export function wave({
             },
           ),
         ],
-        // Falling, so it speeds up rather than settles.
         // All at once, with no stagger: leaving text gets out of the way of what arrives.
-        exit: (box, { delta, duration }) => [
-          box.animate(
+        // The fall speeds up like a drop, but the fade starts at once, so it reads as gone straight away.
+        exit: (box, { delta, duration, animate }) => [
+          animate(
+            box,
             {
-              transform: `translate(${delta.x}px, calc(${delta.y}px + ${height} * 1.5)) rotate(10deg)`,
-              opacity: 0,
+              transform: `translate(${delta.x}px, calc(${delta.y}px + ${height})) rotate(10deg)`,
               offset: 1,
             },
             {
-              duration: duration * 0.6,
-              easing: "cubic-bezier(0.55, 0, 1, 0.45)",
+              duration: duration * 0.4,
+              easing: "cubic-bezier(0.4, 0, 1, 1)",
               fill: "both",
             },
+          ),
+          animate(
+            box,
+            { opacity: 0, offset: 1 },
+            { duration: duration * 0.25, easing: "ease-out", fill: "both" },
           ),
         ],
       },

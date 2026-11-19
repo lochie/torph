@@ -31,11 +31,15 @@ export function rows({ key = (line) => line }: RowsOptions = {}): TorphPlugin {
     kinds: {
       row: {
         // A row that changed while it moved settles on its new text with a blink.
-        persist: (box, { delta, from, was, mover, duration, ease }) => {
+        persist: (
+          box,
+          { delta, from, was, mover, duration, ease, animate },
+        ) => {
           const x = delta.x + (from?.tx ?? 0);
           const y = delta.y + (from?.ty ?? 0);
           return [
-            box.animate(
+            animate(
+              box,
               [
                 { transform: `translate(${x}px, ${y}px)` },
                 { transform: "none" },
@@ -44,7 +48,7 @@ export function rows({ key = (line) => line }: RowsOptions = {}): TorphPlugin {
             ),
             ...(was !== undefined && was !== mover.textContent
               ? [
-                  mover.animate([{ opacity: 0.35 }, { opacity: 1 }], {
+                  animate(mover, [{ opacity: 0.35 }, { opacity: 1 }], {
                     duration: duration / 2,
                     delay: duration / 2,
                     fill: "backwards",

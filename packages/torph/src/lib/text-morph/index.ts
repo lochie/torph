@@ -26,6 +26,8 @@ import {
   releaseContainerSize,
   resizeContainer,
   snapshotAnimations,
+  animateFrom,
+  type Where,
   trackAnimation,
   transitionContainerSize,
   type AnimationState,
@@ -36,11 +38,13 @@ import {
   type HookSet,
   type Hooks,
   type Motion,
+  type MotionContext,
   type RunContext,
   kindOwners,
   pluginIds,
 } from "./plugin";
 import { CLASSIC } from "./plugins";
+import { DIGIT_INK, NO_CLIP, slotClip } from "./utils/slot";
 import {
   placeDetached,
   readDetached,
@@ -67,6 +71,8 @@ import {
   ATTR_LINGER,
   ATTR_ID,
   ATTR_KIND,
+  VAR_INK_BOTTOM,
+  VAR_INK_TOP,
   ATTR_SR,
   ATTR_TEXT,
   EMPTY_ID,
@@ -121,13 +127,35 @@ function replacements(
   return pairs;
 }
 
+/** Every glyph the slots of these plugins can hold, or null if none has a slot. */
+function slotInk(plugins: readonly AnyPlugin[]) {
+  const glyphs = plugins.flatMap((plugin) =>
+    [...Object.values(plugin.kinds ?? {}), plugin.animate?.text ?? {}]
+      .filter((spec) => spec.slot)
+      .map((spec) => spec.ink ?? DIGIT_INK),
+  );
+  return glyphs.length ? [...new Set(glyphs.join(""))].join("") : null;
+}
+
+// An unchanged write would still restyle every slot.
+function setStyleVar(element: HTMLElement, name: string, value: string) {
+  if (element.style.getPropertyValue(name) !== value)
+    element.style.setProperty(name, value);
+}
+
 /** What every hook in one morph shares. */
 type Scene = {
   states: Map<AnyPlugin, unknown>;
-  line: { height: number };
+  line: { height: number; clear: number };
   arriving: number;
   leaving: number;
   pairs: Map<HTMLElement, HTMLElement>;
+  animate: (
+    element: HTMLElement,
+    keyframes: Keyframe[] | PropertyIndexedKeyframes,
+    options?: KeyframeAnimationOptions,
+    shift?: { x: number; y: number },
+  ) => Animation;
   // The previous morph's text per box, before the reconcile rewrote any of it.
   was: Map<string, string>;
 };
@@ -506,8 +534,12 @@ export class TextMorph {
   private animations: Map<Element, Animation[]> | null = null;
   private plugins: readonly AnyPlugin[];
   private owners: Map<string, AnyPlugin>;
+  /** Every glyph a slot here can hold, or null with no slots to mask. */
+  private slotInk: string | null;
   private isSlot = (kind: string) =>
-    !!this.owners.get(kind)?.kinds?.[kind]?.slot;
+    kind === "text"
+      ? this.plugins.some((plugin) => plugin.animate?.text?.slot)
+      : !!this.owners.get(kind)?.kinds?.[kind]?.slot;
   // The current morph's: what it waits on, and what aborts it.
   private waits: Promise<unknown>[] = [];
   private abort: AbortController | null = null;
@@ -541,6 +573,7 @@ export class TextMorph {
     this.options = { ...rest, ease, duration };
     this.plugins = plugins;
     this.owners = kindOwners(this.plugins);
+    this.slotInk = slotInk(this.plugins);
 
     this.element = options.element;
 
@@ -585,6 +618,8 @@ export class TextMorph {
     this.srNode?.remove();
     this.srNode = null;
     for (const plugin of this.plugins) plugin.teardown?.(this.element);
+    this.element.style.removeProperty(VAR_INK_TOP);
+    this.element.style.removeProperty(VAR_INK_BOTTOM);
     this.element.removeAttribute(ATTR_ROOT);
     if (this.ownsDir) {
       this.element.removeAttribute("dir");
@@ -769,7 +804,9 @@ export class TextMorph {
     const states = style
       ? this.readPlugins(value, style)
       : new Map<AnyPlugin, unknown>();
-    if (style) snapshotAnimations(element);
+    const where = style
+      ? snapshotAnimations(element)
+      : new Map<Element, Where>();
     const shaping = style && readShaping(style);
 
     let segments: Segment[];
@@ -818,6 +855,15 @@ export class TextMorph {
     segments = ligate(lines.segments, shaping);
 
     const newIds = new Set(segments.map((b) => b.id));
+    // Only a morph with a slot on either side needs its mask measured.
+    const slotted = (list: Segment[]) =>
+      list.some((segment) => this.isSlot(segment.kind ?? "text"));
+    const clip =
+      style &&
+      this.slotInk &&
+      (slotted(segments) || slotted(this.renderedSegments))
+        ? slotClip(style, this.slotInk)
+        : NO_CLIP;
 
     if (!oldSize) {
       yield;
@@ -854,6 +900,11 @@ export class TextMorph {
       : lettersOf(element, reopened, this.frame);
     yield;
 
+    // The mask's reach, before the "before" measure: a slot's padding is part of its box.
+    if (clip.inkTop !== null && clip.inkBottom !== null) {
+      setStyleVar(element, VAR_INK_TOP, `${clip.inkTop.toFixed(4)}em`);
+      setStyleVar(element, VAR_INK_BOTTOM, `${clip.inkBottom.toFixed(4)}em`);
+    }
     for (const plugin of this.plugins) {
       const prepare = plugin.prepare;
       if (prepare)
@@ -866,7 +917,7 @@ export class TextMorph {
     // Sized to the text they replace, so the measure below reads where the text had them.
     if (outgoing) this.split(outgoing);
     else {
-      splitWordSpans(element, reopened);
+      splitWordSpans(element, reopened, this.isSlot);
       fitLetters(element, reopened, reopenedLetters!);
     }
     yield;
@@ -875,7 +926,7 @@ export class TextMorph {
     yield;
 
     if (letters) {
-      splitWordSpans(element, splits);
+      splitWordSpans(element, splits, this.isSlot);
       fitLetters(element, splits, letters);
     }
     this.syncText(value);
@@ -933,8 +984,12 @@ export class TextMorph {
 
     twin.remove();
     if (lingeredAt) this.collapse(lingered, lingeredAt, true);
-    if (detached) placeDetached(exiting, detached);
-    else {
+    if (detached) {
+      placeDetached(exiting, detached);
+      // Its translation is in left/top now, and the rest of its transform is set on it: starting
+      // it from where it was would count the translation twice.
+      for (const child of exiting) where.delete(child);
+    } else {
       // Still in the line, so what arrives lands around it; it leaves the line later.
       // Line breaks too, so a removed line keeps its own row until the line closes up.
       for (const child of exiting) {
@@ -959,9 +1014,8 @@ export class TextMorph {
       (lines, segment) => (segment.string === "\n" ? lines + 1 : lines),
       1,
     );
-    const line = {
-      height: (element.offsetHeight || 20 * lineCount) / lineCount,
-    };
+    const height = (element.offsetHeight || 20 * lineCount) / lineCount;
+    const line = { height, clear: height + clip.top + clip.bottom };
     yield;
 
     // Measured at the old width, not derived — text-align does nothing to overflowing content.
@@ -986,6 +1040,8 @@ export class TextMorph {
     const scene: Scene = {
       states,
       line,
+      animate: (element, keyframes, options, shift) =>
+        animateFrom(where, element, keyframes, options, shift),
       arriving: 0,
       leaving: leaving.length,
       was,
@@ -1308,11 +1364,57 @@ export class TextMorph {
         state: scene.states.get(plugin),
         duration: this.options.duration!,
         ease: this.options.ease!,
+        animate: scene.animate,
         signal: this.abort!.signal,
       };
       this.wait(
         this.guard(() => plugin.runs![side]!(run, ctx), plugin, "runs", side),
         side === "exit" ? run : undefined,
+      );
+      // A run moves as one shape, but each box in it is still decorated, counted within its run.
+      run.forEach((box, index) => {
+        const id = box.getAttribute(ATTR_ID)!;
+        this.decorate(side, box.getAttribute(ATTR_KIND) ?? "text", box, scene, {
+          mover: moverOf(box),
+          delta: { x: 0, y: 0 },
+          from: previous?.get(box),
+          index,
+          arriving: side === "enter" ? run.length : 0,
+          leaving: side === "exit" ? run.length : 0,
+          was: scene.was.get(id),
+          run: true,
+          animate: scene.animate,
+        });
+      });
+    }
+  }
+
+  /** Every plugin's decoration for a box, alongside whatever moves it. */
+  private decorate(
+    name: keyof Hooks<unknown>,
+    kind: string,
+    box: HTMLElement,
+    scene: Scene,
+    base: Omit<
+      MotionContext<unknown>,
+      "state" | "kind" | "line" | "duration" | "ease" | "signal"
+    >,
+  ) {
+    for (const plugin of this.plugins) {
+      const decorate = plugin.decorate;
+      const hook = (decorate?.[kind] ?? decorate?.["*"])?.[name];
+      if (!hook) continue;
+      const ctx = {
+        ...base,
+        kind,
+        line: scene.line,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+        signal: this.abort!.signal,
+        state: scene.states.get(plugin),
+      };
+      this.wait(
+        this.guard(() => hook(box, ctx), plugin, "decorate", kind, name),
       );
     }
   }
@@ -1333,6 +1435,18 @@ export class TextMorph {
     moverFrom?: AnimationState,
   ) {
     const id = box.getAttribute(ATTR_ID)!;
+    // The box's own layout moved by `delta`; its mover's, inside it, didn't.
+    const animate: MotionContext<unknown>["animate"] = (
+      element,
+      keyframes,
+      options,
+    ) =>
+      scene.animate(
+        element,
+        keyframes,
+        options,
+        element === box ? delta : undefined,
+      );
     const base = {
       kind,
       mover: moverOf(box),
@@ -1342,6 +1456,7 @@ export class TextMorph {
       line: scene.line,
       duration: this.options.duration!,
       ease: this.options.ease!,
+      animate,
       signal: this.abort!.signal,
       index,
       arriving: scene.arriving,
@@ -1361,15 +1476,7 @@ export class TextMorph {
     } else {
       fallback();
     }
-    for (const plugin of this.plugins) {
-      const decorate = plugin.decorate;
-      const hook = (decorate?.[kind] ?? decorate?.["*"])?.[name];
-      if (!hook) continue;
-      const ctx = { ...base, state: scene.states.get(plugin) };
-      this.wait(
-        this.guard(() => hook(box, ctx), plugin, "decorate", kind, name),
-      );
-    }
+    this.decorate(name, kind, box, scene, base);
   }
 
   /** With `debug` on and `torph/debug` enabled, a hook that reads layout is named in a warning. */

@@ -151,6 +151,7 @@ function withoutTranslation(transform: string): string {
 export function splitWordSpans(
   element: HTMLElement,
   splits: Map<string, Segment[]>,
+  isSlot: (kind: string) => boolean,
 ) {
   if (splits.size === 0) return;
 
@@ -167,7 +168,7 @@ export function splitWordSpans(
 
     for (const seg of charSegs) {
       const span = createItem("span", seg.id);
-      syncSlot(span, seg);
+      syncSlot(span, seg, isSlot);
       child.before(span);
     }
     child.remove();
@@ -182,12 +183,13 @@ export function splitWordSpans(
 function syncSlot(
   element: HTMLElement,
   segment: Segment,
-  isSlot: (kind: string) => boolean = () => true,
+  isSlot: (kind: string) => boolean,
 ) {
   if (segment.kind) element.setAttribute(ATTR_KIND, segment.kind);
   else element.removeAttribute(ATTR_KIND);
 
-  if (!segment.kind || !isSlot(segment.kind)) {
+  // Plain text is the kind "text", which a plugin can mask too.
+  if (!isSlot(segment.kind ?? "text")) {
     element.removeAttribute(ATTR_SLOT);
     // Also discards the inner span, if this element had one.
     if (element.firstElementChild || element.textContent !== segment.string)
@@ -219,7 +221,7 @@ export function reconcileChildren(
   oldChildren: HTMLElement[],
   newIds: Set<string>,
   segments: Segment[],
-  isSlot?: (kind: string) => boolean,
+  isSlot: (kind: string) => boolean,
 ) {
   const reusable = new Map<string, HTMLElement>();
   oldChildren.forEach((child) => {

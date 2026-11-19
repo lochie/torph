@@ -52,8 +52,12 @@ const Rows = ({
   );
 };
 
-/** Values that a click steps through. */
-export const Compare = ({ values, ...look }: Look & { values: string[] }) => {
+/** Values that a click steps through; `note` names the variant when a card shows several. */
+export const Compare = ({
+  values,
+  note,
+  ...look
+}: Look & { values: string[]; note?: string }) => {
   const [index, setIndex] = React.useState(0);
   return (
     <button
@@ -63,6 +67,7 @@ export const Compare = ({ values, ...look }: Look & { values: string[] }) => {
       aria-label="Next value"
     >
       <Rows value={values[index]!} {...look} />
+      {note && <span className={styles.note}>{note}</span>}
     </button>
   );
 };

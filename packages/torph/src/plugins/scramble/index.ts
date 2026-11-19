@@ -58,10 +58,10 @@ export function scramble({
     animate: {
       text: {
         // Hidden until its turn, then scrambling until it locks on, in reading order.
-        enter: (box, { mover, index, arriving, duration, signal }) => {
+        enter: (box, { mover, index, arriving, duration, signal, animate }) => {
           const text = mover.textContent ?? "";
           const appear = start(index, arriving, duration);
-          box.animate([{ opacity: 0 }, { opacity: 0 }], { duration: appear });
+          animate(box, [{ opacity: 0 }, { opacity: 0 }], { duration: appear });
           return scrambling(
             mover,
             text,

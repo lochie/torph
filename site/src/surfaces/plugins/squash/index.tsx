@@ -2,9 +2,14 @@ import { squash } from "torph/plugins/squash";
 import { Compare } from "../compare";
 
 const PLUGINS = [squash()];
-// The words trade places, so each travels far enough to stretch.
-const VALUES = ["Red Green Blue", "Blue Red Green", "Green Blue Red"];
+// Words that trade places, so letters hop across; and some that come and go.
+const VALUES = [
+  "Red Green Blue",
+  "Blue Red Green",
+  "Green Blue",
+  "Red Green Blue",
+];
 
 export const SquashDemo = () => (
-  <Compare values={VALUES} plugins={PLUGINS} duration={600} />
+  <Compare values={VALUES} plugins={PLUGINS} duration={700} />
 );

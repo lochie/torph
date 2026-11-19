@@ -30,6 +30,22 @@ const entries = [
   { name: "plugins/rows", path: "plugins/rows/index.mjs" },
   { name: "plugins/trend", path: "plugins/trend/index.mjs" },
   { name: "plugins/reveal", path: "plugins/reveal/index.mjs" },
+  { name: "plugins/smoke", path: "plugins/smoke/index.mjs" },
+  { name: "plugins/glitch", path: "plugins/glitch/index.mjs" },
+  { name: "plugins/neon", path: "plugins/neon/index.mjs" },
+  { name: "plugins/shatter", path: "plugins/shatter/index.mjs" },
+  { name: "plugins/stamp", path: "plugins/stamp/index.mjs" },
+  { name: "plugins/roll", path: "plugins/roll/index.mjs" },
+  { name: "plugins/lookalike", path: "plugins/lookalike/index.mjs" },
+  { name: "plugins/mask", path: "plugins/mask/index.mjs" },
+  { name: "plugins/fadeUp", path: "plugins/fadeUp/index.mjs" },
+  { name: "plugins/cascade", path: "plugins/cascade/index.mjs" },
+  { name: "plugins/ticker", path: "plugins/ticker/index.mjs" },
+  { name: "plugins/fadeThrough", path: "plugins/fadeThrough/index.mjs" },
+  { name: "plugins/sharedAxis", path: "plugins/sharedAxis/index.mjs" },
+  { name: "plugins/slot", path: "plugins/slot/index.mjs" },
+  { name: "plugins/dissolve", path: "plugins/dissolve/index.mjs" },
+  { name: "plugins/ripple", path: "plugins/ripple/index.mjs" },
 ];
 
 // `null` for an entry that isn't there, so a missing size never reads as zero.

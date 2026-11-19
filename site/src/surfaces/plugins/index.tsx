@@ -21,6 +21,22 @@ import { CountupDemo } from "./countup";
 import { RowsDemo } from "./rows";
 import { TrendDemo } from "./trend";
 import { RevealDemo } from "./reveal";
+import { SmokeDemo } from "./smoke";
+import { GlitchDemo } from "./glitch";
+import { NeonDemo } from "./neon";
+import { ShatterDemo } from "./shatter";
+import { StampDemo } from "./stamp";
+import { RollDemo } from "./roll";
+import { LookalikeDemo } from "./lookalike";
+import { MaskDemo } from "./mask";
+import { FadeUpDemo } from "./fadeUp";
+import { CascadeDemo } from "./cascade";
+import { TickerDemo } from "./ticker";
+import { FadeThroughDemo } from "./fadeThrough";
+import { SharedAxisDemo } from "./sharedAxis";
+import { SlotDemo } from "./slot";
+import { DissolveDemo } from "./dissolve";
+import { RippleDemo } from "./ripple";
 import { Mix } from "./mix";
 import { ShowDefault } from "./compare";
 import styles from "./styles.module.scss";
@@ -41,7 +57,24 @@ export type PluginName =
   | "countup"
   | "rows"
   | "trend"
-  | "reveal";
+  | "reveal"
+  | "smoke"
+  | "glitch"
+  | "neon"
+  | "shatter"
+  | "stamp"
+  | "roll"
+  | "lookalike"
+  | "mask"
+  | "fadeUp"
+  | "cascade"
+  | "ticker"
+  | "fadeThrough"
+  | "sharedAxis"
+  | "slot"
+  | "dissolve"
+  | "ripple"
+  | "caret";
 
 const PLUGINS: {
   name: PluginName;
@@ -114,6 +147,87 @@ const PLUGINS: {
     name: "reveal",
     summary: "Each place turns over to its new character.",
     Demo: RevealDemo,
+  },
+  {
+    name: "slot",
+    summary: "Changes roll through a window.",
+    Demo: SlotDemo,
+  },
+  {
+    name: "dissolve",
+    summary: "Letters break into dots and gather.",
+    Demo: DissolveDemo,
+  },
+  {
+    name: "ripple",
+    summary: "New letters ripple out from the change.",
+    Demo: RippleDemo,
+  },
+  {
+    name: "smoke",
+    summary: "Old text wisps away like smoke.",
+    Demo: SmokeDemo,
+  },
+  {
+    name: "glitch",
+    summary: "Changes come through a glitch.",
+    Demo: GlitchDemo,
+  },
+  {
+    name: "neon",
+    summary: "Flickers on like a neon tube.",
+    Demo: NeonDemo,
+  },
+  {
+    name: "shatter",
+    summary: "Old text cracks into falling shards.",
+    Demo: ShatterDemo,
+  },
+  {
+    name: "stamp",
+    summary: "New text slams down like a stamp.",
+    Demo: StampDemo,
+  },
+  {
+    name: "roll",
+    summary: "The value rolls round like a barrel.",
+    Demo: RollDemo,
+  },
+  {
+    name: "lookalike",
+    summary: "Letters step through lookalike glyphs.",
+    Demo: LookalikeDemo,
+  },
+  {
+    name: "mask",
+    summary: "New text rises into place behind a mask.",
+    Demo: MaskDemo,
+    wide: true,
+  },
+  {
+    name: "fadeUp",
+    summary: "New text fades up into place.",
+    Demo: FadeUpDemo,
+  },
+  {
+    name: "cascade",
+    summary: "Text arrives a line at a time.",
+    Demo: CascadeDemo,
+  },
+  {
+    name: "ticker",
+    summary: "New text pushes the old out.",
+    Demo: TickerDemo,
+  },
+  {
+    name: "fadeThrough",
+    summary: "Fades out, then fades in growing.",
+    Demo: FadeThroughDemo,
+  },
+  {
+    name: "sharedAxis",
+    summary: "Old leaves one way, new arrives the other.",
+    Demo: SharedAxisDemo,
   },
   {
     name: "redline",

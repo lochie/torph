@@ -232,6 +232,44 @@ describe("a plugin's own kinds", () => {
   });
 });
 
+describe("a slot", () => {
+  it("is masked by the engine, numbers() or not, and knows how far to travel to clear it", () => {
+    let clear = 0;
+    let height = 0;
+    const plugin: TorphPlugin = {
+      name: "slotted",
+      claim: () => true,
+      segment: (word, { id }) => [{ id: id(word), string: word, kind: "s" }],
+      kinds: {
+        s: {
+          slot: true,
+          ink: "gy",
+          enter: (_box, { line }) => {
+            clear = line.clear;
+            height = line.height;
+          },
+        },
+      },
+    };
+    const element = document.createElement("span");
+    document.body.appendChild(element);
+    const morph = new TextMorph({
+      element,
+      duration: 30,
+      respectReducedMotion: false,
+      plugins: [plugin, held],
+    });
+    mounted.push(morph);
+    morph.update("one");
+    morph.update("one two");
+    expect(
+      element.querySelector('[torph-kind="s"][torph-slot]'),
+    ).not.toBeNull();
+    expect(height).toBeGreaterThan(0);
+    expect(clear).toBeGreaterThanOrEqual(height);
+  });
+});
+
 describe("a plugin's ease", () => {
   function durations(options: Partial<TextMorphOptions>) {
     const seen: number[] = [];
@@ -328,6 +366,29 @@ describe("decorations", () => {
     expect(decorated).toEqual(["digit:6", "text:b"]);
     // The number still moved with its own plugin: its slot is there.
     expect(element.querySelector(`[${ATTR_SLOT}]`)).not.toBeNull();
+  });
+
+  it("run for each box of a run that moves as one shape", () => {
+    const decorated: string[] = [];
+    const plugin: TorphPlugin = {
+      name: "mark",
+      decorate: {
+        "*": {
+          enter: (box, c) =>
+            void decorated.push(
+              `${box.textContent}:${c.index}/${c.arriving}${c.run ? " run" : ""}`,
+            ),
+          exit: (box) => void decorated.push(`-${box.textContent}`),
+        },
+      },
+    };
+    const { morph } = mount({ plugins: [plugin] });
+    morph.update("abcdefghij");
+    morph.update("klmnopqrst");
+    // groups() moved each side as one shape; every box was still decorated.
+    expect(decorated.filter((d) => d.startsWith("-")).length).toBe(10);
+    expect(decorated.filter((d) => !d.startsWith("-")).length).toBe(10);
+    expect(decorated).toContain("t:9/10 run");
   });
 });
 
@@ -439,8 +500,6 @@ describe("an author's override of a built-in kind", () => {
     expect(entered).toEqual(["6"]);
   });
 });
-
-describe("where a box rests", () => {});
 
 describe("whole", () => {
   it("lets a plugin cut the whole value, reusing what it likes", () => {

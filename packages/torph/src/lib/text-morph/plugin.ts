@@ -33,10 +33,21 @@ export type MotionContext<State> = {
   /** Where the box and mover were when this morph interrupted them. */
   from?: AnimationState;
   moverFrom?: AnimationState;
-  line: { height: number };
+  /** `clear` is how far a slot's inner box travels to leave its mask: the line, and the mask's reach past it. */
+  line: { height: number; clear: number };
   state: State;
   duration: number;
   ease: string;
+  /**
+   * `element.animate`, picking up where an interrupted morph left `element`: what it was
+   * running is cancelled, and it starts from where it was on screen. Animate the box or
+   * mover through it and a hook is smooth under interruption with nothing more to do.
+   */
+  animate(
+    element: HTMLElement,
+    keyframes: Keyframe[] | PropertyIndexedKeyframes,
+    options?: KeyframeAnimationOptions,
+  ): Animation;
   /** Aborts when a later morph interrupts this one, or the instance is torn down. */
   signal: AbortSignal;
   /** This box's place, in reading order, among the boxes on its side: arriving, staying or leaving. */
@@ -50,6 +61,8 @@ export type MotionContext<State> = {
   replaces?: HTMLElement;
   /** The arriving box that takes this one's place. */
   replacedBy?: HTMLElement;
+  /** Set for a decoration when the box moves inside a run, as one shape with the rest of it: `index` and the counts are then the run's. */
+  run?: boolean;
 };
 
 /** What the engine waits on before the morph completes; an exit's box is removed once it settles. */
@@ -69,10 +82,21 @@ export type RunContext<State> = {
   rects: DOMRect[];
   /** Where each box was when this morph interrupted it. */
   from: (AnimationState | undefined)[];
-  line: { height: number };
+  /** `clear` is how far a slot's inner box travels to leave its mask: the line, and the mask's reach past it. */
+  line: { height: number; clear: number };
   state: State;
   duration: number;
   ease: string;
+  /**
+   * `element.animate`, picking up where an interrupted morph left `element`: what it was
+   * running is cancelled, and it starts from where it was on screen. Animate the box or
+   * mover through it and a hook is smooth under interruption with nothing more to do.
+   */
+  animate(
+    element: HTMLElement,
+    keyframes: Keyframe[] | PropertyIndexedKeyframes,
+    options?: KeyframeAnimationOptions,
+  ): Animation;
   signal: AbortSignal;
 };
 
@@ -84,8 +108,10 @@ export type RunHooks<State> = {
 };
 
 export type KindSpec<State> = HookSet<State> & {
-  /** An outer box for FLIP and an inner one for the plugin's own motion. */
+  /** An outer box for FLIP, masked to its line, and an inner one for the plugin's own motion. */
   slot?: boolean;
+  /** Glyphs a slot of this kind holds, so its mask reaches far enough for them; by default, figures. */
+  ink?: string;
 };
 
 export type TorphPlugin<State = unknown> = {
@@ -136,8 +162,11 @@ export type TorphPlugin<State = unknown> = {
   kinds?: Record<string, KindSpec<State>>;
   /** Moves a wholly replaced run as one shape, in place of its boxes' own hooks. */
   runs?: RunHooks<State>;
-  /** Hooks for kinds this plugin doesn't own: `"text"` for plain text, or another plugin's. */
-  animate?: Record<string, HookSet<State>>;
+  /** Hooks for kinds this plugin doesn't own: `"text"` for plain text, or another plugin's. `slot` on `"text"` masks plain text as a kind's own slot is masked. */
+  animate?: Record<
+    string,
+    HookSet<State> & Pick<KindSpec<State>, "slot" | "ink">
+  >;
   /** Hooks that run alongside whichever moves a box, for a kind or `"*"` for every kind. */
   decorate?: Record<string, Partial<Hooks<State>>>;
 };

@@ -1,5 +1,4 @@
 import type { Segment } from "../../utils/types";
-import { VAR_INK_BOTTOM, VAR_INK_TOP } from "../../utils/constants";
 import type { KindSpec, TorphPlugin } from "../plugin";
 import {
   classifyKind,
@@ -14,18 +13,7 @@ import {
   animateNumberEnter,
   animateNumberExit,
   animateNumberPersist,
-  NO_CLIP,
-  slotClip,
-  type SlotClip,
 } from "../utils/number-animate";
-import { NUMBERS_CSS } from "./numbers-css";
-
-// An unchanged write would still restyle every slot.
-function setStyleVar(element: HTMLElement, name: string, value: string) {
-  if (element.style.getPropertyValue(name) !== value) {
-    element.style.setProperty(name, value);
-  }
-}
 
 /** Fills in kinds an older segmentation of the same word lacked, or another plugin gave it. */
 function asNumberSegments(segments: Segment[]): NumberSegment[] {
@@ -38,14 +26,14 @@ function asNumberSegments(segments: Segment[]): NumberSegment[] {
   }));
 }
 
-const slot: KindSpec<SlotClip> = {
+const slot: KindSpec<unknown> = {
   slot: true,
   enter: animateNumberEnter,
   persist: animateNumberPersist,
   exit: animateNumberExit,
 };
 
-const NUMBERS: TorphPlugin<SlotClip> = {
+const NUMBERS: TorphPlugin = {
   name: "numbers",
   touches: hasDigit,
   claim: isNumericWord,
@@ -66,20 +54,6 @@ const NUMBERS: TorphPlugin<SlotClip> = {
     (hasDigit(a) || hasDigit(b)) && numericSkeleton(a) === numericSkeleton(b)
       ? 1
       : null,
-  read: (_root, style) => slotClip(style),
-  prepare: (root, { inkTop, inkBottom }) => {
-    // Only a new font changes these, so most morphs write nothing.
-    if (inkTop !== null && inkBottom !== null) {
-      setStyleVar(root, VAR_INK_TOP, `${inkTop.toFixed(4)}em`);
-      setStyleVar(root, VAR_INK_BOTTOM, `${inkBottom.toFixed(4)}em`);
-    }
-  },
-  teardown: (root) => {
-    root.style.removeProperty(VAR_INK_TOP);
-    root.style.removeProperty(VAR_INK_BOTTOM);
-  },
-  css: NUMBERS_CSS,
-  idle: NO_CLIP,
   kinds: { digit: slot, symbol: slot },
 };
 

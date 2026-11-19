@@ -124,12 +124,13 @@ export function redline({
     animate: {
       text: {
         // Struck through as it lingers, then gone as the line closes up.
-        exit: (box, { duration }) => {
+        exit: (box, { duration, animate }) => {
           const total = duration * (linger + 0.4);
           // Spaces and breaks still hold the line's shape while they linger, unmarked.
           if (!box.textContent?.trim()) return [];
           return [
-            box.animate(
+            animate(
+              box,
               [
                 { ...strike, backgroundSize: "0% 0.08em" },
                 {
@@ -157,11 +158,12 @@ export function redline({
           ];
         },
         // Underlined as it arrives, the mark fading back to plain text.
-        enter: (box, { duration }) =>
+        enter: (box, { duration, animate }) =>
           !box.textContent?.trim()
             ? []
             : [
-                box.animate(
+                animate(
+                  box,
                   [
                     {
                       ...underline,

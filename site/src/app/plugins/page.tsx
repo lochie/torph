@@ -6,7 +6,7 @@ import { Plugins, type PluginName } from "@/surfaces/plugins";
 export const metadata: Metadata = {
   title: "Plugins • Torph",
   description:
-    "Plugins change how torph cuts text up and how it moves: blur, words, scramble, flap, typewriter, tokens, odometer, wave, caseless, stack, squash, redline, countup, rows, trend and reveal, each with its source.",
+    "Plugins change how torph cuts text up and how it moves: blur, words, scramble, flap, typewriter, tokens, odometer, wave, caseless, stack, squash, redline, countup, rows, trend, reveal, slot, dissolve, ripple, smoke, glitch, neon, shatter, stamp, roll, lookalike, mask, fadeUp, cascade, ticker, fadeThrough and sharedAxis, each with its source.",
 };
 
 const NAMES: PluginName[] = [
@@ -26,6 +26,22 @@ const NAMES: PluginName[] = [
   "rows",
   "trend",
   "reveal",
+  "smoke",
+  "glitch",
+  "neon",
+  "shatter",
+  "stamp",
+  "roll",
+  "lookalike",
+  "mask",
+  "fadeUp",
+  "cascade",
+  "ticker",
+  "fadeThrough",
+  "sharedAxis",
+  "slot",
+  "dissolve",
+  "ripple",
 ];
 
 // Read from the package, so the source on the page is the source that ships.

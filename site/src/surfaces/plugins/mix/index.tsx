@@ -17,10 +17,26 @@ import { trend } from "torph/plugins/trend";
 import { typewriter } from "torph/plugins/typewriter";
 import { wave } from "torph/plugins/wave";
 import { words } from "torph/plugins/words";
+import { sharedAxis } from "torph/plugins/sharedAxis";
+import { fadeThrough } from "torph/plugins/fadeThrough";
+import { ticker } from "torph/plugins/ticker";
+import { cascade } from "torph/plugins/cascade";
+import { fadeUp } from "torph/plugins/fadeUp";
+import { mask } from "torph/plugins/mask";
+import { lookalike } from "torph/plugins/lookalike";
+import { roll } from "torph/plugins/roll";
+import { stamp } from "torph/plugins/stamp";
+import { shatter } from "torph/plugins/shatter";
+import { smoke } from "torph/plugins/smoke";
+import { glitch } from "torph/plugins/glitch";
+import { neon } from "torph/plugins/neon";
+import { slot } from "torph/plugins/slot";
+import { dissolve } from "torph/plugins/dissolve";
+import { ripple } from "torph/plugins/ripple";
 
 import { CodeBlock } from "@/components/codeblock";
 import styles from "../styles.module.scss";
-import { hidden } from "./hidden";
+import { overrides, type Override } from "./overrides";
 
 // Built once: a morph is matched by its plugins' names and options, so a new list each render is fine.
 const CLASSIC: Record<string, TorphPlugin> = {
@@ -29,24 +45,55 @@ const CLASSIC: Record<string, TorphPlugin> = {
   fade: fade(),
   scale: scale(),
 };
-const MORE: Record<string, TorphPlugin> = {
+// Grouped by what each mostly decides: plugins in one group compete, plugins across groups stack.
+const MOTION: Record<string, TorphPlugin> = {
   blur: blur(),
-  words: words(),
-  scramble: scramble(),
-  flap: flap(),
-  typewriter: typewriter(),
-  tokens: tokens(),
-  odometer: odometer(),
   wave: wave(),
-  caseless: caseless(),
-  stack: stack(),
   squash: squash(),
-  redline: redline(),
-  countup: countup(),
-  rows: rows(),
-  trend: trend(),
+  scramble: scramble(),
+  typewriter: typewriter(),
+  flap: flap(),
   reveal: reveal(),
+  slot: slot(),
+  dissolve: dissolve(),
+  ripple: ripple(),
+  smoke: smoke(),
+  glitch: glitch(),
+  neon: neon(),
+  shatter: shatter(),
+  stamp: stamp(),
+  lookalike: lookalike(),
+  mask: mask(),
+  fadeUp: fadeUp(),
+  cascade: cascade(),
+  ticker: ticker(),
+  fadeThrough: fadeThrough(),
+  sharedAxis: sharedAxis(),
 };
+const SPLITTING: Record<string, TorphPlugin> = {
+  words: words(),
+  tokens: tokens(),
+  caseless: caseless(),
+  rows: rows(),
+  stack: stack(),
+  redline: redline(),
+  roll: roll(),
+};
+const FIGURES: Record<string, TorphPlugin> = {
+  countup: countup(),
+  odometer: odometer(),
+  trend: trend(),
+};
+// Decorations: they run beside whatever moves the text, so they stack with anything.
+const EXTRAS: Record<string, TorphPlugin> = {};
+const MORE = { ...MOTION, ...SPLITTING, ...FIGURES, ...EXTRAS };
+const GROUPS = [
+  { name: "classic()", plugins: CLASSIC },
+  { name: "how text moves", plugins: MOTION },
+  { name: "how text splits", plugins: SPLITTING },
+  { name: "for numbers", plugins: FIGURES },
+  { name: "on top of any", plugins: EXTRAS },
+];
 const BUILT = { ...MORE, ...CLASSIC };
 
 // Pairs that each change something different: words, figures, identifiers, lines.
@@ -75,27 +122,37 @@ function usage(picked: string[]) {
   return `<TextMorph plugins={[${list.join(", ")}]}>{value}</TextMorph>`;
 }
 
+const names = (list: string[]) => list.map((n) => `${n}()`).join(", ");
+
+/** One line on what the plugins in front took from this one. */
+function describe(name: string, { by, left }: Override) {
+  return left.length === 0
+    ? `${name}() is hidden by ${names(by)}`
+    : `${name}() is partly overridden by ${names(by)}; its ${left.join(", ")} still apply`;
+}
+
 const Toggle = ({
   name,
   on,
-  by,
+  override,
   flip,
 }: {
   name: string;
   on: boolean;
-  by?: string[];
+  override?: Override;
   flip: () => void;
 }) => {
-  const note = by && `hidden by ${by.map((n) => `${n}()`).join(", ")}`;
+  const note = override && describe(name, override);
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={on}
-      aria-description={note}
       title={note}
       className={styles.choice}
-      data-hidden={by ? "" : undefined}
+      data-overridden={
+        override && (override.left.length === 0 ? "hidden" : "partly")
+      }
       onClick={flip}
     >
       {name}()
@@ -116,7 +173,7 @@ export const Mix = () => {
     ...Object.keys(CLASSIC).filter((name) => chosen.includes(name)),
   ];
   const plugins = picked.map((name) => BUILT[name]!);
-  const covered = hidden(
+  const overridden = overrides(
     picked.map((name) => [name, BUILT[name]!]),
     text,
   );
@@ -154,43 +211,28 @@ export const Mix = () => {
         aria-label="Text to morph"
         onChange={(event) => setText(event.target.value)}
       />
-      <div className={styles.group}>
-        <span className={styles.groupName}>classic()</span>
-        <div className={styles.choices}>
-          {Object.keys(CLASSIC).map((name) => (
-            <Toggle
-              key={name}
-              name={name}
-              on={chosen.includes(name)}
-              by={covered.get(name)}
-              flip={() => flip(name)}
-            />
-          ))}
+      {GROUPS.map((group) => (
+        <div key={group.name} className={styles.group}>
+          <span className={styles.groupName}>{group.name}</span>
+          <div className={styles.choices}>
+            {Object.keys(group.plugins).map((name) => (
+              <Toggle
+                key={name}
+                name={name}
+                on={chosen.includes(name)}
+                override={overridden.get(name)}
+                flip={() => flip(name)}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-      <div className={styles.group}>
-        <span className={styles.groupName}>in front of it</span>
-        <div className={styles.choices}>
-          {Object.keys(MORE).map((name) => (
-            <Toggle
-              key={name}
-              name={name}
-              on={chosen.includes(name)}
-              by={covered.get(name)}
-              flip={() => flip(name)}
-            />
+      ))}
+      {overridden.size > 0 && (
+        <ul className={styles.overrides}>
+          {[...overridden].map(([name, override]) => (
+            <li key={name}>{describe(name, override)}</li>
           ))}
-        </div>
-      </div>
-      {covered.size > 0 && (
-        <p className={styles.hiddenNote}>
-          {[...covered]
-            .map(
-              ([name, by]) =>
-                `${name}() is hidden by ${by.map((n) => `${n}()`).join(", ")}`,
-            )
-            .join(" · ")}
-        </p>
+        </ul>
       )}
       <CodeBlock code={usage(picked)} />
     </div>

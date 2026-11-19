@@ -112,6 +112,86 @@
       "import": "./dist/plugins/reveal/index.mjs",
       "require": "./dist/plugins/reveal/index.js"
     },
+    "./plugins/smoke": {
+      "types": "./dist/plugins/smoke/index.d.ts",
+      "import": "./dist/plugins/smoke/index.mjs",
+      "require": "./dist/plugins/smoke/index.js"
+    },
+    "./plugins/glitch": {
+      "types": "./dist/plugins/glitch/index.d.ts",
+      "import": "./dist/plugins/glitch/index.mjs",
+      "require": "./dist/plugins/glitch/index.js"
+    },
+    "./plugins/neon": {
+      "types": "./dist/plugins/neon/index.d.ts",
+      "import": "./dist/plugins/neon/index.mjs",
+      "require": "./dist/plugins/neon/index.js"
+    },
+    "./plugins/shatter": {
+      "types": "./dist/plugins/shatter/index.d.ts",
+      "import": "./dist/plugins/shatter/index.mjs",
+      "require": "./dist/plugins/shatter/index.js"
+    },
+    "./plugins/stamp": {
+      "types": "./dist/plugins/stamp/index.d.ts",
+      "import": "./dist/plugins/stamp/index.mjs",
+      "require": "./dist/plugins/stamp/index.js"
+    },
+    "./plugins/roll": {
+      "types": "./dist/plugins/roll/index.d.ts",
+      "import": "./dist/plugins/roll/index.mjs",
+      "require": "./dist/plugins/roll/index.js"
+    },
+    "./plugins/lookalike": {
+      "types": "./dist/plugins/lookalike/index.d.ts",
+      "import": "./dist/plugins/lookalike/index.mjs",
+      "require": "./dist/plugins/lookalike/index.js"
+    },
+    "./plugins/mask": {
+      "types": "./dist/plugins/mask/index.d.ts",
+      "import": "./dist/plugins/mask/index.mjs",
+      "require": "./dist/plugins/mask/index.js"
+    },
+    "./plugins/fadeUp": {
+      "types": "./dist/plugins/fadeUp/index.d.ts",
+      "import": "./dist/plugins/fadeUp/index.mjs",
+      "require": "./dist/plugins/fadeUp/index.js"
+    },
+    "./plugins/cascade": {
+      "types": "./dist/plugins/cascade/index.d.ts",
+      "import": "./dist/plugins/cascade/index.mjs",
+      "require": "./dist/plugins/cascade/index.js"
+    },
+    "./plugins/ticker": {
+      "types": "./dist/plugins/ticker/index.d.ts",
+      "import": "./dist/plugins/ticker/index.mjs",
+      "require": "./dist/plugins/ticker/index.js"
+    },
+    "./plugins/fadeThrough": {
+      "types": "./dist/plugins/fadeThrough/index.d.ts",
+      "import": "./dist/plugins/fadeThrough/index.mjs",
+      "require": "./dist/plugins/fadeThrough/index.js"
+    },
+    "./plugins/sharedAxis": {
+      "types": "./dist/plugins/sharedAxis/index.d.ts",
+      "import": "./dist/plugins/sharedAxis/index.mjs",
+      "require": "./dist/plugins/sharedAxis/index.js"
+    },
+    "./plugins/slot": {
+      "types": "./dist/plugins/slot/index.d.ts",
+      "import": "./dist/plugins/slot/index.mjs",
+      "require": "./dist/plugins/slot/index.js"
+    },
+    "./plugins/dissolve": {
+      "types": "./dist/plugins/dissolve/index.d.ts",
+      "import": "./dist/plugins/dissolve/index.mjs",
+      "require": "./dist/plugins/dissolve/index.js"
+    },
+    "./plugins/ripple": {
+      "types": "./dist/plugins/ripple/index.d.ts",
+      "import": "./dist/plugins/ripple/index.mjs",
+      "require": "./dist/plugins/ripple/index.js"
+    },
     "./debug": {
       "types": "./dist/debug/index.d.ts",
       "import": "./dist/debug/index.mjs",

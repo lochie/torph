@@ -20,8 +20,9 @@ export function typewriter({
     animate: {
       text: {
         // Last letter first, each holding the caret until it goes.
-        exit: (box, { index, leaving }) => [
-          box.animate(
+        exit: (box, { index, leaving, animate }) => [
+          animate(
+            box,
             [
               { boxShadow: caret, opacity: 1 },
               { boxShadow: caret, opacity: 1, offset: 0.999 },
@@ -35,8 +36,9 @@ export function typewriter({
           ),
         ],
         // Once the old text is gone, in reading order, the caret passing along.
-        enter: (box, { index, leaving }) => [
-          box.animate(
+        enter: (box, { index, leaving, animate }) => [
+          animate(
+            box,
             [
               { opacity: 0 },
               { boxShadow: caret, opacity: 1, offset: 0.001 },

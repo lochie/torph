@@ -63,7 +63,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 0.75rem;
   width: 100%;
@@ -94,6 +94,15 @@
   }
 }
 
+.note {
+  position: absolute;
+  bottom: 0.625rem;
+  left: 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--color-muted);
+}
+
 .morph {
   font-size: 1.375rem;
   color: #fff;
@@ -112,7 +121,7 @@
 .default {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.25rem;
   opacity: 0.5;
 }
@@ -153,7 +162,13 @@
   color: #fff;
 }
 
-.hiddenNote {
+.overrides {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: var(--color-muted);
@@ -261,9 +276,15 @@
   box-shadow: inset 0 0 0 1px var(--border);
   cursor: pointer;
 
-  &[data-hidden] {
+  &[data-overridden="hidden"] {
     opacity: 0.45;
     text-decoration: line-through;
+  }
+
+  &[data-overridden="partly"] {
+    opacity: 0.7;
+    text-decoration: underline dotted;
+    text-underline-offset: 0.2em;
   }
 
   &[aria-checked="true"] {

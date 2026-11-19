@@ -8,13 +8,14 @@ export function caseless(): TorphPlugin {
     affinity: (a, b) => (a.toLowerCase() === b.toLowerCase() ? 1 : null),
     animate: {
       text: {
-        persist: (box, { was, delta, from, duration, ease }) => {
+        persist: (box, { was, delta, from, duration, ease, animate }) => {
           const x = delta.x + (from?.tx ?? 0);
           const y = delta.y + (from?.ty ?? 0);
           const changed = was !== undefined && was !== box.textContent;
           if (!x && !y && !changed) return;
           return [
-            box.animate(
+            animate(
+              box,
               [
                 changed
                   ? {

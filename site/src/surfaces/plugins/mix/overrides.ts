@@ -6,14 +6,15 @@ type Named = [name: string, plugin: Plugin];
 const SIDES = ["enter", "exit"] as const;
 const HOOKS = ["enter", "persist", "exit"] as const;
 // Every plugin in the list adds to these, so one in front can't override them.
-const SHARED = [
-  "decorate",
-  "letters",
-  "linger",
-  "maxShift",
-  "affinity",
-  "boxes",
-] as const;
+const SHARED = {
+  decorate: "decoration",
+  letters: "letter splitting",
+  linger: "linger",
+  maxShift: "maxShift",
+  affinity: "word pairing",
+  boxes: "boxes at rest",
+} as const;
+const MOTION = { enter: "entrances", persist: "moves", exit: "exits" };
 
 const words = (text: string) => text.split(/\s+/).filter(Boolean);
 const LOCALE = { locale: "en" };
@@ -62,22 +63,42 @@ function makes(plugin: Plugin, decision: string, text: string) {
   return !!(plugin.animate?.[kind]?.[hook] ?? plugin.kinds?.[kind]?.[hook]);
 }
 
-/** Each picked plugin that does nothing for this text, with the plugins in front that do its part. */
-export function hidden(order: Named[], text: string) {
-  const out = new Map<string, string[]>();
+/** A decision as the note names it. */
+function label(decision: string) {
+  const [what, rest] = decision.split(":") as [string, string?];
+  if (what === "fold") return "case folding";
+  if (what === "tween") return "counting";
+  if (what === "word" || what === "whole") return "splitting";
+  if (what === "runs") return "run motion";
+  if (rest === undefined) return what;
+  const motion = MOTION[rest as keyof typeof MOTION];
+  return what === "text" ? motion : `${what} ${motion}`;
+}
+
+export type Override = {
+  /** The plugins in front that make its decisions. */
+  by: string[];
+  /** What it still does; empty when it does nothing. */
+  left: string[];
+};
+
+/** Each picked plugin with decisions a plugin in front makes for this text, and what's left of it. */
+export function overrides(order: Named[], text: string) {
+  const out = new Map<string, Override>();
   order.forEach(([name, plugin], i) => {
-    if (SHARED.some((field) => plugin[field] !== undefined)) return;
-    const own = decisions(plugin, text);
-    if (own.length === 0) return;
     const by = new Set<string>();
-    for (const decision of own) {
+    const left = new Set<string>();
+    for (const decision of decisions(plugin, text)) {
       const front = order
         .slice(0, i)
         .find(([, other]) => makes(other, decision, text));
-      if (!front) return;
-      by.add(front[0]);
+      if (front) by.add(front[0]);
+      else left.add(label(decision));
     }
-    out.set(name, [...by]);
+    if (by.size === 0) return;
+    for (const [field, name] of Object.entries(SHARED))
+      if (plugin[field as keyof typeof SHARED] !== undefined) left.add(name);
+    out.set(name, { by: [...by], left: [...left] });
   });
   return out;
 }

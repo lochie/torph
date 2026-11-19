@@ -21,6 +21,22 @@ import { countup } from "../countup";
 import { rows } from "../rows";
 import { trend } from "../trend";
 import { reveal } from "../reveal";
+import { slot } from "../slot";
+import { dissolve } from "../dissolve";
+import { ripple } from "../ripple";
+import { smoke } from "../smoke";
+import { glitch } from "../glitch";
+import { neon } from "../neon";
+import { shatter } from "../shatter";
+import { stamp } from "../stamp";
+import { roll } from "../roll";
+import { lookalike } from "../lookalike";
+import { mask } from "../mask";
+import { fadeUp } from "../fadeUp";
+import { cascade } from "../cascade";
+import { ticker } from "../ticker";
+import { fadeThrough } from "../fadeThrough";
+import { sharedAxis } from "../sharedAxis";
 
 // As in engine.test.ts: happy-dom rejects a cancelled animation's `finished` for real.
 beforeAll(() => {
@@ -415,7 +431,7 @@ describe("wave", () => {
     morph.update("ab");
     const calls = animations(() => morph.update("cd"));
     const drops = calls.filter((c) => c.frames.includes("- 0.6em"));
-    const falls = calls.filter((c) => c.frames.includes("0.6em * 1.5"));
+    const falls = calls.filter((c) => c.frames.includes("+ 0.6em"));
     expect(drops.length).toBe(2);
     expect(falls.length).toBe(2);
     expect(drops[1]!.options.delay).toBeGreaterThan(
@@ -650,6 +666,303 @@ describe("reveal", () => {
   });
 });
 
+describe("slot", () => {
+  it("rolls new text up into a window, and old text out of the top", () => {
+    const { morph } = mount({ plugins: [slot()] });
+    morph.update("one");
+    const calls = animations(() => morph.update("two"));
+    expect(calls.some((c) => c.frames.includes("inset(0 0 100% 0)"))).toBe(
+      true,
+    );
+    expect(calls.some((c) => c.frames.includes("inset(100% 0 0 0)"))).toBe(
+      true,
+    );
+  });
+});
+
+describe("dissolve", () => {
+  it("thins letters out through a screen of dots", () => {
+    const { morph } = mount({ plugins: [dissolve()] });
+    morph.update("ab");
+    const calls = animations(() => morph.update("cd"));
+    expect(calls.filter((c) => c.frames.includes("maskSize")).length).toBe(4);
+  });
+});
+
+describe("ripple", () => {
+  it("starts each new letter later the further it is from the change", () => {
+    const { morph } = mount({ plugins: [ripple()] });
+    morph.update("hello world");
+    const calls = animations(() => morph.update("hello there"));
+    const pops = calls
+      .filter((c) => c.frames.includes("scale(0.4)"))
+      .map((c) => c.options.delay ?? 0);
+    expect(pops.length).toBeGreaterThan(2);
+    expect(pops).toEqual([...pops].sort((a, b) => a - b));
+    expect(pops.at(-1)).toBeGreaterThan(pops[0]!);
+  });
+});
+
+describe("smoke", () => {
+  it("lets leaving letters rise apart, each its own way", () => {
+    const { morph } = mount({ plugins: [smoke()] });
+    morph.update("abc");
+    const calls = animations(() => morph.update("xyz"));
+    const wisps = calls.filter((c) => c.frames.includes("skewX"));
+    expect(wisps.length).toBe(3);
+    expect(new Set(wisps.map((c) => c.frames)).size).toBe(3);
+  });
+});
+
+describe("glitch", () => {
+  it("cuts between sliced bands rather than easing", () => {
+    const { morph } = mount({ plugins: [glitch()] });
+    morph.update("one");
+    const calls = animations(() => morph.update("two"));
+    const cuts = calls.filter((c) => c.frames.includes("inset("));
+    expect(cuts.length).toBeGreaterThan(0);
+    expect(cuts[0]!.frames).toContain("steps(1, end)");
+  });
+});
+
+describe("neon", () => {
+  it("flickers new text on with a glow", () => {
+    const { morph } = mount({ plugins: [neon()] });
+    morph.update("OPEN");
+    const calls = animations(() => morph.update("SHUT"));
+    expect(
+      calls.some(
+        (c) => c.frames.includes("textShadow") && c.frames.includes("steps"),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("shatter", () => {
+  it("drops shards in a leaving box's place, and clears them when interrupted", () => {
+    const { element, morph } = mount({ plugins: [shatter()] });
+    morph.update("one");
+    morph.update("two");
+    const shards = Array.from(
+      element.querySelectorAll<HTMLElement>("[aria-hidden]"),
+    ).filter((el) => el.style.clipPath.startsWith("polygon"));
+    // Four for every box that leaves or arrives.
+    expect(shards.length).toBeGreaterThan(0);
+    expect(shards.length % 4).toBe(0);
+    expect(shards.every((el) => !el.hasAttribute("torph-id"))).toBe(true);
+    morph.update("three");
+    expect(shards.every((el) => !el.isConnected)).toBe(true);
+  });
+});
+
+describe("stamp", () => {
+  it("slams new text down and shakes the line once", () => {
+    const { element, morph } = mount({ plugins: [stamp()] });
+    morph.update("Pending");
+    const calls = animations(() => morph.update("Pending Paid Done"));
+    expect(calls.some((c) => c.frames.includes("scale(1.8)"))).toBe(true);
+    expect(calls.filter((c) => c.box === element).length).toBe(1);
+  });
+});
+
+describe("roll", () => {
+  it("turns the whole value over like a barrel face", () => {
+    const { element, morph } = mount({ plugins: [roll()] });
+    morph.update("Monday");
+    const calls = animations(() => morph.update("Tuesday"));
+    expect(element.querySelectorAll('[torph-kind="face"]').length).toBe(2);
+    expect(calls.some((c) => c.frames.includes("rotateX(-90deg)"))).toBe(true);
+    expect(calls.some((c) => c.frames.includes("rotateX(90deg)"))).toBe(true);
+  });
+});
+
+describe("lookalike", () => {
+  it("keeps each place's box and steps it through lookalikes to the new letter", async () => {
+    const { element, morph } = mount({ plugins: [lookalike({ rate: 5 })] });
+    morph.update("IDLE");
+    const before = boxes(element);
+    const seen = new Set<string>();
+    const observer = new MutationObserver(() =>
+      seen.add(before[0]!.textContent ?? ""),
+    );
+    observer.observe(before[0]!, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    morph.update("BUSY");
+    expect(boxes(element)).toEqual(before);
+    await wait(100);
+    observer.disconnect();
+    expect(before.map((b) => b.textContent).join("")).toBe("BUSY");
+    // I to B is two families apart, so it passes through a glyph of each on the way.
+    expect(seen.size).toBeGreaterThan(2);
+  });
+});
+
+describe("mask", () => {
+  it("rises what arrives inside a still mask, and leaves what stays", () => {
+    const { element, morph } = mount({ plugins: [mask()] });
+    morph.update("one two\nthree");
+    const calls = animations(() => morph.update("one six\nthree"));
+    expect(element.querySelectorAll("[torph-slot]").length).toBeGreaterThan(0);
+    // The text moves inside its mask; the mask itself isn't tipped.
+    const rises = calls.filter((c) => c.frames.includes("rotateX(-45deg)"));
+    expect(rises.length).toBeGreaterThan(0);
+    expect(
+      rises.every((c) => c.box.parentElement!.hasAttribute("torph-slot")),
+    ).toBe(true);
+    expect(rises.some((c) => /one|three/.test(c.box.textContent ?? ""))).toBe(
+      false,
+    );
+    expect(calls.some((c) => c.frames.includes("rotateX(45deg)"))).toBe(true);
+  });
+
+  it("splits as torph does, so a word keeps the letters it shares", () => {
+    const { morph } = mount({ plugins: [mask()] });
+    morph.update("Ship it Tuesday");
+    const calls = animations(() => morph.update("Ship it Thursday"));
+    const risen = calls
+      .filter((c) => c.frames.includes("rotateX(-45deg)"))
+      .map((c) => c.box.textContent)
+      .sort();
+    // Tuesday → Thursday keeps T, u, s, d, a and y; only h and r are new.
+    expect(risen).toEqual(["h", "r"]);
+  });
+
+  it("drops in from above when the figure goes down, under from: auto", () => {
+    const { morph } = mount({ plugins: [mask({ from: "auto" })] });
+    morph.update("Step 3 · Payment");
+    const back = animations(() => morph.update("Step 2 · Details"));
+    expect(
+      back.some(
+        (c) =>
+          c.frames.includes("rotateX(45deg)") && c.frames.includes("50% 100%"),
+      ),
+    ).toBe(true);
+    morph.update("Step 3 · Payment");
+    const on = animations(() => morph.update("Step 4 · Done"));
+    expect(
+      on.some(
+        (c) =>
+          c.frames.includes("rotateX(-45deg)") && c.frames.includes("50% 0"),
+      ),
+    ).toBe(true);
+  });
+
+  it("comes in sideways inside a mask clipped at the box's sides too", () => {
+    const { morph } = mount({ plugins: [mask({ from: "right" })] });
+    morph.update("Monday");
+    const calls = animations(() => morph.update("Friday"));
+    expect(calls.some((c) => c.frames.includes("translateX(calc(100%"))).toBe(
+      true,
+    );
+    expect(calls.some((c) => c.frames.includes("inset(0 0 0 0)"))).toBe(true);
+  });
+
+  it("staggers whole lines under cascade: line", () => {
+    const { morph } = mount({ plugins: [mask({ cascade: "line" })] });
+    morph.update("a\nb");
+    const calls = animations(() => morph.update("x\ny"));
+    const delays = calls
+      .filter((c) => c.frames.includes("rotateX(-45deg)"))
+      .map((c) => c.options.delay ?? 0);
+    expect(delays).toEqual([0.25 * 40, (0.25 + 0.12) * 40]);
+  });
+
+  it("moves old and new together with no head start", () => {
+    const { morph } = mount({ plugins: [mask({ clear: 0 })] });
+    morph.update("one");
+    const calls = animations(() => morph.update("two"));
+    const arrive = calls.filter((c) => c.frames.includes("rotateX(-45deg)"));
+    const leave = calls.filter((c) => c.frames.includes("rotateX(45deg)"));
+    expect(Math.min(...arrive.map((c) => c.options.delay ?? 0))).toBe(0);
+    expect(leave.length).toBeGreaterThan(0);
+    expect(leave.every((c) => c.options.duration === 40)).toBe(true);
+  });
+});
+
+describe("fadeUp", () => {
+  it("fades new text up in turn, and old text out at once", () => {
+    const { morph } = mount({ plugins: [fadeUp()] });
+    morph.update("Welcome");
+    const calls = animations(() => morph.update("Good to see you"));
+    const rises = calls.filter((c) => c.frames.includes("+ 0.35em"));
+    expect(rises.length).toBeGreaterThan(1);
+    expect(rises.at(-1)!.options.delay).toBeGreaterThan(
+      rises[0]!.options.delay ?? 0,
+    );
+    expect(
+      calls
+        .filter((c) => c.frames.includes('"opacity":0,"offset":1'))
+        .every((c) => !c.options.delay),
+    ).toBe(true);
+  });
+});
+
+describe("cascade", () => {
+  it("starts each line after the one above", () => {
+    const { morph } = mount({ plugins: [cascade()] });
+    morph.update("a\nb\nc");
+    const calls = animations(() => morph.update("x\ny\nz"));
+    const delays = calls
+      .filter((c) => c.frames.includes("+ 0.35em"))
+      .map((c) => [c.box.textContent, c.options.delay ?? 0]);
+    expect(delays).toEqual([
+      ["x", 0],
+      ["y", 0.15 * 40],
+      ["z", 0.3 * 40],
+    ]);
+  });
+});
+
+describe("ticker", () => {
+  it("is mask with nothing tipped or held back", () => {
+    const { morph } = mount({ plugins: [ticker()] });
+    morph.update("Syncing");
+    const calls = animations(() => morph.update("Synced"));
+    const moves = calls.filter((c) => c.frames.includes("perspective"));
+    expect(moves.length).toBeGreaterThan(0);
+    expect(
+      moves.every(
+        (c) =>
+          c.frames.includes("rotateX(0deg)") ||
+          c.frames.includes("rotateX(-0deg)"),
+      ),
+    ).toBe(true);
+    expect(moves.every((c) => !c.options.delay)).toBe(true);
+  });
+});
+
+describe("fadeThrough", () => {
+  it("fades the old out before the new grows in", () => {
+    const { morph } = mount({ plugins: [fadeThrough()] });
+    morph.update("Inbox");
+    const calls = animations(() => morph.update("Drafts"));
+    const grow = calls.find((c) => c.frames.includes("scale(0.92)"));
+    expect(grow?.options.delay).toBeCloseTo(0.35 * 40);
+  });
+});
+
+describe("sharedAxis", () => {
+  it("goes forward with the figure, and back against it", () => {
+    const { morph } = mount({ plugins: [sharedAxis()] });
+    morph.update("Step 1 · Account");
+    const forward = animations(() => morph.update("Step 2 · Profile"));
+    expect(
+      forward.some(
+        (c) => c.frames.includes("* 1)") && c.frames.includes('"opacity":0'),
+      ),
+    ).toBe(true);
+    const back = animations(() => morph.update("Step 1 · Account"));
+    expect(
+      back.some(
+        (c) => c.frames.includes("* -1)") && c.frames.includes('"opacity":0'),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("at rest", () => {
   const all = {
     blur,
@@ -668,6 +981,22 @@ describe("at rest", () => {
     rows,
     trend,
     reveal,
+    slot,
+    dissolve,
+    ripple,
+    smoke,
+    glitch,
+    neon,
+    shatter,
+    stamp,
+    roll,
+    lookalike,
+    mask,
+    fadeUp,
+    cascade,
+    ticker,
+    fadeThrough,
+    sharedAxis,
   };
   for (const [name, make] of Object.entries(all)) {
     it(`${name} settles to the value as plain text`, async () => {

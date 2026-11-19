@@ -23,13 +23,14 @@ function align<T>(next: string[], old: T[], fromRight: boolean) {
 /** Slides the box from where it was, as any staying box does. */
 function slide(
   box: HTMLElement,
-  { delta, from, duration, ease }: MotionContext<unknown>,
+  { delta, from, duration, ease, animate }: MotionContext<unknown>,
 ) {
   const x = delta.x + (from?.tx ?? 0);
   const y = delta.y + (from?.ty ?? 0);
   if (!x && !y) return [];
   return [
-    box.animate(
+    animate(
+      box,
       [{ transform: `translate(${x}px, ${y}px)` }, { transform: "none" }],
       { duration, easing: ease, fill: "backwards" },
     ),
@@ -117,14 +118,15 @@ export function odometer({
     enter: (_box, ctx) =>
       Promise.all([
         roll(ctx.mover, 0, Number(ctx.mover.textContent), ctx),
-        ctx.mover.animate([{ opacity: 0 }, { opacity: 1 }], {
+        ctx.animate(ctx.mover, [{ opacity: 0 }, { opacity: 1 }], {
           duration: ctx.duration / 2,
           fill: "backwards",
         }).finished,
       ]),
     // A place the figure loses leaves the way the wheels turn.
-    exit: (_box, { mover, line, duration, signal }) => {
-      const leave = mover.animate(
+    exit: (_box, { mover, line, duration, signal, animate }) => {
+      const leave = animate(
+        mover,
         {
           transform: `translateY(${latest === UP ? -line.height : line.height}px)`,
           opacity: 0,

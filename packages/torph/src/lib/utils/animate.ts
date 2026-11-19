@@ -58,13 +58,29 @@ export function readAnimationState(element: HTMLElement): AnimationState {
 
 let running: Map<Element, Animation[]> | null = null;
 
+/** Where an element was on screen, mid-animation, when an update began. */
+export type Where = {
+  transform: string;
+  transformOrigin: string;
+  opacity: string;
+};
+
+// What's on screen is the sum of every animation; with one added on top, it isn't one pose to start from.
+const stacked = (list: Animation[]) =>
+  list.some((animation) => {
+    const effect = animation.effect as KeyframeEffect | null;
+    return !!effect?.composite && effect.composite !== "replace";
+  });
+
 /**
  * Every animation under the root, read once in an update's read phase. Asked per
  * element instead, getAnimations() recalculates style each time an animate() or
- * cancel() has dirtied it — once per item, on every update.
+ * cancel() has dirtied it — once per item, on every update. Returns where each
+ * animating element was, read here so nothing after a write has to.
  */
 export function snapshotAnimations(root: HTMLElement) {
   running = new Map();
+  const where = new Map<Element, Where>();
   for (const animation of root.getAnimations({ subtree: true })) {
     const target = (animation.effect as KeyframeEffect | null)?.target;
     if (!target) continue;
@@ -72,6 +88,66 @@ export function snapshotAnimations(root: HTMLElement) {
     if (list) list.push(animation);
     else running.set(target, [animation]);
   }
+  for (const [target, list] of running) {
+    if (stacked(list)) continue;
+    const style = getComputedStyle(target);
+    where.set(target, {
+      transform: style.transform,
+      transformOrigin: style.transformOrigin,
+      opacity: style.opacity,
+    });
+  }
+  return where;
+}
+
+/**
+ * `element.animate`, from wherever an interrupted update left it: its running motion is
+ * cancelled, and the first keyframe's transform and opacity become those on screen. An
+ * additive animation stacks on what's there already, so it's left as asked.
+ */
+export function animateFrom(
+  where: Map<Element, Where>,
+  element: HTMLElement,
+  keyframes: Keyframe[] | PropertyIndexedKeyframes,
+  options: KeyframeAnimationOptions = {},
+  // How far the element's layout moved since then: where it was is that much further off now.
+  shift?: { x: number; y: number },
+): Animation {
+  const at = where.get(element);
+  const additive = options.composite && options.composite !== "replace";
+  // Lists per property (`{ opacity: [0, 1] }`) have no one first keyframe to rewrite.
+  const indexed =
+    !Array.isArray(keyframes) && Object.values(keyframes).some(Array.isArray);
+  if (!at || additive || indexed) return element.animate(keyframes, options);
+  const list = (
+    Array.isArray(keyframes) ? keyframes : [keyframes as Keyframe]
+  ).map((frame) => ({ ...frame }));
+  const touches = new Set(list.flatMap((frame) => Object.keys(frame)));
+  for (const timing of ["offset", "easing", "composite"])
+    touches.delete(timing);
+  // Only what this motion takes over: a slide under a colour change carries on. And script
+  // animations only, since a cancelled CSS animation stays cancelled and a style's own loop would die.
+  for (const running of animationsOf(element)) {
+    if ("animationName" in running || "transitionProperty" in running) continue;
+    const effect = running.effect as KeyframeEffect | null;
+    const its = effect?.getKeyframes().flatMap((frame) => Object.keys(frame));
+    if (its?.some((key) => touches.has(key))) running.cancel();
+  }
+  // A lone keyframe, or one that starts later, is where it goes: where it was comes first.
+  const first = list[0]!;
+  const lone = list.length === 1 && first.offset !== 0;
+  if (lone || (first.offset ?? 0) > 0) list.unshift({ offset: 0 });
+  const from = list[0]!;
+  if (list.some((frame) => "transform" in frame)) {
+    const moved = shift && (shift.x || shift.y);
+    const was = at.transform === "none" ? "" : at.transform;
+    from.transform = moved
+      ? `translate(${shift.x}px, ${shift.y}px) ${was}`.trim()
+      : at.transform;
+    from.transformOrigin = at.transformOrigin;
+  }
+  if (list.some((frame) => "opacity" in frame)) from.opacity = at.opacity;
+  return element.animate(list, options);
 }
 
 /** An animation started mid-update stands in for one the snapshot already holds, so it is cancelled with the rest. */

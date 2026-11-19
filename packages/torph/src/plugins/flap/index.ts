@@ -71,13 +71,17 @@ export function flap({
     runs: { claim: () => true },
     animate: {
       text: {
-        persist: (box, { mover, was, delta, from, duration, ease, signal }) => {
+        persist: (
+          box,
+          { mover, was, delta, from, duration, ease, signal, animate },
+        ) => {
           const x = delta.x + (from?.tx ?? 0);
           const y = delta.y + (from?.ty ?? 0);
           const slide =
             x || y
               ? [
-                  box.animate(
+                  animate(
+                    box,
                     [
                       { transform: `translate(${x}px, ${y}px)` },
                       { transform: "none" },
@@ -94,8 +98,9 @@ export function flap({
         },
         enter: (_box, { mover, duration, signal }) =>
           turn(mover, " ", duration, signal),
-        exit: (box, { duration }) => [
-          box.animate(
+        exit: (box, { duration, animate }) => [
+          animate(
+            box,
             {
               transform: "perspective(20em) rotateX(90deg)",
               opacity: 0,

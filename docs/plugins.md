@@ -58,8 +58,10 @@ type TorphPlugin<State = unknown> = {
 };
 
 type KindSpec<State> = Partial<Hooks<State>> & {
-  /** An outer box for FLIP and an inner one for the plugin's own motion. */
+  /** An outer box for FLIP, masked to its line, and an inner one for the plugin's own motion. */
   slot?: boolean;
+  /** Glyphs a slot of this kind holds, so its mask reaches far enough for them; by default, figures. */
+  ink?: string;
 };
 
 type RunHooks<State> = {
@@ -109,6 +111,12 @@ type MotionContext<State> = {
   state: State;
   duration: number;
   ease: string;
+  /** `element.animate`, but an element an interrupted morph left mid-motion starts from where it is on screen. */
+  animate(
+    element: HTMLElement,
+    keyframes: Keyframe[] | PropertyIndexedKeyframes,
+    options?: KeyframeAnimationOptions,
+  ): Animation;
   /** Aborts when a later morph interrupts this one or the instance is torn down. */
   signal: AbortSignal;
 };
@@ -198,6 +206,8 @@ A staying box that neither moved nor changed its text is left alone: its `persis
 
 Hooks return what the engine has to wait on. WAAPI animations are already found by `getAnimations({ subtree: true })`. A returned promise covers anything that isn't one, like a rAF loop. The morph completes when both have settled.
 
+A hook's motion should survive being cut short. `ctx.animate` does it for a plugin: in the read phase, alongside the running animations it already collects, the engine reads each animating element's computed transform, transform-origin and opacity. `ctx.animate(element, …)` then cancels what that element was running and puts where it was in the first keyframe, so the new motion starts from the screen rather than from the keyframes' idea of the start. A fresh element, an additive animation, and keyframes listed per property are passed to `element.animate` as they are. `mask` measured the worst one-frame jump of any word under updates every 120ms: 39.5px with `element.animate`, 7.5px, its ordinary speed, with `ctx.animate`.
+
 When a later morph interrupts, the engine aborts `ctx.signal` before it reconciles. A plugin stops writing when its signal aborts and doesn't restore anything; the next morph's reconcile owns the box's content from then on. On exit, the engine removes the box once its motion settles, so plugins never call `remove()`.
 
 Text at rest is plain text: boxes exist only during a morph. The join waits for these same promises, so a plugin's motion always finishes before its boxes turn back into text, and a plugin's `css` for its boxes only applies mid-morph. A plugin that styles or moves boxes at rest keeps them with `boxes(value)`, which also stops the morph joining text it leaves alone into one box.
@@ -214,16 +224,15 @@ Each example uses a different part of the interface. These are sketches and have
 
 How today's code maps onto the interface:
 
-| interface                     | today                                                                                                                               |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `claim`                       | `isNumericWord`                                                                                                                     |
-| `segment`                     | `segmentNumber(word, ctx.split() as previous, ctx.cursor, decimal)`, IDs from `ctx.id()`                                            |
-| `token`                       | `() => "#"`                                                                                                                         |
-| `affinity`                    | skeleton match → 1, else `null`                                                                                                     |
-| `read`                        | `slotClip(style)`                                                                                                                   |
-| `prepare`                     | writes `VAR_INK_TOP` / `VAR_INK_BOTTOM`                                                                                             |
-| `css`                         | the `[torph-slot]` rules from [styles.ts](../packages/torph/src/lib/utils/styles.ts)                                                |
-| `kinds.digit`, `kinds.symbol` | `slot: true`. Hooks are `animateNumberEnter` / `Persist` / `Exit`, with slide distance `ctx.line.height + state.top + state.bottom` |
+| interface                     | today                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `claim`                       | `isNumericWord`                                                                                         |
+| `segment`                     | `segmentNumber(word, ctx.split() as previous, ctx.cursor, decimal)`, IDs from `ctx.id()`                |
+| `token`                       | `() => "#"`                                                                                             |
+| `affinity`                    | skeleton match → 1, else `null`                                                                         |
+| `kinds.digit`, `kinds.symbol` | `slot: true`. Hooks are `animateNumberEnter` / `Persist` / `Exit`, with slide distance `ctx.line.clear` |
+
+The mask a digit slides behind is the engine's, not numbers': every slot gets it. The `[torph-slot]` rules live in [styles.ts](../packages/torph/src/lib/utils/styles.ts); the engine measures the slots' glyphs in its read phase (`slotClip`, from each slot kind's `ink`), writes `VAR_INK_TOP` / `VAR_INK_BOTTOM` before the first measure, and hands hooks `line.clear`, how far a slot's content travels to leave its mask.
 
 `decimalSeparator` needs the locale, which `ClaimContext` carries. Once this is done, `index.ts`, `diff.ts` and `segment.ts` shouldn't mention numbers at all.
 
@@ -324,6 +333,19 @@ Blur also gained `maxShift`: a word that would travel more than three characters
 
 The site gained a countdown, and a demo at the top of the plugins page that stacks any of them, starting from `classic()`.
 
+## More plugins
+
+- **`mask`** raises what arrives from behind its line, tipping up as it comes, the way a site hero brings in its copy; what stays, stays. It splits nothing itself: torph's own diff decides what changes, letters included, and mask only overrides how plain text arrives and leaves. `slot: true` on `animate.text` gives every plain-text box the same mask numbers slide digits behind: the outer box is clipped to its line, padded to its letters' `ink` and moved only with the line, and the text rises inside by `line.clear`. The mask holds still on any line, where `slot()` cuts back a clip on the moving box itself, which only holds for a straight roll.
+- **`mask`'s options** cover the patterns around it. `cascade: "line"` times a whole line together, from the line breaks before each box, through `src/plugins/line.ts`, shared with cascade. `letters` gives each letter its own mask. `from` picks the side: `"auto"` reads which way the first figure went, through `src/plugins/went.ts`, and rises for up and drops for down. Sideways, the slot mask only clips above and below, so the box's own sides are clipped too for the length of the motion. `bounce` overshoots; `clear: 0` takes away the old text's head start, so old and new move together.
+- **`ticker`** is mask with no tilt, stagger or head start: one push, for status pills and live counts. **`fadeThrough`** and **`sharedAxis`** are Material's: the old text fades out before the new fades in growing, or leaves along an axis as the new arrives from the other side, forward or back with the figure.
+- **`fadeUp`** and **`cascade`** are the product-site staples: new text fades up a few pixels, word by word or a line at a time. Cascade counts a box's line from the line breaks before it, in the DOM, once per morph, so it needs no layout; a soft-wrapped line counts as one line.
+- **`slot`**, **`dissolve`**, **`ripple`**, **`smoke`**, **`glitch`** and **`neon`** replace how text arrives and leaves. Each claims every replaced run, as blur and wave do, so `groups()` can't move one as a single shape in their place. `ripple` finds where the text changed in `read`, through `src/plugins/place.ts`, and counts each box's place in the text once per morph, from text rather than layout.
+- **`shatter`** draws copies of a box beside it, through `src/plugins/ghost.ts`: no torph attributes, so the engine never sees them, and removed when the next morph aborts. A shard is a copy cut to a polygon; four tile the box exactly.
+- **`stamp`** shakes the root once per morph, as an added transform, at the moment new text lands. **`roll`** cuts the whole value into one face, like stack, and turns it on an axis behind the text. **`lookalike`** keeps a box per place, like flap, and steps each letter through a family of similar glyphs to the new one.
+- Decorations run for the boxes of a run that moves as one shape too, with `ctx.run` set and the run's own `index` and counts; otherwise trend would skip any word `groups()` replaced whole. `scale()` skips them, since the run already scales as one, so torph's own look is unchanged.
+
+All of them start their motion through `ctx.animate`, so a change cut short carries on from where it was.
+
 ## Decisions
 
 1. **Group replacement is a plugin.** It becomes `groups()`, a built-in on by default, through the `runs` hooks above. Plugins can claim runs of their own kinds.
@@ -338,7 +360,7 @@ The site gained a countdown, and a demo at the top of the plugins page that stac
 ## What step 1 changed in the design
 
 - **`touches`.** `read` and the diff's fast path were both gated on "the value has a digit", which is cheaper than claiming each word, and claiming each word would change which values take the fast path. A plugin without it is assumed to touch every value.
-- **`teardown` and `idle`.** Numbers writes ink variables on the root that `destroy()` has to remove, and needs a state for morphs where `read` was skipped.
+- **`teardown` and `idle`.** A plugin that writes to the root has `destroy()` remove it, and needs a state for morphs where `read` was skipped. The slot mask's ink variables were the first case; they've since moved into the engine with the mask.
 - **`MotionContext.kind`, not `segment`.** An exit's segment is already gone by the time it animates. The kind is read from the box.
 - **Kinds aren't namespaced yet.** The corpus pins `"digit" | "symbol"`, and widening `SegmentKind` to `string` waits for step 5. Two plugins can't share a kind: the later one owns it.
 - **Deferred:** `Motion` return values and `signal` (step 4, scramble), `runs` (step 2) and the debug read warnings (step 3). Hooks return `void` until then.

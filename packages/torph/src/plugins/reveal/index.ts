@@ -21,7 +21,7 @@ export function reveal({ stagger = 0.08 }: RevealOptions = {}): TorphPlugin {
     runs: { claim: () => true },
     animate: {
       text: {
-        persist: (box, { mover, was, index, duration, signal }) => {
+        persist: (box, { mover, was, index, duration, signal, animate }) => {
           const text = mover.textContent ?? "";
           if (was === undefined || was === text) return;
           const half = duration / 3;
@@ -43,7 +43,8 @@ export function reveal({ stagger = 0.08 }: RevealOptions = {}): TorphPlugin {
               // The next morph owns the box now, and its text with it.
               if (signal.aborted) return;
               mover.textContent = text;
-              return mover.animate(
+              return animate(
+                mover,
                 [
                   { transform: "perspective(20em) rotateY(-90deg)" },
                   { transform: "perspective(20em) rotateY(0deg)" },

@@ -8,20 +8,27 @@ const SCALE: TorphPlugin = {
   name: "scale",
   decorate: {
     text: {
-      enter: (box, { duration, ease }) => [
-        box.animate([{ transform: SMALL }, { transform: "none" }], {
-          duration,
-          easing: ease,
-          fill: ARRIVE,
-          composite: "add",
-        }),
-      ],
-      exit: (box, { duration, ease }) => [
-        box.animate(
-          { transform: SMALL, offset: 1 },
-          { duration, easing: ease, fill: "both", composite: "add" },
-        ),
-      ],
+      // A run that moves as one shape scales as one already.
+      enter: (box, { duration, ease, run }) =>
+        run
+          ? undefined
+          : [
+              box.animate([{ transform: SMALL }, { transform: "none" }], {
+                duration,
+                easing: ease,
+                fill: ARRIVE,
+                composite: "add",
+              }),
+            ],
+      exit: (box, { duration, ease, run }) =>
+        run
+          ? undefined
+          : [
+              box.animate(
+                { transform: SMALL, offset: 1 },
+                { duration, easing: ease, fill: "both", composite: "add" },
+              ),
+            ],
     },
   },
 };
