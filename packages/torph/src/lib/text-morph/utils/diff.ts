@@ -1,15 +1,13 @@
 import type { Segment } from "./segment";
-import { createIdAllocator, groupIntoWords, segmentText } from "./segment";
-import { lcsIndices } from "../../utils/lcs";
-import type { NumberSegment } from "./number";
 import {
-  classifyKind,
-  decimalSeparator,
-  hasDigit,
-  isNumericWord,
-  numericSkeleton,
-  segmentNumber,
-} from "./number";
+  createIdAllocator,
+  graphemes,
+  groupIntoWords,
+  segmentText,
+} from "./segment";
+import { lcsIndices } from "../../utils/lcs";
+import { type AnyPlugin, claimant, pluginIds } from "../plugin";
+import { CLASSIC } from "../plugins";
 
 export type DiffResult = {
   segments: Segment[];
@@ -17,14 +15,11 @@ export type DiffResult = {
 };
 
 export type DiffOptions = {
-  /** Numeric words morph by place value. Off falls back to character LCS. */
-  numbers?: boolean;
-  /** Caret position, honoured only when the value holds a single number. */
+  /** The plugins that claim and cut words; torph's own set when left out. */
+  plugins?: readonly AnyPlugin[];
+  /** Caret position, honoured only when the value holds a single claimed word. */
   cursorIndex?: number;
 };
-
-// Numbers share too few characters to pair with each other, so they all collapse to one token.
-const NUMBER_TOKEN = "\u0000#";
 
 /**
  * Per-character segments of an old word, cutting up every piece still longer than
@@ -47,24 +42,19 @@ function splitIntoChars(
   });
 }
 
-/** Fills in kinds an older, non-numeric segmentation of the same word lacked. */
-function asNumberSegments(segments: Segment[]): NumberSegment[] {
-  return segments.map((seg) => ({
-    ...seg,
-    kind: seg.kind ?? classifyKind(seg.string),
-  }));
-}
-
 /** How a new word gets its segments — the ID pre-pass and the build loop must agree. */
 type WordPlan =
-  | { mode: "fresh" }
+  /** `was`: an old word this one matched, but moved too far from to keep. */
+  | { mode: "fresh"; was?: number }
   | { mode: "reuse"; oi: number }
   | { mode: "morph"; oi: number }
-  | { mode: "number"; oi: number };
+  | { mode: "plugin"; oi: number; plugin: AnyPlugin };
 
-function charSimilarity(a: string, b: string): number {
+const same = (char: string) => char;
+
+function charSimilarity(a: string, b: string, fold = same): number {
   if (a.length === 0 || b.length === 0) return 0;
-  const [matched] = lcsIndices(a.split(""), b.split(""));
+  const [matched] = lcsIndices(a.split("").map(fold), b.split("").map(fold));
   return matched.length / Math.max(a.length, b.length);
 }
 
@@ -81,15 +71,18 @@ function gapIndices(count: number, matched: Set<number>): number[] {
 
 const MIN_SIMILARITY = 0.4;
 
-/** An old word's claim on a new one. A matching numeric skeleton beats shared characters. */
-function pairAffinity(a: string, b: string): number {
-  if (
-    (hasDigit(a) || hasDigit(b)) &&
-    numericSkeleton(a) === numericSkeleton(b)
-  ) {
-    return 1;
+/** An old word's claim on a new one: the first plugin with an opinion, else shared characters. */
+function pairAffinity(
+  plugins: readonly AnyPlugin[],
+  a: string,
+  b: string,
+  fold?: (char: string) => string,
+): number {
+  for (const plugin of plugins) {
+    const affinity = plugin.affinity?.(a, b);
+    if (affinity != null) return affinity;
   }
-  return charSimilarity(a, b);
+  return charSimilarity(a, b, fold);
 }
 
 // The diff runs before the first frame, so past these it degrades rather than blocks.
@@ -106,22 +99,35 @@ export function diffSegments(
   const newHasNewlines = newText.includes("\n");
   const oldWords = groupIntoWords(oldSegments);
 
-  const numbersOn = options.numbers !== false;
-  const isNum = (word: string) => numbersOn && isNumericWord(word);
-  const token = (word: string) => (isNum(word) ? NUMBER_TOKEN : word);
+  const plugins = options.plugins ?? CLASSIC;
+  const claimOf = (word: string) => claimant(plugins, word, { locale });
+  const letters = plugins.some((plugin) => plugin.letters);
+  const fold = plugins.find((plugin) => plugin.fold)?.fold;
+  const maxShift = Math.min(
+    ...plugins.map((plugin) => plugin.maxShift ?? Infinity),
+  );
+  // NULL-prefixed, so a plugin's token can't equal a real word.
+  const token = (word: string) => {
+    const plugin = claimOf(word);
+    return plugin
+      ? `\u0000p${plugin.name}\u0000${plugin.token?.(word) ?? word}`
+      : word;
+  };
 
-  // Text IDs are derived from the text and survive re-segmentation; minted numeric IDs don't.
-  const digitsInvolved =
-    numbersOn && (hasDigit(newText) || oldWords.some((g) => hasDigit(g.word)));
+  // Text IDs are derived from the text and survive re-segmentation; minted plugin IDs don't.
+  const involved =
+    !!fold ||
+    plugins.some(
+      (plugin) =>
+        plugin.claim &&
+        (!plugin.touches ||
+          plugin.touches(newText) ||
+          oldWords.some((g) => plugin.touches!(g.word))),
+    );
 
-  if (
-    oldWords.length <= 1 &&
-    !newHasSpaces &&
-    !newHasNewlines &&
-    !digitsInvolved
-  ) {
+  if (oldWords.length <= 1 && !newHasSpaces && !newHasNewlines && !involved) {
     return {
-      segments: segmentText(newText, locale, numbersOn),
+      segments: segmentText(newText, locale, plugins),
       splits: new Map(),
     };
   }
@@ -145,7 +151,7 @@ export function diffSegments(
 
   if (oldWordStrings.length * newWordStrings.length > MAX_LCS_CELLS) {
     return {
-      segments: segmentText(newText, locale, numbersOn),
+      segments: segmentText(newText, locale, plugins),
       splits: new Map(),
     };
   }
@@ -202,8 +208,13 @@ export function diffSegments(
         if (usedOld.has(oi)) continue;
         // A pairing that crosses a surviving word drags its characters the width of the value.
         if (oldGaps[oi] !== newGaps[ni]) continue;
-        // Numbers and words pair freely; MIN_SIMILARITY keeps a number off a real word.
-        const sim = pairAffinity(oldWordStrings[oi]!, newWordStrings[ni]!);
+        // Claimed and plain words pair freely; MIN_SIMILARITY keeps one off an unrelated word.
+        const sim = pairAffinity(
+          plugins,
+          oldWordStrings[oi]!,
+          newWordStrings[ni]!,
+          fold,
+        );
         if (sim > bestSim) {
           bestSim = sim;
           bestOi = oi;
@@ -218,26 +229,53 @@ export function diffSegments(
   }
 
   // Keyed on what the word is becoming, not on what it was.
+  // Where each word starts, old and new, in characters: how far a kept word would travel.
+  const oldStarts: number[] = [];
+  let at = 0;
+  let inWord = false;
+  for (const seg of oldSegments) {
+    const separator = seg.string === "\u00A0" || seg.string === "\n";
+    if (!separator && !inWord) oldStarts.push(at);
+    inWord = !separator;
+    at += seg.string.length;
+  }
+  at = 0;
+  const newStarts = newWordStrings.map((word, ni) => {
+    at += (newSeparators[ni] ?? (ni > 0 ? [" "] : [])).length;
+    const start = at;
+    at += word.length;
+    return start;
+  });
+
   const plans: WordPlan[] = newWordStrings.map((newWord, ni): WordPlan => {
     const lcsOi = newToOldWord.get(ni);
     const oi = lcsOi ?? morphPairs.get(ni);
     if (oi === undefined) return { mode: "fresh" };
-    if (isNum(newWord)) return { mode: "number", oi };
+    if (Math.abs(newStarts[ni]! - oldStarts[oi]!) > maxShift) {
+      return { mode: "fresh", was: oi };
+    }
+    const plugin = claimOf(newWord);
+    if (plugin) return { mode: "plugin", oi, plugin };
     return lcsOi !== undefined ? { mode: "reuse", oi } : { mode: "morph", oi };
   });
 
   // Meaningless once a value holds several figures.
   const cursorIndex =
-    plans.filter((plan) => plan.mode === "number").length === 1
+    plans.filter((plan) => plan.mode === "plugin").length === 1
       ? options.cursorIndex
       : undefined;
-  const decimalChar = decimalSeparator(locale);
 
   const alloc = createIdAllocator();
 
   // Reserved up front: an ID inherited later would otherwise go to an earlier segment.
   for (const plan of plans) {
-    if (plan.mode === "fresh") continue;
+    if (plan.mode === "fresh") {
+      // The old word is leaving, so the new one must not take its boxes.
+      if (plan.was !== undefined) {
+        for (const seg of oldWords[plan.was]!.segments) alloc.reserve(seg.id);
+      }
+      continue;
+    }
     const oldGroup = oldWords[plan.oi]!;
 
     if (plan.mode !== "reuse" && oldGroup.segments.length === 1) {
@@ -281,16 +319,18 @@ export function diffSegments(
 
     if (plan.mode === "reuse") {
       for (const seg of oldWords[plan.oi]!.segments) segments.push(seg);
-    } else if (plan.mode === "number") {
+    } else if (plan.mode === "plugin") {
       const oldGroup = oldWords[plan.oi]!;
 
       segments.push(
-        ...segmentNumber(
-          newWord,
-          asNumberSegments(splitIntoChars(oldGroup, splits)),
-          cursorIndex === undefined ? undefined : cursorIndex - charOffset,
-          decimalChar,
-        ),
+        ...plan.plugin.segment!(newWord, {
+          locale,
+          previous: oldGroup.segments,
+          split: () => splitIntoChars(oldGroup, splits),
+          cursor:
+            cursorIndex === undefined ? undefined : cursorIndex - charOffset,
+          id: pluginIds(plan.plugin, alloc),
+        }),
       );
     } else if (plan.mode === "morph") {
       const oldGroup = oldWords[plan.oi]!;
@@ -299,7 +339,10 @@ export function diffSegments(
 
       const oldChars = oldWord.split("");
       const newChars = newWord.split("");
-      const [oldCharLcs, newCharLcs] = lcsIndices(oldChars, newChars);
+      const [oldCharLcs, newCharLcs] = lcsIndices(
+        oldChars.map(fold ?? same),
+        newChars.map(fold ?? same),
+      );
 
       const newCharToOldSeg = new Map<number, Segment>();
       for (let k = 0; k < newCharLcs.length; k++) {
@@ -320,10 +363,23 @@ export function diffSegments(
           });
         }
       }
-    } else if (isNum(newWord)) {
-      segments.push(...segmentNumber(newWord));
+    } else if (claimOf(newWord)) {
+      const plugin = claimOf(newWord)!;
+      segments.push(
+        ...plugin.segment!(newWord, {
+          locale,
+          split: () => [],
+          id: pluginIds(plugin, alloc),
+        }),
+      );
     } else {
-      segments.push({ id: alloc.take(newWord), string: newWord });
+      if (letters) {
+        graphemes(newWord, locale).forEach((char, ci) =>
+          segments.push({ id: alloc.take(`${newWord}~${ci}`), string: char }),
+        );
+      } else {
+        segments.push({ id: alloc.take(newWord), string: newWord });
+      }
     }
 
     charOffset += newWord.length;

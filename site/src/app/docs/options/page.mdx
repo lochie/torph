@@ -1,0 +1,55 @@
+export const metadata = {
+  title: "Options • Torph",
+  description: "Every option torph's components take: timing, plugins, numbers, callbacks and more.",
+};
+
+# Options
+
+Every component takes the same options. In React, Vue and Svelte they're props (`class` for `className` in Vue and Svelte). In plain JavaScript they go to `new TextMorph({ ... })`.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `children` / `text` | | The text to show. In React, a number is formatted for you. |
+| `duration` | `400` | How long a morph takes, in milliseconds. Ignored when `ease` is a spring. |
+| `ease` | `"cubic-bezier(0.19, 1, 0.22, 1)"` | A CSS easing, or [spring parameters](#springs). |
+| `plugins` | `classic()` | How text is cut up and how it moves. See [using plugins](/docs/plugins). |
+| `locale` | `"en"` | For splitting text into words and letters, and for formatting numbers. |
+| `decimals` | | Fraction digits for a numeric value. Ignored for strings. |
+| `disabled` | `false` | Swap text without animating. |
+| `respectReducedMotion` | `true` | Swap text without animating when the user prefers reduced motion. |
+| `debug` | `false` | Show the boxes torph moves, and [check plugins](/docs/debugging). |
+| `onAnimationStart` | | Called when a morph begins. |
+| `onAnimationComplete` | | Called when a morph finishes. |
+| `onAnimationCancel` | | Called when the next morph interrupts this one. Each morph calls exactly one of this and `onAnimationComplete`. |
+| `as` | `"span"` | The element to render. |
+| `className`, `style` | | Passed to the element. |
+
+## Springs
+
+Pass spring parameters to `ease` for physics-based motion. The spring decides how long it takes, so `duration` is ignored.
+
+```tsx
+<TextMorph ease={{ stiffness: 200, damping: 20 }}>{text}</TextMorph>
+```
+
+| Parameter | Default | What it does |
+| --- | --- | --- |
+| `stiffness` | `100` | How hard the spring pulls. |
+| `damping` | `10` | How quickly it stops bouncing. |
+| `mass` | `1` | How heavy the moving text is. |
+| `precision` | `0.001` | How close to rest counts as settled. |
+
+## Multi-line text
+
+A newline in the value is a line break, and text morphs across lines like anywhere else.
+
+```tsx
+<TextMorph>{"Design it.\nBuild it.\nShip it."}</TextMorph>
+```
+
+## Text matching
+
+The matching torph runs on is exported, for building your own behaviour on top of it:
+
+- `segmentText(value, locale)` splits a value into segments.
+- `diffSegments(oldSegments, newText, locale)` matches a new value against old segments, and returns what persists, enters and exits.

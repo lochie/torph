@@ -12,16 +12,15 @@
   let {
     text,
     locale = DEFAULT_TEXT_MORPH_OPTIONS.locale,
-    duration = DEFAULT_TEXT_MORPH_OPTIONS.duration,
-    ease = DEFAULT_TEXT_MORPH_OPTIONS.ease,
-    scale = DEFAULT_TEXT_MORPH_OPTIONS.scale,
-    numbers = DEFAULT_TEXT_MORPH_OPTIONS.numbers,
+    duration = undefined,
+    ease = undefined,
     debug = DEFAULT_TEXT_MORPH_OPTIONS.debug,
     disabled = DEFAULT_TEXT_MORPH_OPTIONS.disabled,
     respectReducedMotion = DEFAULT_TEXT_MORPH_OPTIONS.respectReducedMotion,
     onAnimationStart = undefined,
     onAnimationComplete = undefined,
     onAnimationCancel = undefined,
+    plugins = undefined,
     as = DEFAULT_AS,
     ...props
   }: Props = $props();
@@ -30,8 +29,8 @@
   const controller = new MorphController();
 
   const options = $derived({
-    locale, duration, ease, debug, scale, numbers,
-    disabled, respectReducedMotion,
+    locale, duration, ease, debug,
+    disabled, respectReducedMotion, plugins,
     onAnimationStart, onAnimationComplete, onAnimationCancel,
   });
 

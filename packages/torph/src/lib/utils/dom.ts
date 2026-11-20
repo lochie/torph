@@ -106,10 +106,15 @@ export function readDetached(
 }
 
 /** Takes the exits out of the flow, pinned where `readDetached` found them. */
-export function placeDetached(elements: HTMLElement[], snapshots: Detached) {
+export function placeDetached(
+  elements: HTMLElement[],
+  snapshots: Detached,
+  // A lingering box's exit is already running; cancelling it would cut it short.
+  cancel = true,
+) {
   // Only once every exit is read: a cancel dirties style, and the next read would recompute it.
-  for (const child of snapshots.keys()) {
-    cancelAll(child);
+  if (cancel) {
+    for (const child of snapshots.keys()) cancelAll(child);
   }
 
   // BRs can't be animated, so they leave the flow before reconciliation.
@@ -146,6 +151,7 @@ function withoutTranslation(transform: string): string {
 export function splitWordSpans(
   element: HTMLElement,
   splits: Map<string, Segment[]>,
+  isSlot: (kind: string) => boolean,
 ) {
   if (splits.size === 0) return;
 
@@ -162,7 +168,7 @@ export function splitWordSpans(
 
     for (const seg of charSegs) {
       const span = createItem("span", seg.id);
-      syncSlot(span, seg);
+      syncSlot(span, seg, isSlot);
       child.before(span);
     }
     child.remove();
@@ -170,13 +176,20 @@ export function splitWordSpans(
 }
 
 /**
- * Gives a numeric character the nested box its slide needs, and takes it away when
+ * Gives a slotted kind the nested box its own motion needs, and takes it away when
  * it stops being one — both directions have to work on a reused element. The kind
  * goes on the element because an exit outlives the segment that described it.
  */
-function syncSlot(element: HTMLElement, segment: Segment) {
-  if (!segment.kind) {
-    element.removeAttribute(ATTR_KIND);
+function syncSlot(
+  element: HTMLElement,
+  segment: Segment,
+  isSlot: (kind: string) => boolean,
+) {
+  if (segment.kind) element.setAttribute(ATTR_KIND, segment.kind);
+  else element.removeAttribute(ATTR_KIND);
+
+  // Plain text is the kind "text", which a plugin can mask too.
+  if (!isSlot(segment.kind ?? "text")) {
     element.removeAttribute(ATTR_SLOT);
     // Also discards the inner span, if this element had one.
     if (element.firstElementChild || element.textContent !== segment.string)
@@ -184,7 +197,6 @@ function syncSlot(element: HTMLElement, segment: Segment) {
     return;
   }
 
-  element.setAttribute(ATTR_KIND, segment.kind);
   element.setAttribute(ATTR_SLOT, "");
 
   let inner = element.firstElementChild as HTMLElement | null;
@@ -209,6 +221,7 @@ export function reconcileChildren(
   oldChildren: HTMLElement[],
   newIds: Set<string>,
   segments: Segment[],
+  isSlot: (kind: string) => boolean,
 ) {
   const reusable = new Map<string, HTMLElement>();
   oldChildren.forEach((child) => {
@@ -258,11 +271,11 @@ export function reconcileChildren(
     if (existing && existing.tagName !== "BR") {
       // A group replacement leaves a shared origin behind; the next morph would use it.
       existing.style.transformOrigin = "";
-      syncSlot(existing, segment);
+      syncSlot(existing, segment, isSlot);
       place(existing);
     } else {
       const span = createItem("span", segment.id);
-      syncSlot(span, segment);
+      syncSlot(span, segment, isSlot);
       place(span);
     }
   });

@@ -153,13 +153,13 @@ async function workload({ scenario, instrument }) {
       { length: 180 },
       (_, i) => `item${i.toString(36)}x`,
     );
-    const old = segmentText(words.join(" "), "en", false);
+    const old = segmentText(words.join(" "), "en", []);
     for (let i = 0; i < 30; i++) {
       const result = diffSegments(
         old,
         [...words.slice(90), ...words.slice(0, 90)].join(" "),
         "en",
-        { numbers: false },
+        { plugins: [] },
       );
       if (result.segments.length !== old.length)
         throw new Error("Incorrect diff");

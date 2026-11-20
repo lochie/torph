@@ -1,0 +1,82 @@
+import { EngineAloneDemo, PluginOrderDemo } from "@/surfaces/docs";
+import { GROUPS } from "@/surfaces/plugins/catalog";
+
+export const metadata = {
+  title: "Using plugins • Torph",
+  description: "Add a plugin to torph, combine several, and choose what overrides what.",
+};
+
+# Using plugins
+
+A plugin changes how a value is cut into pieces, how those pieces move, or both. Each one is its own import, so you only ship the ones you use.
+
+```tsx
+import { classic } from "torph";
+import { mask } from "torph/plugins/mask";
+
+<TextMorph plugins={[mask(), ...classic()]}>{headline}</TextMorph>;
+```
+
+## The default set
+
+torph's own look is a set of plugins too, `classic()`:
+
+- `numbers()` rolls figures by place value.
+- `groups()` moves a long run of replaced text as one piece.
+- `fade()` fades text in as it arrives and out as it leaves.
+- `scale()` adds the slight shrink as it does.
+
+With no `plugins` option, that set runs. Set `plugins` and your list replaces it, so to add to torph's look, spread `classic()` after yours.
+
+## Order matters
+
+Plugins run in the order you list them. The first plugin with a hook for a piece of text moves it, and the first plugin that claims a word cuts it up. Put yours first, so it wins over the classic ones:
+
+<PluginOrderDemo />
+
+In the second row, `fade()` comes first and handles arriving text, so `mask()` never gets a turn. The [mix demo](/plugins#mix) shows which plugins override which, for any combination.
+
+## Leaving parts out
+
+To drop part of the default look, list the parts you want:
+
+```tsx
+import { fade, groups, numbers, scale } from "torph";
+
+plugins={[groups(), fade(), scale()]}   // no number rolling
+plugins={[numbers(), groups(), fade()]} // no shrink
+```
+
+`scale()` scales whatever moves the text, a plugin's motion included. Leave it out when a plugin scales text itself.
+
+`plugins={[]}` is the engine on its own: staying text still slides, arriving text appears and leaving text disappears.
+
+<EngineAloneDemo />
+
+## Re-renders
+
+A new array on every render is fine. torph matches plugins by name and options, and only rebuilds the morph when one of those changes.
+
+## The plugins
+
+Each one is imported from `torph/plugins/<name>`. See them all moving, with their source, on the [plugins page](/plugins).
+
+{GROUPS.map((group) => (
+  <section key={group.id}>
+    <h3>{group.title}</h3>
+    <table>
+      <tbody>
+        {group.plugins.map((plugin) => (
+          <tr key={plugin.name}>
+            <td>
+              <a href={`/plugins#${plugin.name}`}>
+                <code>{plugin.name}()</code>
+              </a>
+            </td>
+            <td>{plugin.summary}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+))}

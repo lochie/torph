@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, afterEach, beforeAll, beforeEach } from "vitest";
 import { TextMorph } from "../index";
+import { fade, groups, scale } from "../plugins";
 import type { TextMorphOptions } from "../types";
 import { GROUP_MIN } from "../utils/replace-animate";
 import {
@@ -138,8 +139,16 @@ function slide(calls: Recorded[], id: string): string | null {
 
 const slideFrom = (dy: number) => `translate(0px, ${dy}px) @0`;
 const slideOut = `translate(0px, ${SLIDE}px) @1`;
-const textEnter = "translate(0px, 0px) scale(0.95) → none";
-const textExit = "translate(0px, 0px) scale(0.95) @1";
+const textEnter = "translate(0px, 0px) → none";
+const textExit = "translate(0px, 0px) @1";
+
+/** Whether the classic `scale()` rode on an element's motion: its own animation of `scale`, beside the slide. */
+function scaled(calls: Recorded[], id: string): boolean {
+  return calls.some(
+    (c) =>
+      c.id === id && JSON.stringify(c.keyframes).includes('"scale":"0.95"'),
+  );
+}
 
 type Child = {
   id: string;
@@ -287,6 +296,7 @@ describe("animation dispatch", () => {
 
     expect(motion(calls, idOf(element, "hello"))).toBeNull();
     expect(motion(calls, idOf(element, "there"))).toBe(textEnter);
+    expect(scaled(calls, idOf(element, "there"))).toBe(true);
   });
 
   it("dispatches exits on the kind the element left with", () => {
@@ -301,6 +311,7 @@ describe("animation dispatch", () => {
 
     expect(leaving(element).map((c) => c.text)).toContain("hello");
     expect(motion(calls, word)).toBe(textExit);
+    expect(scaled(calls, word)).toBe(true);
     expect(motion(calls, digit)).toBeNull(); // held its place, never left
   });
 
@@ -425,8 +436,8 @@ describe("the clip a slide happens behind", () => {
 });
 
 describe("opting out", () => {
-  it("numbers: false leaves digits as text, with no slots to slide in", () => {
-    const { element, morph } = mount({ numbers: false });
+  it("the classic set without numbers() leaves digits as text, with no slots to slide in", () => {
+    const { element, morph } = mount({ plugins: [groups(), fade(), scale()] });
     morph.update("hello");
     morph.update("$1,234");
 
