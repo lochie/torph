@@ -295,7 +295,7 @@ describe("typewriter", () => {
     // Typewriter's own, not the classic scale that rides on every box.
     const delays = Object.fromEntries(
       calls
-        .filter((c) => c.options.composite !== "add")
+        .filter((c) => !c.frames.includes('"scale"'))
         .map((c) => [c.box.textContent, c.options.delay ?? 0]),
     );
     // "c" goes before "b"; "x" and "y" follow once both are gone.

@@ -1,9 +1,9 @@
 import type { TorphPlugin } from "../plugin";
 import { ARRIVE } from "../../utils/animate";
 
-const SMALL = "scale(0.95)";
+const SMALL = "0.95";
 
-// `add`, so it rides on whatever moves the box rather than replacing its transform.
+// The `scale` property, not an additive `transform`: it rides on whatever moves the box, and Chrome can't composite an additive animation, so text redrawn each frame squishes.
 const SCALE: TorphPlugin = {
   name: "scale",
   decorate: {
@@ -13,11 +13,10 @@ const SCALE: TorphPlugin = {
         run
           ? undefined
           : [
-              box.animate([{ transform: SMALL }, { transform: "none" }], {
+              box.animate([{ scale: SMALL }, { scale: "1" }], {
                 duration,
                 easing: ease,
                 fill: ARRIVE,
-                composite: "add",
               }),
             ],
       exit: (box, { duration, ease, run }) =>
@@ -25,8 +24,8 @@ const SCALE: TorphPlugin = {
           ? undefined
           : [
               box.animate(
-                { transform: SMALL, offset: 1 },
-                { duration, easing: ease, fill: "both", composite: "add" },
+                { scale: SMALL, offset: 1 },
+                { duration, easing: ease, fill: "both" },
               ),
             ],
     },

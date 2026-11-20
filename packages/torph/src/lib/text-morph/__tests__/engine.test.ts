@@ -142,13 +142,11 @@ const slideOut = `translate(0px, ${SLIDE}px) @1`;
 const textEnter = "translate(0px, 0px) → none";
 const textExit = "translate(0px, 0px) @1";
 
-/** Whether the classic `scale()` rode on an element's motion: its own animation, added over the slide. */
+/** Whether the classic `scale()` rode on an element's motion: its own animation of `scale`, beside the slide. */
 function scaled(calls: Recorded[], id: string): boolean {
   return calls.some(
     (c) =>
-      c.id === id &&
-      (c.options as KeyframeAnimationOptions)?.composite === "add" &&
-      JSON.stringify(c.keyframes).includes("scale(0.95)"),
+      c.id === id && JSON.stringify(c.keyframes).includes('"scale":"0.95"'),
   );
 }
 
