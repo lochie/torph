@@ -29,12 +29,13 @@ export type DiffOptions = {
 function splitIntoChars(
   oldGroup: { word: string; segments: Segment[] },
   splits: Map<string, Segment[]>,
+  take: (base: string) => string,
 ): Segment[] {
   return oldGroup.segments.flatMap((seg) => {
     // Cutting a one-character piece mints a new ID for a character that never moved.
     if (seg.string.length <= 1) return [seg];
     const charSegs = seg.string.split("").map((char, i) => ({
-      id: `${seg.id}:${i}`,
+      id: take(`${seg.id}:${i}`),
       string: char,
     }));
     splits.set(seg.id, charSegs);
@@ -277,20 +278,28 @@ export function diffSegments(
       continue;
     }
     const oldGroup = oldWords[plan.oi]!;
-
-    if (plan.mode !== "reuse" && oldGroup.segments.length === 1) {
-      // About to be split into per-character spans
-      const wordSeg = oldGroup.segments[0]!;
-      for (let i = 0; i < oldGroup.word.length; i++) {
-        alloc.reserve(`${wordSeg.id}:${i}`);
-      }
-    } else {
-      for (const seg of oldGroup.segments) alloc.reserve(seg.id);
-    }
+    // About to be cut into letters, which take their IDs as they're cut.
+    if (plan.mode !== "reuse" && oldGroup.segments.length === 1) continue;
+    for (const seg of oldGroup.segments) alloc.reserve(seg.id);
   }
 
-  const segments: Segment[] = [];
   const splits = new Map<string, Segment[]>();
+  // A word's letters can outlive it, so a word reborn under the same ID would cut letters that already exist.
+  const held = new Set(oldSegments.map((seg) => seg.id));
+  const cuts = new Map<number, Segment[]>();
+  const cut = (oi: number) => {
+    let letters = cuts.get(oi);
+    if (!letters) {
+      letters = splitIntoChars(oldWords[oi]!, splits, (base) =>
+        alloc.take(base, held),
+      );
+      cuts.set(oi, letters);
+    }
+    return letters;
+  };
+  for (const plan of plans) if (plan.mode === "morph") cut(plan.oi);
+
+  const segments: Segment[] = [];
   let charOffset = 0;
 
   // Includes the edges — segmentText keeps leading and trailing whitespace on first render.
@@ -326,7 +335,7 @@ export function diffSegments(
         ...plan.plugin.segment!(newWord, {
           locale,
           previous: oldGroup.segments,
-          split: () => splitIntoChars(oldGroup, splits),
+          split: () => cut(plan.oi),
           cursor:
             cursorIndex === undefined ? undefined : cursorIndex - charOffset,
           id: pluginIds(plan.plugin, alloc),
@@ -335,7 +344,7 @@ export function diffSegments(
     } else if (plan.mode === "morph") {
       const oldGroup = oldWords[plan.oi]!;
       const oldWord = oldGroup.word;
-      const oldCharSegs = splitIntoChars(oldGroup, splits);
+      const oldCharSegs = cut(plan.oi);
 
       const oldChars = oldWord.split("");
       const newChars = newWord.split("");

@@ -15,13 +15,15 @@ export function createIdAllocator() {
     has(id: string) {
       return used.has(id);
     },
-    take(base: string): string {
-      if (!used.has(base)) {
+    /** `held`: IDs to stay off without claiming them. */
+    take(base: string, held?: ReadonlySet<string>): string {
+      const free = (id: string) => !used.has(id) && !held?.has(id);
+      if (free(base)) {
         used.add(base);
         return base;
       }
       let i = 1;
-      while (used.has(`${base}~${i}`)) i++;
+      while (!free(`${base}~${i}`)) i++;
       const id = `${base}~${i}`;
       used.add(id);
       return id;
