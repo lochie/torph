@@ -4,14 +4,15 @@ import {
   cancelAll,
   cancelAnimations,
 } from "../../utils/animate";
-import type { AnimationState } from "../../utils/animate";
-import { moverOf } from "../../utils/dom";
-import { fontOf } from "./ligature";
+import type { MotionContext } from "../plugin";
 
 // Shares of the morph, not fixed lengths. The outgoing share is larger because a
 // digit that has already left is a hole in the number.
 const EXIT_FADE = 0.45;
 const ENTER_FADE = 0.25;
+
+// A digit has to clear the whole mask, which can outgrow a tight line.
+const slide = ({ line }: MotionContext<unknown>) => line.clear;
 
 /**
  * The slot takes the FLIP correction, the character inside it takes the slide and
@@ -20,24 +21,17 @@ const ENTER_FADE = 0.25;
  */
 export function animateNumberExit(
   slot: HTMLElement,
-  options: {
-    dx: number;
-    dy: number;
-    slideDistance: number;
-    duration: number;
-    ease: string;
-  },
+  ctx: MotionContext<unknown>,
 ) {
-  const { dx, dy, slideDistance, duration, ease } = options;
-  const mover = moverOf(slot);
+  const { delta, mover, duration, ease } = ctx;
 
   slot.animate(
-    { transform: `translate(${dx}px, ${dy}px)`, offset: 1 },
+    { transform: `translate(${delta.x}px, ${delta.y}px)`, offset: 1 },
     { duration, easing: ease, fill: "both" },
   );
 
   mover.animate(
-    { transform: `translate(0px, ${slideDistance}px)`, offset: 1 },
+    { transform: `translate(0px, ${slide(ctx)}px)`, offset: 1 },
     { duration, easing: ease, fill: "both" },
   );
 
@@ -52,32 +46,16 @@ export function animateNumberExit(
 
 export function animateNumberEnter(
   slot: HTMLElement,
-  options: {
-    deltaX: number;
-    deltaY: number;
-    slideDistance: number;
-    kind: "digit" | "symbol";
-    previous?: AnimationState;
-    moverPrevious?: AnimationState;
-    duration: number;
-    ease: string;
-  },
+  ctx: MotionContext<unknown>,
 ) {
-  const { deltaX, deltaY, slideDistance, kind, duration, ease } = options;
+  const { mover, kind, duration, ease } = ctx;
 
-  animateNumberPersist(slot, {
-    deltaX,
-    deltaY,
-    duration,
-    ease,
-    previous: options.previous,
-  });
+  animateNumberPersist(slot, ctx);
 
-  const mover = moverOf(slot);
-  const prev = cancelAnimations(mover, options.moverPrevious);
+  const prev = cancelAnimations(mover, ctx.moverFrom);
 
   // Digits arrive from above, separators from below, so each reads as its own event.
-  const from = kind === "digit" ? -slideDistance : slideDistance;
+  const from = kind === "digit" ? -slide(ctx) : slide(ctx);
 
   mover.animate(
     { transform: `translate(0px, ${prev.ty + from}px)`, offset: 0 },
@@ -96,21 +74,15 @@ export function animateNumberEnter(
 
 export function animateNumberPersist(
   slot: HTMLElement,
-  options: {
-    deltaX: number;
-    deltaY: number;
-    previous?: AnimationState;
-    duration: number;
-    ease: string;
-  },
+  ctx: MotionContext<unknown>,
 ) {
-  const { deltaX, deltaY, duration, ease } = options;
+  const { delta, duration, ease } = ctx;
 
-  const { tx, ty } = options.previous ?? readAnimationState(slot);
+  const { tx, ty } = ctx.from ?? readAnimationState(slot);
   cancelAll(slot);
 
-  const startX = deltaX + tx;
-  const startY = deltaY + ty;
+  const startX = delta.x + tx;
+  const startY = delta.y + ty;
 
   if (startX === 0 && startY === 0) return;
 
@@ -118,100 +90,4 @@ export function animateNumberPersist(
     { transform: `translate(${startX}px, ${startY}px)`, offset: 0 },
     { duration, easing: ease, fill: ARRIVE },
   );
-}
-
-// Every character a slot can hold that reaches far: digits, separators, common affixes.
-const INK = "0123456789$€£¥%,.";
-let canvas: HTMLCanvasElement | undefined;
-
-type Ink = { ascent: number; descent: number; top: number; bottom: number };
-const inks = new Map<string, Ink>();
-let watchingFonts = false;
-
-/** The font's content area and its digits' ink, measured once per font. */
-function measureInk(font: string): Ink | null {
-  const cached = inks.get(font);
-  if (cached) return cached;
-  canvas ??= document.createElement("canvas");
-  const ruler = canvas.getContext("2d");
-  if (!ruler) return null;
-  ruler.font = font;
-  const m = ruler.measureText(INK);
-  if (!m.fontBoundingBoxAscent && !m.fontBoundingBoxDescent) return null;
-  const ink = {
-    ascent: m.fontBoundingBoxAscent,
-    descent: m.fontBoundingBoxDescent,
-    top: m.actualBoundingBoxAscent,
-    bottom: m.actualBoundingBoxDescent,
-  };
-  inks.set(font, ink);
-  // A web font landing keeps the font string but changes every metric.
-  if (!watchingFonts && document.fonts) {
-    watchingFonts = true;
-    document.fonts.addEventListener("loadingdone", () => inks.clear());
-  }
-  return ink;
-}
-
-function lengthOf(value: string, fontSize: number, fallback: number): number {
-  const n = parseFloat(value);
-  if (Number.isNaN(n)) return fallback;
-  return value.trim().endsWith("em") ? n * fontSize : n;
-}
-
-export type SlotClip = {
-  /** The ink's reach from the line's centre, in em — what the stylesheet reads. */
-  inkTop: number | null;
-  inkBottom: number | null;
-  /** How far the stylesheet will grow the clip past the line, in px. */
-  top: number;
-  bottom: number;
-};
-
-export const NO_CLIP: SlotClip = {
-  inkTop: null,
-  inkBottom: null,
-  top: 0,
-  bottom: 0,
-};
-
-// Asked once a measurement exists to apply them to; neither answer changes.
-let supportsLh: boolean | undefined;
-let supportsRound: boolean | undefined;
-
-/**
- * The slot clip the stylesheet will draw for this font and line-height, so the
- * slide can clear it. Mirrors the slot rule in styles.ts; with no measurement it
- * falls back to no overflow, the one case the stylesheet can't be followed.
- */
-export function slotClip(style: CSSStyleDeclaration): SlotClip {
-  const ink = measureInk(fontOf(style));
-  const fontSize = parseFloat(style.fontSize);
-  if (!ink || !fontSize) return NO_CLIP;
-  supportsLh ??= CSS.supports("height: 1lh");
-  if (!supportsLh) return NO_CLIP;
-
-  const fade = lengthOf(
-    style.getPropertyValue("--torph-fade"),
-    fontSize,
-    0.15 * fontSize,
-  );
-  const lineHeight =
-    style.lineHeight === "normal"
-      ? ink.ascent + ink.descent
-      : parseFloat(style.lineHeight);
-  // The content area is centred in the line box, so its centre sits (ascent - descent) / 2 above the baseline.
-  const centre = (ink.ascent - ink.descent) / 2;
-  const inkTop = ink.top - centre;
-  const inkBottom = ink.bottom + centre;
-  supportsRound ??= CSS.supports("width: round(up, 1.5px, 1px)");
-  const round = supportsRound ? Math.ceil : (n: number) => n;
-  const past = (reach: number) =>
-    round(Math.max(0, fade + reach - lineHeight / 2));
-  return {
-    inkTop: inkTop / fontSize,
-    inkBottom: inkBottom / fontSize,
-    top: past(inkTop),
-    bottom: past(inkBottom),
-  };
 }

@@ -5,6 +5,25 @@ export {
   TextMorph,
 } from "./lib/text-morph";
 export type { TextMorphOptions } from "./lib/text-morph/types";
+export {
+  classic,
+  fade,
+  groups,
+  numbers,
+  scale,
+} from "./lib/text-morph/plugins";
+export type {
+  TorphPlugin,
+  ClaimContext,
+  SegmentContext,
+  MotionContext,
+  RunContext,
+  Hooks,
+  HookSet,
+  KindSpec,
+  RunHooks,
+  Motion,
+} from "./lib/text-morph/plugin";
 export type { SpringParams } from "./lib/utils/spring";
 export { segmentText } from "./lib/text-morph/utils/segment";
 export type { Segment } from "./lib/text-morph/utils/segment";

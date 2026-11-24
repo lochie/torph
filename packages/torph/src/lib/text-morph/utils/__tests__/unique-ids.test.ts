@@ -116,5 +116,25 @@ describe("segment ID uniqueness", () => {
         }
       }
     });
+
+    it("does not cut a word into letters an earlier cut of it left behind", () => {
+      const order = [
+        "react",
+        "vanilla",
+        "svelte",
+        "vanilla",
+        "vue",
+        "vanilla",
+        "svelte",
+        "vanilla",
+        "svelte",
+      ] as const;
+      let segments = segmentText(examples.react, "en");
+
+      for (const name of order) {
+        segments = diffSegments(segments, examples[name], "en").segments;
+        expect(duplicateIds(segments)).toEqual([]);
+      }
+    });
   });
 });

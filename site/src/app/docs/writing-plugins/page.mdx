@@ -1,0 +1,198 @@
+import { InterruptDemo, RiseDemo } from "@/surfaces/docs";
+
+export const metadata = {
+  title: "Writing a plugin • Torph",
+  description: "Write a torph plugin: motion hooks, smooth interruption, masks, cutting text up and reading layout.",
+};
+
+# Writing a plugin
+
+A plugin is an object with a `name` and the hooks it needs. This one makes new text rise as it fades in:
+
+```ts
+import type { TorphPlugin } from "torph";
+
+export const rise: TorphPlugin = {
+  name: "rise",
+  animate: {
+    text: {
+      enter: (box, { delta, duration, ease, animate }) => [
+        animate(
+          box,
+          [
+            {
+              transform: `translate(${delta.x}px, ${delta.y + 8}px)`,
+              opacity: 0,
+            },
+            { transform: "none", opacity: 1 },
+          ],
+          { duration, easing: ease, fill: "backwards" },
+        ),
+      ],
+    },
+  },
+};
+```
+
+Use it like any other plugin, in front of `classic()`:
+
+```tsx
+<TextMorph plugins={[rise, ...classic()]}>{status}</TextMorph>
+```
+
+<RiseDemo />
+
+Every plugin on the [plugins page](/plugins) shows its source, and most are short enough to read as examples.
+
+## How a morph runs
+
+When the text changes, torph:
+
+1. **Reads** everything it needs from the page, then calls each plugin's `read`.
+2. **Matches** the new value against the old one. Each piece of text either stays, arrives or leaves, and gets a box.
+3. **Measures** where every box was and where it's going.
+4. **Moves** each box, through the first plugin with a hook for it.
+
+Then it waits for every animation to finish and turns the boxes back into plain text.
+
+## Motion hooks
+
+`animate.text` holds hooks for plain text, by when they run:
+
+- `enter(box, ctx)` for text that arrives.
+- `persist(box, ctx)` for text that stays. It isn't called for a box that neither moved nor changed.
+- `exit(box, ctx)` for text that leaves. The box is removed for you once its motion finishes.
+
+A hook you leave out falls through to the next plugin's, and in the end to torph's own. A plugin that only replaces `exit` keeps the usual `enter` and `persist`.
+
+### Where the box is
+
+Each box is already at its new place in the layout when a hook runs. `ctx.delta` is how far it has to be moved back to look like it hasn't moved yet, so a slide starts at `translate(delta)` and ends at `none`. For a leaving box, `delta` is where it ends up as the line closes around it.
+
+Animate with `fill: "backwards"` on enter and persist, so the box holds its first keyframe through any delay, and `fill: "both"` on exit, so it doesn't flash back before it's removed.
+
+### Staggering
+
+`ctx.index` is the box's place in reading order among the boxes on its side. `ctx.arriving` and `ctx.leaving` count them. Delay by `index` for a stagger, and cap it by the count so long text doesn't take forever:
+
+```ts
+const delay = index * Math.min(0.04, 1 / 3 / Math.max(1, arriving - 1)) * duration;
+```
+
+### Finishing
+
+Return the animations a hook starts, or a promise. The morph completes once they all settle. Anything that isn't a Web Animation, like a `requestAnimationFrame` loop, should stop when `ctx.signal` aborts, which happens when the next morph interrupts this one.
+
+## Smooth interruptions
+
+Values often change faster than a morph takes: a counter ticking, someone clicking twice. The next morph starts while boxes are still moving.
+
+Start motion with `ctx.animate(element, keyframes, options)` rather than `element.animate`. It cancels what the element was running and starts the new motion from where the element is on screen, not from your first keyframe. Click both rows below quickly:
+
+<InterruptDemo />
+
+The top row restarts each slide from its first keyframe and jumps. The bottom row picks up where it was. There's nothing more to do: use `ctx.animate` for every box and inner box you move.
+
+`ctx.from` holds where the box was when it was interrupted, as `tx`, `ty` and `opacity`, if you need it yourself.
+
+## Leaving text
+
+By default, leaving text is taken out of the line at once and the line closes up as it goes. `linger: 1.5` keeps it in place for 1.5 durations first, so arriving text lands next to it, as track changes do:
+
+```ts
+const strike: TorphPlugin = { name: "strike", linger: 1.5, ... };
+```
+
+## Masks
+
+Some motion needs text to disappear behind an edge, like digits rolling in a counter. Set `slot: true` and each box gets an outer box, clipped to its line, and an inner one you move inside it, `ctx.mover`:
+
+```ts
+animate: {
+  text: {
+    slot: true,
+    enter: (box, { mover, line, duration, ease, animate }) => [
+      animate(
+        mover,
+        [{ transform: `translateY(${line.clear}px)` }, { transform: "none" }],
+        { duration, easing: ease, fill: "backwards" },
+      ),
+    ],
+  },
+},
+```
+
+`ctx.line.clear` is how far the mover has to travel to be fully hidden. Move the outer `box` for the slide, and `mover` for what happens inside the mask.
+
+The mask reaches a little past the line, far enough for the glyphs you list in `ink`, so tall letters and descenders aren't cut off. It defaults to figures; for words, list some tall and deep letters, like `"ÅÉÖbdfghjklpqtyÿ"`.
+
+## Cutting text up
+
+By default, torph matches text word by word, and splits a changed word into the letters it shares with the old one.
+
+- `letters: true` gives every letter its own box, so each one moves on its own.
+- `claim(word)` and `segment(word, ctx)` take over the words you claim. Return the pieces as segments, `{ id, string }`.
+- `whole(value, ctx)` cuts up the whole value at once, instead of the word-by-word match. Return `null` to leave a value to the usual match.
+
+A segment's `id` is how torph knows it's the same text from one value to the next. Reuse the id of a piece in `ctx.previous` to keep its box, and mint new ones with `ctx.id()`. Never make up ids yourself: two pieces with one id lose text.
+
+This plugin swaps every changed word whole, instead of morphing its letters:
+
+```ts
+const words: TorphPlugin = {
+  name: "words",
+  claim: () => true,
+  segment: (word, { id }) => [{ id: id(word), string: word }],
+};
+```
+
+### Matching
+
+- `fold(char)` gives letters a key to match by. `(c) => c.toLowerCase()` keeps a letter's box when only its case changes.
+- `maxShift` is how far, in characters, a word can move and still count as the same word.
+- `affinity(from, to)` scores how alike two words are, from 0 to 1.
+
+## Your own kinds
+
+Segments you cut can carry a `kind`. List hooks for it under `kinds`, and those boxes move with your hooks instead of `animate.text`. A kind can be a `slot` too. This is how `numbers()` works: digits and symbols are kinds of their own.
+
+Other plugins can still change how your kind moves, by listing hooks for it in their own `animate`.
+
+## Long runs
+
+`groups()`, in the default set, moves a long stretch of replaced text as one piece. When it does, your enter and exit hooks don't run for those boxes. Claim every run to keep them:
+
+```ts
+runs: { claim: () => true },
+```
+
+A run you claim with no hook for its side goes back to its boxes' own hooks. Give `runs.enter` or `runs.exit` to move a run as one shape yourself.
+
+## Decorations
+
+`decorate` hooks run alongside whatever moves a box, instead of replacing it. Key them by kind, or `"*"` for every kind. `scale()` is a decoration: it adds its shrink to any motion.
+
+## Reading the page
+
+Hooks only write. Reading layout in a hook, like `getBoundingClientRect`, forces the browser to lay out again for every box.
+
+Measure in `read(root, style, change)` instead. It runs once per morph, before anything changes, and what it returns reaches every hook as `ctx.state`. `idle` is the state when `read` is skipped. `prepare(root, state)` is for writes that change layout, before torph measures.
+
+## Options
+
+Write a plugin with options as a function, and set `key` to its options as a string. torph rebuilds the morph only when a plugin's name or key changes, so a new object on every render is fine:
+
+```ts
+export function rise({ distance = 8 } = {}): TorphPlugin {
+  return { name: "rise", key: `${distance}`, ... };
+}
+```
+
+## More
+
+- `tween(from, to)` gives values to morph through on the way, as `countup` counts. Screen readers only hear where it ends up.
+- `boxes(value)` keeps a value in boxes between morphs, for a plugin that styles them at rest.
+- `ease` sets the morph's easing when the component doesn't.
+- `css` adds styles for your boxes.
+
+Every field is in the [reference](/docs/plugin-reference).

@@ -1,12 +1,13 @@
 import type { TextMorphOptions } from "./types";
 import { BASE_DEFAULTS, type Segment } from "../utils/types";
 import { resolveEase } from "../utils/spring";
-import { segmentText } from "./utils/segment";
+import { createIdAllocator, segmentText } from "./utils/segment";
 import {
   type Frame,
   type Measures,
   type Placed,
   measure,
+  measureBoxes,
   placer,
   computeDelta,
   findNearestAnchor,
@@ -18,23 +19,32 @@ import {
   isContainerSettling,
   layoutSize,
   readAnimationState,
+  cancelAnimations,
   animationsOf,
   holdAnimations,
   releaseAnimations,
   releaseContainerSize,
   resizeContainer,
   snapshotAnimations,
+  animateFrom,
+  type Where,
   trackAnimation,
+  transitionContainerSize,
   type AnimationState,
 } from "../utils/animate";
-import { animateExit, animateEnterOrPersist } from "./utils/animate";
+import { animateEnterOrPersist } from "./utils/animate";
 import {
-  animateNumberEnter,
-  animateNumberExit,
-  animateNumberPersist,
-  slotClip,
-  NO_CLIP,
-} from "./utils/number-animate";
+  type AnyPlugin,
+  type HookSet,
+  type Hooks,
+  type Motion,
+  type MotionContext,
+  type RunContext,
+  kindOwners,
+  pluginIds,
+} from "./plugin";
+import { CLASSIC } from "./plugins";
+import { DIGIT_INK, NO_CLIP, slotClip } from "./utils/slot";
 import {
   placeDetached,
   readDetached,
@@ -42,11 +52,7 @@ import {
   reconcileChildren,
   moverOf,
 } from "../utils/dom";
-import {
-  animateGroupEnter,
-  animateGroupExit,
-  replacedRuns,
-} from "./utils/replace-animate";
+import { replacedRuns } from "./utils/replace-animate";
 import { diffSegments } from "./utils/diff";
 import {
   type Shaping,
@@ -62,13 +68,15 @@ import {
   ATTR_ROOT,
   ATTR_DEBUG,
   ATTR_EXITING,
+  ATTR_LINGER,
   ATTR_ID,
   ATTR_KIND,
+  VAR_INK_BOTTOM,
+  VAR_INK_TOP,
   ATTR_SR,
   ATTR_TEXT,
   EMPTY_ID,
-  VAR_INK_TOP,
-  VAR_INK_BOTTOM,
+  DEBUG_GUARD,
 } from "../utils/constants";
 import {
   type ReducedMotionState,
@@ -91,17 +99,71 @@ function directionOf(value: string): "rtl" | "ltr" {
   return first && RTL.test(first) ? "rtl" : "ltr";
 }
 
+/** Each arriving box and the leaving one in the same gap between unchanged boxes, i-th to i-th, both ways. */
+function replacements(
+  before: HTMLElement[],
+  leaving: Set<HTMLElement>,
+  after: HTMLElement[],
+  arriving: Set<HTMLElement>,
+) {
+  const gaps = (order: HTMLElement[], moving: Set<HTMLElement>) => {
+    const byGap = new Map<string, HTMLElement[]>();
+    let gap = "";
+    for (const box of order) {
+      if (!moving.has(box)) gap = box.getAttribute(ATTR_ID)!;
+      else if (byGap.has(gap)) byGap.get(gap)!.push(box);
+      else byGap.set(gap, [box]);
+    }
+    return byGap;
+  };
+  const was = gaps(before, leaving);
+  const pairs = new Map<HTMLElement, HTMLElement>();
+  for (const [gap, boxes] of gaps(after, arriving)) {
+    boxes.forEach((box, i) => {
+      const old = was.get(gap)?.[i];
+      if (old) pairs.set(box, old).set(old, box);
+    });
+  }
+  return pairs;
+}
+
+/** Every glyph the slots of these plugins can hold, or null if none has a slot. */
+function slotInk(plugins: readonly AnyPlugin[]) {
+  const glyphs = plugins.flatMap((plugin) =>
+    [...Object.values(plugin.kinds ?? {}), plugin.animate?.text ?? {}]
+      .filter((spec) => spec.slot)
+      .map((spec) => spec.ink ?? DIGIT_INK),
+  );
+  return glyphs.length ? [...new Set(glyphs.join(""))].join("") : null;
+}
+
 // An unchanged write would still restyle every slot.
 function setStyleVar(element: HTMLElement, name: string, value: string) {
-  if (element.style.getPropertyValue(name) !== value) {
+  if (element.style.getPropertyValue(name) !== value)
     element.style.setProperty(name, value);
-  }
 }
+
+/** What every hook in one morph shares. */
+type Scene = {
+  states: Map<AnyPlugin, unknown>;
+  line: { height: number; clear: number };
+  arriving: number;
+  leaving: number;
+  pairs: Map<HTMLElement, HTMLElement>;
+  animate: (
+    element: HTMLElement,
+    keyframes: Keyframe[] | PropertyIndexedKeyframes,
+    options?: KeyframeAnimationOptions,
+    shift?: { x: number; y: number },
+  ) => Animation;
+  // The previous morph's text per box, before the reconcile rewrote any of it.
+  was: Map<string, string>;
+};
+
+type Claimed = [AnyPlugin, HTMLElement[], DOMRect[]][];
 export const DEFAULT_TEXT_MORPH_OPTIONS = {
   ...BASE_DEFAULTS,
   debug: false,
-  scale: true,
-  numbers: true,
 } as const satisfies Omit<TextMorphOptions, "element">;
 
 const STILL = 0.1; // px — a box that moved less keeps its running animation rather than a new one, which is garbage on every update
@@ -465,9 +527,28 @@ export class TextMorph {
   private pending: {
     value: HTMLElement | string | number;
     cursorIndex?: number;
+    // A tween's step on the way to `data`, rather than a new value.
+    frame?: boolean;
   } | null = null;
   private steps: Generator<void, void, void> | null = null;
   private animations: Map<Element, Animation[]> | null = null;
+  private plugins: readonly AnyPlugin[];
+  private owners: Map<string, AnyPlugin>;
+  /** Every glyph a slot here can hold, or null with no slots to mask. */
+  private slotInk: string | null;
+  private isSlot = (kind: string) =>
+    kind === "text"
+      ? this.plugins.some((plugin) => plugin.animate?.text?.slot)
+      : !!this.owners.get(kind)?.kinds?.[kind]?.slot;
+  // The current morph's: what it waits on, and what aborts it.
+  private waits: Promise<unknown>[] = [];
+  private abort: AbortController | null = null;
+  // Lingering boxes whose exit has finished, removed once they leave the line.
+  private spent = new Set<HTMLElement>();
+  // What's on screen, which mid-tween isn't `data`; and the tween in flight.
+  private shown = "";
+  private tween: AbortController | null = null;
+  private tweening = false;
 
   constructor(options: TextMorphOptions) {
     // A prop left off in JSX arrives as an explicit `undefined`, which would spread
@@ -476,13 +557,23 @@ export class TextMorph {
       Object.entries(options).filter(([, value]) => value !== undefined),
     ) as TextMorphOptions;
 
+    // Set, the author's list replaces torph's own; `[]` is the engine alone.
+    const plugins = given.plugins ?? CLASSIC;
     const { ease: rawEase, ...rest } = {
       ...DEFAULT_TEXT_MORPH_OPTIONS,
       ...given,
+      // The author's ease, else the first plugin's that has one.
+      ease:
+        given.ease ??
+        plugins.find((plugin) => plugin.ease)?.ease ??
+        DEFAULT_TEXT_MORPH_OPTIONS.ease,
     };
     const { ease, duration } = resolveEase(rawEase, rest.duration!);
 
     this.options = { ...rest, ease, duration };
+    this.plugins = plugins;
+    this.owners = kindOwners(this.plugins);
+    this.slotInk = slotInk(this.plugins);
 
     this.element = options.element;
 
@@ -504,7 +595,7 @@ export class TextMorph {
     if (this.options.debug) this.element.setAttribute(ATTR_DEBUG, "");
     // A box per letter has no direction of its own, so the root's orders them; it comes from the text.
     this.ownsDir = !this.element.hasAttribute("dir");
-    addStyles();
+    addStyles(this.plugins.flatMap((plugin) => plugin.css ?? []));
   }
 
   destroy() {
@@ -515,6 +606,8 @@ export class TextMorph {
     this.generation++;
     clearTimeout(this.settling);
     this.morphing = false;
+    this.abort?.abort();
+    this.stopTween();
     // With the stand-in gone, the text is the only copy left to read.
     this.textNode?.removeAttribute("aria-hidden");
     this.textNode = null;
@@ -524,6 +617,7 @@ export class TextMorph {
     // Its own rules keep it out of sight, and those go with the last instance.
     this.srNode?.remove();
     this.srNode = null;
+    for (const plugin of this.plugins) plugin.teardown?.(this.element);
     this.element.style.removeProperty(VAR_INK_TOP);
     this.element.style.removeProperty(VAR_INK_BOTTOM);
     this.element.removeAttribute(ATTR_ROOT);
@@ -573,7 +667,9 @@ export class TextMorph {
       const pending = this.pending;
       if (!pending) return false;
       this.pending = null;
-      this.steps = this.morph(pending.value, pending.cursorIndex);
+      this.steps = pending.frame
+        ? this.passing(pending.value as string)
+        : this.morph(pending.value, pending.cursorIndex);
     }
     holdAnimations(this.animations);
     try {
@@ -603,6 +699,7 @@ export class TextMorph {
 
     if (formatted === this.data) return;
     this.data = formatted;
+    this.stopTween();
 
     if (this.isDisabled()) {
       if (typeof formatted === "string") {
@@ -612,6 +709,8 @@ export class TextMorph {
         this.generation++;
         this.morphing = false;
         clearContainerTransition(this.element);
+        this.abort?.abort();
+        this.shown = formatted;
         this.element.textContent = formatted;
         // A later diff against these would animate from elements no longer in the DOM.
         this.previousSegments = [];
@@ -630,9 +729,66 @@ export class TextMorph {
     if (!this.isInitialRender) {
       if (this.morphing) this.options.onAnimationCancel?.();
       this.morphing = true;
+      // Before the reconcile, so an interrupted hook stops writing into boxes the next morph owns.
+      this.abort?.abort();
+      this.abort = new AbortController();
+      this.waits = [];
       this.options.onAnimationStart?.();
     }
-    yield* this.createTextGroup(this.data, this.element, cursorIndex);
+    const tween = this.isInitialRender
+      ? undefined
+      : this.plugins.find((plugin) => plugin.tween);
+    const frames =
+      tween?.tween!(this.shown, this.data, {
+        duration: this.options.duration!,
+      }) ?? [];
+    if (frames.length > 0) {
+      yield;
+      // Now, not at the first step: a reader shouldn't hear the old value while the count starts.
+      this.syncAccessibleText(this.data);
+      this.play(frames);
+      return;
+    }
+    yield* this.render(this.data, cursorIndex);
+  }
+
+  private *render(
+    value: string,
+    cursorIndex?: number,
+  ): Generator<void, void, void> {
+    yield* this.createTextGroup(value, this.element, cursorIndex);
+    this.shown = value;
+  }
+
+  /** One of a tween's values: its own morph, interrupting the last as quick updates do. */
+  private *passing(value: string): Generator<void, void, void> {
+    this.abort?.abort();
+    this.abort = new AbortController();
+    this.waits = [];
+    yield* this.render(value);
+  }
+
+  /** Queues each of a tween's values at its time; the whole tween completes or cancels once. */
+  private play(frames: { value: string; at: number }[]) {
+    const tween = (this.tween = new AbortController());
+    this.tweening = true;
+    frames.forEach((frame, i) => {
+      const timer = setTimeout(() => {
+        // A new value waiting to run stops the tween itself.
+        if (tween.signal.aborted || this.pending) return;
+        if (i === frames.length - 1) this.tweening = false;
+        this.pending = { value: frame.value, frame: true };
+        queued.add(this);
+        flush();
+      }, frame.at);
+      tween.signal.addEventListener("abort", () => clearTimeout(timer));
+    });
+  }
+
+  private stopTween() {
+    this.tween?.abort();
+    this.tween = null;
+    this.tweening = false;
   }
 
   /** Each `yield` sits between a read phase and a write phase; a batch runs every instance's phase before the next. */
@@ -644,67 +800,91 @@ export class TextMorph {
     // Before the running transition is aborted below, so an interrupt carries on from screen.
     const style = this.isInitialRender ? null : getComputedStyle(element);
     const oldSize = style && layoutSize(element, style);
-    // Read before any write, and applied before the "before" measure, so both FLIP measures share one padding.
-    const hasNumbers =
-      this.options.numbers !== false &&
-      (/\d/.test(value) || this.previousSegments.some((s) => s.kind));
-    const clip = style && (hasNumbers ? slotClip(style) : NO_CLIP);
-    if (style) snapshotAnimations(element);
-    const numbers = this.options.numbers !== false;
+    // Read before any write, and prepared before the "before" measure, so both FLIP measures agree.
+    const states = style
+      ? this.readPlugins(value, style)
+      : new Map<AnyPlugin, unknown>();
+    const where = style
+      ? snapshotAnimations(element)
+      : new Map<Element, Where>();
     const shaping = style && readShaping(style);
 
     let segments: Segment[];
     let splits: Map<string, Segment[]>;
 
-    if (this.previousSegments.length > 0) {
+    const whole = this.plugins.find((plugin) => plugin.whole);
+    const cut = whole && this.cutWhole(whole, value);
+    if (cut) {
+      segments = cut;
+      splits = new Map();
+    } else if (this.previousSegments.length > 0) {
       const result = diffSegments(
         this.previousSegments,
         value,
         this.options.locale!,
-        { numbers, cursorIndex },
+        { plugins: this.plugins, cursorIndex },
       );
       segments = result.segments;
       splits = result.splits;
     } else {
-      segments = segmentText(value, this.options.locale!, numbers);
+      segments = segmentText(value, this.options.locale!, this.plugins);
       splits = new Map();
     }
 
     // A zero-width space keeps in-flow content, preserving line box height during exits.
     const isEmptyTransition = segments.length === 0;
     if (isEmptyTransition) {
-      segments = [{ id: EMPTY_ID, string: "\u200B" }];
+      segments = [{ id: EMPTY_ID, string: "​" }];
     }
     const diffed = segments;
+    // What the boxes draw, which a whole cut can make differ from the value.
+    const drawn = diffed.map((s) => s.string).join("");
+    const boxed = this.boxed(value);
     // What the morph doesn't touch stays whole: one box per run, drawn as the text draws it.
     // Mid-morph, only the runs already drawn whole, where they still hold: joining one drawn in parts would swap its boxes.
-    const runs = this.textNode
-      ? stableRuns(this.previousSegments, diffed)
-      : {
-          before: [],
-          after: intactRuns([...this.runParts.values()], diffed),
-          keys: [],
-        };
+    const runs = boxed
+      ? { before: [], after: [], keys: [] }
+      : this.textNode
+        ? stableRuns(this.previousSegments, diffed)
+        : {
+            before: [],
+            after: intactRuns([...this.runParts.values()], diffed),
+            keys: [],
+          };
     const lines = joinRuns(diffed, runs.after);
     segments = ligate(lines.segments, shaping);
 
     const newIds = new Set(segments.map((b) => b.id));
+    // Only a morph with a slot on either side needs its mask measured.
+    const slotted = (list: Segment[]) =>
+      list.some((segment) => this.isSlot(segment.kind ?? "text"));
+    const clip =
+      style &&
+      this.slotInk &&
+      (slotted(segments) || slotted(this.renderedSegments))
+        ? slotClip(style, this.slotInk)
+        : NO_CLIP;
 
     if (!oldSize) {
       yield;
       this.syncText(value);
-      this.rest(value);
+      this.rest(drawn);
       this.previousSegments = diffed;
       this.renderedSegments = diffed;
       this.runParts = new Map();
       this.isInitialRender = false;
       element.style.width = "";
       element.style.height = "";
+      if (boxed) {
+        yield;
+        const out = this.readSplit(new Map(), null, []);
+        yield;
+        this.split(out);
+      }
       return;
     }
 
     const { width: oldWidth, height: oldHeight } = oldSize;
-    const { inkTop, inkBottom, top: clipTop, bottom: clipBottom } = clip!;
     // A run drawn whole that this morph changes goes back to its parts first, then any word in it.
     // Its arrows and joined letters stay joined, so nothing a ligature drew comes apart.
     const reopened = new Map(
@@ -720,15 +900,24 @@ export class TextMorph {
       : lettersOf(element, reopened, this.frame);
     yield;
 
-    // Only a new font changes these, so most morphs write nothing.
-    if (inkTop !== null && inkBottom !== null) {
-      setStyleVar(element, VAR_INK_TOP, `${inkTop.toFixed(4)}em`);
-      setStyleVar(element, VAR_INK_BOTTOM, `${inkBottom.toFixed(4)}em`);
+    // The mask's reach, before the "before" measure: a slot's padding is part of its box.
+    if (clip.inkTop !== null && clip.inkBottom !== null) {
+      setStyleVar(element, VAR_INK_TOP, `${clip.inkTop.toFixed(4)}em`);
+      setStyleVar(element, VAR_INK_BOTTOM, `${clip.inkBottom.toFixed(4)}em`);
+    }
+    for (const plugin of this.plugins) {
+      const prepare = plugin.prepare;
+      if (prepare)
+        this.guard(
+          () => prepare(element, states.get(plugin)),
+          plugin,
+          "prepare",
+        );
     }
     // Sized to the text they replace, so the measure below reads where the text had them.
     if (outgoing) this.split(outgoing);
     else {
-      splitWordSpans(element, reopened);
+      splitWordSpans(element, reopened, this.isSlot);
       fitLetters(element, reopened, reopenedLetters!);
     }
     yield;
@@ -737,12 +926,12 @@ export class TextMorph {
     yield;
 
     if (letters) {
-      splitWordSpans(element, splits);
+      splitWordSpans(element, splits, this.isSlot);
       fitLetters(element, splits, letters);
     }
     this.syncText(value);
     // Out of flow and unseen: the new value laid out by the browser, for the boxes to match.
-    const twin = textOf(value);
+    const twin = textOf(drawn);
     twin.style.cssText =
       "position: absolute; left: 0; top: 0; visibility: hidden";
     element.append(twin);
@@ -773,25 +962,60 @@ export class TextMorph {
       oldIds,
       newIds,
     );
-    const detached = readDetached(element, exiting);
+    const lingers =
+      Math.max(0, ...this.plugins.map((p) => p.linger ?? 0)) *
+      this.options.duration!;
+    const detached = lingers > 0 ? null : readDetached(element, exiting);
+    // Text the last morph left lingering leaves with this morph's exits, so the measure above saw it in place.
+    const lingered = this.lingering();
+    const lingeredAt = lingered.length ? readDetached(element, lingered) : null;
+    // The previous morph's text per box, before the reconcile rewrites any of it.
+    const was = new Map(this.renderedSegments.map((s) => [s.id, s.string]));
+    const leavingRuns = this.claimRuns(
+      // A line break leaves no box to move, so it ends a leaving run.
+      replacedRuns(
+        inFlow,
+        new Set(exiting.filter((child) => child.tagName !== "BR")),
+      ),
+      "exit",
+      this.renderedSegments,
+    );
     yield;
 
     twin.remove();
-    placeDetached(exiting, detached);
-    reconcileChildren(element, oldChildren, newIds, segments);
+    if (lingeredAt) this.collapse(lingered, lingeredAt, true);
+    if (detached) {
+      placeDetached(exiting, detached);
+      // Its translation is in left/top now, and the rest of its transform is set on it: starting
+      // it from where it was would count the translation twice.
+      for (const child of exiting) where.delete(child);
+    } else {
+      // Still in the line, so what arrives lands around it; it leaves the line later.
+      // Line breaks too, so a removed line keeps its own row until the line closes up.
+      for (const child of exiting) {
+        child.setAttribute(ATTR_EXITING, "");
+        child.setAttribute(ATTR_LINGER, "");
+      }
+    }
+    reconcileChildren(element, oldChildren, newIds, segments, this.isSlot);
     fitBoxes(inFlowBoxes(element), target);
     yield;
 
     this.currentMeasures = measure(this.element, target.frame);
+    const lingering = exiting.filter((child) =>
+      child.hasAttribute(ATTR_LINGER),
+    );
+    const lingerNow = lingering.length
+      ? measureBoxes(element, lingering, target.frame)
+      : {};
 
     // One line's worth. The root is nowrap, so a line exists only where the value put one.
     const lineCount = segments.reduce(
       (lines, segment) => (segment.string === "\n" ? lines + 1 : lines),
       1,
     );
-    const lineHeight = (element.offsetHeight || 20 * lineCount) / lineCount;
-    // A digit has to clear the whole clip, which can outgrow a tight line.
-    const slideDistance = lineHeight + clipTop + clipBottom;
+    const height = (element.offsetHeight || 20 * lineCount) / lineCount;
+    const line = { height, clear: height + clip.top + clip.bottom };
     yield;
 
     // Measured at the old width, not derived — text-align does nothing to overflowing content.
@@ -799,53 +1023,99 @@ export class TextMorph {
     yield;
 
     const firstFrameMeasures = measure(this.element, target.frame);
-    const moving = this.readStyles();
+    const moving = this.readStyles(segments);
+    const exitRuns = this.rectsOf(leavingRuns.claimed);
     yield;
 
     element.style.width = "";
-    this.updateStyles(segments, firstFrameMeasures, slideDistance, moving);
+    const leaving = exiting.filter(
+      (child) =>
+        child.getAttribute(ATTR_ID) !== EMPTY_ID &&
+        !leavingRuns.taken.has(child),
+    );
+    const after = moving.children.filter(
+      (child) => !child.hasAttribute(ATTR_EXITING),
+    );
+    const oldIdSet = new Set(oldIds);
+    const scene: Scene = {
+      states,
+      line,
+      animate: (element, keyframes, options, shift) =>
+        animateFrom(where, element, keyframes, options, shift),
+      arriving: 0,
+      leaving: leaving.length,
+      was,
+      pairs: replacements(
+        inFlow,
+        exitingSet,
+        after,
+        new Set(
+          after.filter((box) => !oldIdSet.has(box.getAttribute(ATTR_ID)!)),
+        ),
+      ),
+    };
+    this.updateStyles(segments, firstFrameMeasures, scene, moving);
+    this.moveRuns(exitRuns, "exit", scene);
 
-    // A run with no survivors inside it recedes as one shape.
-    const leavingRuns = replacedRuns(inFlow, new Set(exiting));
-    const leavingTogether = new Set(leavingRuns.flat());
-
-    for (const run of leavingRuns) {
-      animateGroupExit(run, {
-        duration: this.options.duration!,
-        ease: this.options.ease!,
-      });
+    for (const child of exiting) {
+      if (child.getAttribute(ATTR_ID) === EMPTY_ID) child.remove();
     }
-
-    exiting.forEach((child) => {
-      if (child.getAttribute(ATTR_ID) === EMPTY_ID) {
-        child.remove();
-        return;
-      }
-      if (leavingTogether.has(child)) return;
-
+    leaving.forEach((child, index) => {
+      const id = child.getAttribute(ATTR_ID)!;
+      const lingers = child.hasAttribute(ATTR_LINGER);
       const anchorId = exitingAnchorId.get(child);
-      const { dx, dy } = anchorId
-        ? computeDelta(this.currentMeasures, this.prevMeasures, anchorId)
-        : { dx: 0, dy: 0 };
-
-      if (child.hasAttribute(ATTR_KIND)) {
-        animateNumberExit(child, {
-          dx,
-          dy,
-          slideDistance,
-          duration: this.options.duration!,
-          ease: this.options.ease!,
-        });
-      } else {
-        animateExit(child, {
-          dx,
-          dy,
-          duration: this.options.duration!,
-          ease: this.options.ease!,
-          scale: this.options.scale!,
-        });
+      // A lingering box stays in the line, so it only slides to where the line now puts it.
+      const { dx, dy } =
+        !lingers && anchorId
+          ? computeDelta(this.currentMeasures, this.prevMeasures, anchorId)
+          : { dx: 0, dy: 0 };
+      if (lingers) {
+        const { dx: fx, dy: fy } = computeDelta(
+          this.prevMeasures,
+          lingerNow,
+          id,
+        );
+        if (fx || fy) {
+          child.animate(
+            [
+              { transform: `translate(${fx}px, ${fy}px)` },
+              { transform: "none" },
+            ],
+            {
+              duration: this.options.duration!,
+              easing: this.options.ease!,
+              composite: "add",
+            },
+          );
+        }
       }
+
+      this.move(
+        "exit",
+        child.getAttribute(ATTR_KIND) ?? "text",
+        child,
+        { x: dx, y: dy },
+        index,
+        scene,
+        // Unhandled, it just goes: when the line closes up if it lingers, else now.
+        () =>
+          child.hasAttribute(ATTR_LINGER)
+            ? this.spent.add(child)
+            : child.remove(),
+      );
     });
+
+    if (lingering.length) {
+      const signal = this.abort!.signal;
+      this.waits.push(
+        new Promise<void>((resolve) =>
+          setTimeout(() => {
+            if (!signal.aborted) this.closeUp();
+            resolve();
+          }, lingers),
+        ),
+      );
+    }
 
     this.previousSegments = diffed;
     this.renderedSegments = segments;
@@ -881,6 +1151,11 @@ export class TextMorph {
     this.element.append(this.textNode);
   }
 
+  /** Whether a plugin keeps `value` in boxes at rest, to style or move them there. */
+  private boxed(value: string) {
+    return this.plugins.some((plugin) => plugin.boxes?.(value));
+  }
+
   /** Reads where each outgoing segment sits in the text. */
   private readSplit(
     splits: Map<string, Segment[]>,
@@ -903,27 +1178,35 @@ export class TextMorph {
       [],
       new Set(segments.map((s) => s.id)),
       segments,
+      this.isSlot,
     );
     fitBoxes(inFlowBoxes(this.element), layout);
     this.renderedSegments = segments;
   }
 
-  /** Waits out every animation and the container, then goes back to plain text. */
+  /** Waits out every animation, hook and the container, then goes back to plain text. */
   private settle() {
     const generation = ++this.generation;
     const check = () => {
       if (generation !== this.generation || !this.hasSetup) return;
-      const busy = this.element
-        .getAnimations({ subtree: true })
-        .filter((a) => a.playState === "running" || a.playState === "paused");
+      if (this.waits.length > 0) {
+        Promise.allSettled(this.waits.splice(0)).then(check);
+        return;
+      }
+      const busy = this.element.getAnimations({ subtree: true }).filter(
+        (a) =>
+          (a.playState === "running" || a.playState === "paused") &&
+          // An endless animation is ambient, like a shimmer; it never finishes to wait on.
+          a.effect?.getComputedTiming().endTime !== Infinity,
+      );
       if (busy.length > 0) {
         Promise.allSettled(busy.map((a) => a.finished)).then(check);
       } else if (isContainerSettling(this.element)) {
         requestAnimationFrame(check);
       } else {
-        this.rest(this.data as string);
+        if (!this.boxed(this.shown)) this.rest(this.shown);
         // Complete means at rest — after the join, not when the container stops.
-        if (this.morphing) {
+        if (this.morphing && !this.tweening) {
           this.morphing = false;
           this.options.onAnimationComplete?.();
         }
@@ -934,8 +1217,335 @@ export class TextMorph {
     this.settling = setTimeout(check, this.options.duration);
   }
 
+  /** Each plugin's state for this morph; `read` is skipped for one the value can't involve. */
+  private readPlugins(value: string, style: CSSStyleDeclaration) {
+    const states = new Map<AnyPlugin, unknown>();
+    for (const plugin of this.plugins) {
+      const involved =
+        !plugin.touches ||
+        plugin.touches(value) ||
+        this.previousSegments.some(
+          (s) => s.kind && this.owners.get(s.kind) === plugin,
+        );
+      states.set(
+        plugin,
+        involved && plugin.read
+          ? plugin.read(this.element, style, { from: this.shown, to: value })
+          : plugin.idle,
+      );
+    }
+    return states;
+  }
+
+  /** A plugin's cut of the whole value; the previous IDs are reserved, so a new one can't take one by chance. */
+  private cutWhole(plugin: AnyPlugin, value: string) {
+    const alloc = createIdAllocator();
+    for (const segment of this.previousSegments) alloc.reserve(segment.id);
+    return plugin.whole!(value, {
+      locale: this.options.locale!,
+      previous: this.previousSegments,
+      id: pluginIds(plugin, alloc),
+    });
+  }
+
+  private lingering() {
+    return (Array.from(this.element.children) as HTMLElement[]).filter(
+      (child) => child.hasAttribute(ATTR_LINGER),
+    );
+  }
+
+  /** Takes lingering text out of the line, where `readDetached` found it, its exit left running. */
+  private collapse(
+    boxes: HTMLElement[],
+    at: ReturnType<typeof readDetached>,
+    hurry = false,
+  ) {
+    placeDetached(boxes, at, false);
+    // Cut short by a new change, what's left of its exit plays out fast, so it can't pile up under the next one's.
+    const cap = this.options.duration! * 0.3;
+    for (const box of boxes) {
+      box.removeAttribute(ATTR_LINGER);
+      if (this.spent.delete(box)) box.remove();
+      else if (hurry)
+        for (const animation of box.getAnimations()) {
+          const end = Number(animation.effect?.getComputedTiming().endTime);
+          const left = end - Number(animation.currentTime ?? 0);
+          if (Number.isFinite(left) && left > cap)
+            animation.updatePlaybackRate(left / cap);
+        }
+    }
+  }
+
+  /** Once lingering text has had its time: it leaves the line, and the line closes up as its own small morph. */
+  private closeUp() {
+    const element = this.element;
+    const still = this.lingering();
+    if (still.length === 0) return;
+    const before = measure(element, this.frame);
+    const size = layoutSize(element);
+    const staying = (Array.from(element.children) as HTMLElement[]).filter(
+      (child) =>
+        !child.hasAttribute(ATTR_EXITING) &&
+        before[child.getAttribute(ATTR_ID) ?? ""],
+    );
+    // Where a box still sliding from the morph has got to, so closing up carries on from there.
+    const moving = new Map(
+      staying.map((child) => [child, readAnimationState(child)]),
+    );
+    this.collapse(still, readDetached(element, still));
+    const after = measure(element, this.frame);
+    for (const child of staying) {
+      const { dx, dy } = computeDelta(
+        before,
+        after,
+        child.getAttribute(ATTR_ID)!,
+      );
+      if (!dx && !dy) continue;
+      animateEnterOrPersist(child, {
+        previous: moving.get(child),
+        deltaX: dx,
+        deltaY: dy,
+        isNew: false,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+      });
+    }
+    transitionContainerSize(
+      element,
+      size.width,
+      size.height,
+      this.options.duration!,
+      this.options.ease!,
+    );
+  }
+
+  /** Offers each run to the plugins; a plugin that claims one with no hook for it hands it back to the boxes. */
+  private claimRuns(
+    runs: HTMLElement[][],
+    side: "enter" | "exit",
+    rendered: Segment[],
+  ) {
+    const taken = new Set<HTMLElement>();
+    const claimed: [AnyPlugin, HTMLElement[]][] = [];
+    const byId = new Map(rendered.map((s) => [s.id, s]));
+    for (const run of runs) {
+      const segments = run.map((box) => {
+        const id = box.getAttribute(ATTR_ID)!;
+        return byId.get(id) ?? { id, string: box.textContent ?? "" };
+      });
+      const plugin = this.plugins.find((p) => p.runs?.claim(segments, side));
+      if (!plugin?.runs![side]) continue;
+      for (const box of run) taken.add(box);
+      claimed.push([plugin, run]);
+    }
+    return { taken, claimed };
+  }
+
+  /** A run's shape is a read, so it's taken in a read phase and handed to the hook. */
+  private rectsOf(claimed: [AnyPlugin, HTMLElement[]][]): Claimed {
+    return claimed.map(([plugin, run]) => [
+      plugin,
+      run,
+      run.map((box) => box.getBoundingClientRect()),
+    ]);
+  }
+
+  private moveRuns(
+    claimed: Claimed,
+    side: "enter" | "exit",
+    scene: Scene,
+    previous?: Map<HTMLElement, AnimationState>,
+  ) {
+    for (const [plugin, run, rects] of claimed) {
+      const ctx: RunContext<unknown> = {
+        rects,
+        from: run.map((box) => previous?.get(box)),
+        line: scene.line,
+        state: scene.states.get(plugin),
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+        animate: scene.animate,
+        signal: this.abort!.signal,
+      };
+      this.wait(
+        this.guard(() => plugin.runs![side]!(run, ctx), plugin, "runs", side),
+        side === "exit" ? run : undefined,
+      );
+      // A run moves as one shape, but each box in it is still decorated, counted within its run.
+      run.forEach((box, index) => {
+        const id = box.getAttribute(ATTR_ID)!;
+        this.decorate(side, box.getAttribute(ATTR_KIND) ?? "text", box, scene, {
+          mover: moverOf(box),
+          delta: { x: 0, y: 0 },
+          from: previous?.get(box),
+          index,
+          arriving: side === "enter" ? run.length : 0,
+          leaving: side === "exit" ? run.length : 0,
+          was: scene.was.get(id),
+          run: true,
+          animate: scene.animate,
+        });
+      });
+    }
+  }
+
+  /** Every plugin's decoration for a box, alongside whatever moves it. */
+  private decorate(
+    name: keyof Hooks<unknown>,
+    kind: string,
+    box: HTMLElement,
+    scene: Scene,
+    base: Omit<
+      MotionContext<unknown>,
+      "state" | "kind" | "line" | "duration" | "ease" | "signal"
+    >,
+  ) {
+    for (const plugin of this.plugins) {
+      const decorate = plugin.decorate;
+      const hook = (decorate?.[kind] ?? decorate?.["*"])?.[name];
+      if (!hook) continue;
+      const ctx = {
+        ...base,
+        kind,
+        line: scene.line,
+        duration: this.options.duration!,
+        ease: this.options.ease!,
+        signal: this.abort!.signal,
+        state: scene.states.get(plugin),
+      };
+      this.wait(
+        this.guard(() => hook(box, ctx), plugin, "decorate", kind, name),
+      );
+    }
+  }
+
+  /**
+   * Moves one box with its hook, or the engine's own motion, then runs every plugin's
+   * decoration for it alongside.
+   */
+  private move(
+    name: keyof Hooks<unknown>,
+    kind: string,
+    box: HTMLElement,
+    delta: { x: number; y: number },
+    index: number,
+    scene: Scene,
+    fallback: () => void,
+    from?: AnimationState,
+    moverFrom?: AnimationState,
+  ) {
+    const id = box.getAttribute(ATTR_ID)!;
+    // The box's own layout moved by `delta`; its mover's, inside it, didn't.
+    const animate: MotionContext<unknown>["animate"] = (
+      element,
+      keyframes,
+      options,
+    ) =>
+      scene.animate(
+        element,
+        keyframes,
+        options,
+        element === box ? delta : undefined,
+      );
+    const base = {
+      kind,
+      mover: moverOf(box),
+      delta,
+      from,
+      moverFrom,
+      line: scene.line,
+      duration: this.options.duration!,
+      ease: this.options.ease!,
+      animate,
+      signal: this.abort!.signal,
+      index,
+      arriving: scene.arriving,
+      leaving: scene.leaving,
+      was: scene.was.get(id),
+      replaces: name === "enter" ? scene.pairs.get(box) : undefined,
+      replacedBy: name === "exit" ? scene.pairs.get(box) : undefined,
+    };
+    const found = this.hook(kind, name);
+    if (found) {
+      const [plugin, hook, section] = found;
+      const ctx = { ...base, state: scene.states.get(plugin) };
+      this.wait(
+        this.guard(() => hook(box, ctx), plugin, section, kind, name),
+        name === "exit" ? [box] : undefined,
+      );
+    } else {
+      fallback();
+    }
+    this.decorate(name, kind, box, scene, base);
+  }
+
+  /** With `debug` on and `torph/debug` enabled, a hook that reads layout is named in a warning. */
+  private guard(
+    hook: () => Motion,
+    plugin: AnyPlugin,
+    section: string,
+    kind?: string,
+    name?: string,
+  ): Motion {
+    const guarded = this.options.debug
+      ? ((globalThis as Record<symbol, unknown>)[DEBUG_GUARD] as
+          | ((label: string, hook: () => Motion) => Motion)
+          | undefined)
+      : undefined;
+    if (!guarded) return hook();
+    const label = [plugin.name, section, kind, name].filter(Boolean).join(".");
+    return guarded(label, hook);
+  }
+
+  /**
+   * The settle waits on a returned motion; a leaving box goes once its motion has. A hook
+   * that returns nothing is waited on through the root's own animations, as the engine's are.
+   */
+  private wait(motion: Motion, leaving?: HTMLElement[]) {
+    const remove = () => {
+      for (const box of leaving ?? []) {
+        // Still holding its place: it goes when the line closes up.
+        if (box.hasAttribute(ATTR_LINGER)) this.spent.add(box);
+        else if (box.isConnected) box.remove();
+      }
+    };
+    if (Array.isArray(motion) || motion instanceof Promise) {
+      const done = Array.isArray(motion)
+        ? Promise.allSettled(motion.map((a) => a.finished))
+        : motion.catch(() => {});
+      this.waits.push(done.then(remove));
+    } else if (leaving) {
+      const running = leaving.flatMap((box) => box.getAnimations());
+      Promise.allSettled(running.map((a) => a.finished)).then(remove);
+    }
+  }
+
+  /** The hook set a plugin gives a kind: its own, if it owns the kind, else its override. */
+  private setFor(
+    plugin: AnyPlugin,
+    kind: string,
+  ): HookSet<unknown> | undefined {
+    return this.owners.get(kind) === plugin
+      ? plugin.kinds?.[kind]
+      : plugin.animate?.[kind];
+  }
+
+  /** A box's hook: the first plugin's, in order, with one for its kind, else the engine's own. */
+  private hook<Name extends keyof Hooks<unknown>>(
+    kind: string,
+    name: Name,
+  ): [AnyPlugin, Hooks<unknown>[Name], string] | undefined {
+    for (const plugin of this.plugins) {
+      const hook = this.setFor(plugin, kind)?.[name];
+      if (hook) {
+        const section = this.owners.get(kind) === plugin ? "kinds" : "animate";
+        return [plugin, hook, section];
+      }
+    }
+  }
+
   /** Where every moving box has got to, read before any animation starts so no write invalidates the rest. */
-  private readStyles() {
+  private readStyles(segments: Segment[]) {
     const children = (
       Array.from(this.element.children) as HTMLElement[]
     ).filter((child) => !child.hasAttribute(ATTR_SR));
@@ -959,34 +1569,42 @@ export class TextMorph {
         if (mover !== child) previous.set(mover, readAnimationState(mover));
       }
     }
-    return { children, settled, arriving, previous };
+    const runs = this.claimRuns(
+      replacedRuns(settled, arriving),
+      "enter",
+      segments,
+    );
+    return {
+      children,
+      settled,
+      arriving,
+      previous,
+      together: runs.taken,
+      runs: this.rectsOf(runs.claimed),
+    };
   }
 
   private updateStyles(
     segments: Segment[],
     firstFrameMeasures: Measures,
-    slideDistance: number,
+    scene: Scene,
     {
       children,
       settled,
       arriving,
       previous,
+      together,
+      runs,
     }: ReturnType<TextMorph["readStyles"]>,
   ) {
     const segmentIds = segments.map((b) => b.id);
     const kinds = new Map(segments.map((b) => [b.id, b.kind]));
-    const arrivingTogether = new Set<HTMLElement>();
-    for (const run of replacedRuns(settled, arriving)) {
-      run.forEach((child) => arrivingTogether.add(child));
-      animateGroupEnter(
-        run,
-        {
-          duration: this.options.duration!,
-          ease: this.options.ease!,
-        },
-        previous,
-      );
-    }
+    const strings = new Map(segments.map((b) => [b.id, b.string]));
+    scene.arriving = settled.filter(
+      (child) => arriving.has(child) && !together.has(child),
+    ).length;
+    this.moveRuns(runs, "enter", scene, previous);
+    const counts = { enter: 0, persist: 0 };
 
     const persistentIds = new Set(
       segmentIds.filter((id) => this.prevMeasures[id]),
@@ -995,7 +1613,7 @@ export class TextMorph {
     children.forEach((child, index) => {
       if (child.hasAttribute(ATTR_EXITING)) return;
       if (child.tagName === "BR") return;
-      if (arrivingTogether.has(child)) return;
+      if (together.has(child)) return;
       const key = child.getAttribute(ATTR_ID) || `child-${index}`;
       if (key === EMPTY_ID) return;
       const isNew = !this.prevMeasures[key];
@@ -1012,47 +1630,45 @@ export class TextMorph {
         ? computeDelta(this.prevMeasures, firstFrameMeasures, deltaKey)
         : { dx: 0, dy: 0 };
 
-      // Already heading where it rests, so left alone rather than restarted.
-      if (!isNew && Math.abs(deltaX) < STILL && Math.abs(deltaY) < STILL)
+      // Already heading where it rests, with the same text, so left alone rather than restarted.
+      if (
+        !isNew &&
+        Math.abs(deltaX) < STILL &&
+        Math.abs(deltaY) < STILL &&
+        scene.was.get(key) === strings.get(key)
+      )
         return;
 
-      const kind = kinds.get(key);
-
-      if (kind && isNew) {
-        animateNumberEnter(child, {
-          deltaX,
-          deltaY,
-          slideDistance,
-          kind,
-          previous: previous.get(child),
-          moverPrevious: previous.get(moverOf(child)),
-          duration: this.options.duration!,
-          ease: this.options.ease!,
-        });
-      } else if (kind) {
-        animateNumberPersist(child, {
-          previous: previous.get(child),
-          deltaX,
-          deltaY,
-          duration: this.options.duration!,
-          ease: this.options.ease!,
-        });
-      } else {
-        animateEnterOrPersist(child, {
-          previous: previous.get(child),
-          deltaX,
-          deltaY,
-          isNew,
-          duration: this.options.duration!,
-          ease: this.options.ease!,
-        });
-      }
+      const name = isNew ? "enter" : "persist";
+      this.move(
+        name,
+        kinds.get(key) ?? "text",
+        child,
+        { x: deltaX, y: deltaY },
+        counts[name]++,
+        scene,
+        // Unhandled, an arriving box just appears; a staying one still slides, or the line would jump.
+        () =>
+          isNew
+            ? cancelAnimations(child, previous.get(child))
+            : animateEnterOrPersist(child, {
+                previous: previous.get(child),
+                deltaX,
+                deltaY,
+                isNew,
+                duration: this.options.duration!,
+                ease: this.options.ease!,
+              }),
+        previous.get(child),
+        previous.get(moverOf(child)),
+      );
     });
   }
 
   /** After the split has read the rest text — a write before it costs every instance a layout. */
   private syncText(value: string) {
-    this.syncAccessibleText(value);
+    // The reader hears where a tween is going, not every value on the way.
+    this.syncAccessibleText(this.data as string);
     if (this.ownsDir) {
       const dir = directionOf(value);
       if (this.element.getAttribute("dir") !== dir)

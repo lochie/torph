@@ -1,5 +1,5 @@
 import { ARRIVE, cancelAll, cancelAnimations } from "../../utils/animate";
-import type { AnimationState } from "../../utils/animate";
+import type { RunContext } from "../plugin";
 
 // Where characters moving becomes one thing swapped for another. Past this, nothing
 // that survived is near enough to animate from, and the run smears.
@@ -12,8 +12,7 @@ const EXIT_FADE = 0.45;
 const ENTER_FADE = 0.35;
 
 /** A run's centre, restated per member — `transform-origin` is relative to each box. */
-function originsFor(elements: HTMLElement[]): string[] {
-  const rects = elements.map((element) => element.getBoundingClientRect());
+function originsFor(rects: DOMRect[]): string[] {
   const left = Math.min(...rects.map((r) => r.left));
   const right = Math.max(...rects.map((r) => r.right));
   const top = Math.min(...rects.map((r) => r.top));
@@ -27,10 +26,9 @@ function originsFor(elements: HTMLElement[]): string[] {
 /** Collapses a wholly-replaced run towards its own centre and fades it out. */
 export function animateGroupExit(
   elements: HTMLElement[],
-  options: { duration: number; ease: string },
+  { rects, duration, ease }: RunContext<unknown>,
 ) {
-  const { duration, ease } = options;
-  const origins = originsFor(elements);
+  const origins = originsFor(rects);
 
   elements.forEach((element, i) => {
     cancelAll(element);
@@ -52,14 +50,12 @@ export function animateGroupExit(
 /** The same gesture in reverse, for the run arriving in its place. */
 export function animateGroupEnter(
   elements: HTMLElement[],
-  options: { duration: number; ease: string },
-  previous?: Map<HTMLElement, AnimationState>,
+  { rects, from, duration, ease }: RunContext<unknown>,
 ) {
-  const { duration, ease } = options;
-  const origins = originsFor(elements);
+  const origins = originsFor(rects);
 
   elements.forEach((element, i) => {
-    const prev = cancelAnimations(element, previous?.get(element));
+    const prev = cancelAnimations(element, from[i]);
     element.style.transformOrigin = origins[i]!;
 
     element.animate(
@@ -88,7 +84,7 @@ export function replacedRuns(
   let run: HTMLElement[] = [];
 
   const flush = () => {
-    if (run.length >= GROUP_MIN) runs.push(run);
+    if (run.length > 0) runs.push(run);
     run = [];
   };
 

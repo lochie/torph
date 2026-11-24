@@ -1,0 +1,96 @@
+import { HelloDemo } from "@/surfaces/docs";
+
+export const metadata = {
+  title: "Getting started • Torph",
+  description: "Install torph and animate text in React, Vue, Svelte or plain JavaScript.",
+};
+
+# Getting started
+
+torph animates text from one value to the next. What stays slides to its new place, what's new arrives, and what's gone leaves. It has no dependencies and works with React, Vue, Svelte and plain JavaScript.
+
+<HelloDemo />
+
+## Install
+
+```bash
+pnpm add torph
+```
+
+npm and yarn work the same way: `npm install torph`, `yarn add torph`.
+
+## React
+
+Put the text in `TextMorph`. Whenever it changes, the text morphs.
+
+```tsx
+import { TextMorph } from "torph/react";
+
+export function Status({ saved }: { saved: boolean }) {
+  return <TextMorph>{saved ? "Saved" : "Saving"}</TextMorph>;
+}
+```
+
+`useTextMorph` gives you a ref and an `update` function, for text you set yourself:
+
+```tsx
+import { useTextMorph } from "torph/react";
+
+function Label() {
+  const { ref, update } = useTextMorph({ duration: 400 });
+
+  useEffect(() => {
+    update("Hello World");
+  }, []);
+
+  return <div ref={ref} />;
+}
+```
+
+## Vue
+
+```vue
+<script setup>
+import { ref } from "vue";
+import { TextMorph } from "torph/vue";
+
+const text = ref("Hello World");
+</script>
+
+<template>
+  <TextMorph :text="text" />
+</template>
+```
+
+## Svelte
+
+```svelte
+<script>
+  import { TextMorph } from "torph/svelte";
+
+  let text = $state("Hello World");
+</script>
+
+<TextMorph {text} />
+```
+
+## Plain JavaScript
+
+```js
+import { TextMorph } from "torph";
+
+const morph = new TextMorph({
+  element: document.getElementById("status"),
+});
+
+morph.update("Hello World");
+```
+
+## Good to know
+
+- **Reduced motion:** torph follows `prefers-reduced-motion` and swaps the text without animating it. Set `respectReducedMotion` to `false` to always animate.
+- **Interruptions:** a new value can arrive mid-morph. Text picks up from where it is on screen, so fast updates stay smooth.
+- **At rest it's plain text:** torph only splits text into pieces while it moves, so selecting, copying and screen readers see ordinary text.
+- **Server rendering:** the React component renders its text, line breaks included, on the server. Vue and Svelte render it once they mount.
+
+Next, the [options](/docs/options) you can set, or how torph handles [numbers](/docs/numbers).

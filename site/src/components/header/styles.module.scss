@@ -19,3 +19,30 @@
     font-weight: 500;
   }
 }
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.25rem 0.875rem;
+  align-self: flex-start;
+}
+
+.link {
+  display: flex;
+  font-size: 0.8125rem;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color 100ms ease;
+
+  &:hover {
+    color: var(--color);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--focus-color);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
+}

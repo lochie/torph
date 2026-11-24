@@ -1,7 +1,7 @@
 export type Segment = {
   id: string;
   string: string;
-  kind?: "digit" | "symbol";
+  kind?: string;
 };
 
 export type DiffResult = {

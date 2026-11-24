@@ -1,7 +1,10 @@
-import type { Segment, SegmentKind } from "../../utils/types";
+import type { Segment } from "../../utils/types";
 import { lcsIndices } from "../../utils/lcs";
 
-export type NumberSegment = Segment & { kind: SegmentKind };
+/** Numeric segments slide instead of fading, and digits and symbols slide opposite ways. */
+export type NumberKind = "digit" | "symbol";
+
+export type NumberSegment = Segment & { kind: NumberKind };
 
 // Numeric and text IDs share a namespace. A NULL prefix cannot occur in a text-derived
 // ID, and the counter only climbs, so neither can collide with the other.
@@ -64,7 +67,7 @@ export function isNumericWord(word: string): boolean {
   return true;
 }
 
-export function classifyKind(char: string): SegmentKind {
+export function classifyKind(char: string): NumberKind {
   return isDigit(char) ? "digit" : "symbol";
 }
 
@@ -96,11 +99,12 @@ export function segmentNumber(
   prevSegments?: NumberSegment[],
   cursorIndex?: number,
   decimalChar = ".",
+  mint: () => string = mintId,
 ): NumberSegment[] {
   const chars = value.split("");
 
   if (!prevSegments || prevSegments.length === 0) {
-    return simpleSegment(chars);
+    return simpleSegment(chars, mint);
   }
 
   const oldChars = prevSegments.map((s) =>
@@ -132,9 +136,9 @@ export function segmentNumber(
         kind,
       });
     } else {
-      let id = mintId();
+      let id = mint();
       while (usedIds.has(id)) {
-        id = mintId();
+        id = mint();
       }
       usedIds.add(id);
       result.push({ id, string: displayChar, kind });
@@ -145,9 +149,9 @@ export function segmentNumber(
 }
 
 /** Fresh segmentation for a number with nothing to carry over from. */
-function simpleSegment(chars: string[]): NumberSegment[] {
+function simpleSegment(chars: string[], mint: () => string): NumberSegment[] {
   return chars.map((char) => ({
-    id: mintId(),
+    id: mint(),
     string: char === " " ? "\u00A0" : char,
     kind: classifyKind(char),
   }));

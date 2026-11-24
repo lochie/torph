@@ -5,8 +5,8 @@ import {
   ATTR_SLOT,
   ATTR_SR,
   ATTR_TEXT,
-  VAR_INK_TOP,
   VAR_INK_BOTTOM,
+  VAR_INK_TOP,
 } from "./constants";
 
 // Comments sit between the strings, not inside them, so the build strips them.
@@ -18,7 +18,6 @@ const TORPH_CSS =
   vertical-align: top;
   will-change: width, height;
   white-space: nowrap;
-  text-align: inherit;
 }
 
 [${ATTR_TEXT}] {
@@ -53,9 +52,14 @@ const TORPH_CSS =
   user-select: none;
 }
 ` +
+  `
+[${ATTR_SLOT}] > span {
+  display: inline-block;
+}
+` +
   /*
-   * A digit slides a whole line box to arrive, so it needs its own box to hide
-   * behind. Not the root: that spans every line, so clipping there leaves a digit
+   * A slot's content slides a whole line box to arrive, so it needs its own box to hide
+   * behind. Not the root: that spans every line, so clipping there leaves a box
    * on a middle line sliding over its neighbour in view. The transform sits on the
    * child, so the slide never touches the slot's rect and the FLIP pass stays
    * oblivious. clip-path, not overflow — an inline-block whose overflow is
@@ -63,7 +67,7 @@ const TORPH_CSS =
    * (CSS 2.1 §10.8.1), and engines disagree on whether overflow: clip counts.
    * The inline axis stays open so glyph overhang is not shaved.
    *
-   * A line shorter than its glyphs would shave a digit at rest, so the box grows
+   * A line shorter than its glyphs would shave a glyph mid-morph, so the box grows
    * past the line to the ink plus the fade band. The engine supplies the ink's
    * reach from the line's centre in em, per font; the line-height is applied here,
    * so changing it needs no morph. 0.6em each way — a 1.2em content area — stands
@@ -71,7 +75,8 @@ const TORPH_CSS =
    * inside the border box. The matching negative margin keeps the line box and
    * baseline where they were. Whole pixels where round() exists, because an exit
    * is pinned with offsetTop, which rounds. Not @property: registering a custom
-   * property made every morph's restyle about 60% slower in Chrome.
+   * property made every morph's restyle about 60% slower in Chrome. Inset a pixel:
+   * at 0, Chrome composites the row a moving glyph meets the edge on unmasked.
    */
   `
 [${ATTR_SLOT}] {
@@ -79,7 +84,7 @@ const TORPH_CSS =
   --torph-bottom: 0px;
   padding-block: var(--torph-top) var(--torph-bottom);
   margin-block: calc(-1 * var(--torph-top)) calc(-1 * var(--torph-bottom));
-  clip-path: inset(0 -100vw);
+  clip-path: inset(1px -100vw);
 }
 
 @supports (height: 1lh) {
@@ -102,10 +107,6 @@ const TORPH_CSS =
     margin-block: calc(-1 * round(up, var(--torph-top), 1px))
       calc(-1 * round(up, var(--torph-bottom), 1px));
   }
-}
-
-[${ATTR_SLOT}] > span {
-  display: inline-block;
 }
 ` +
   /*
@@ -133,7 +134,8 @@ const TORPH_CSS =
     mask-clip: no-clip;
   }
 }
-
+` +
+  `
 [${ATTR_ROOT}][${ATTR_DEBUG}] {
   outline: 2px solid magenta;
   [${ATTR_ITEM}] {
@@ -144,15 +146,22 @@ const TORPH_CSS =
 
 let styleEl: HTMLStyleElement | null = null;
 let refCount = 0;
+const included = new Set<string>();
 
-export function addStyles() {
+/** One sheet for every instance: the core rules, then each plugin's once. */
+export function addStyles(extra: readonly string[] = []) {
   refCount++;
-  if (styleEl) return;
-
-  styleEl = document.createElement("style");
-  styleEl.dataset.torph = "true";
-  styleEl.textContent = TORPH_CSS;
-  document.head.appendChild(styleEl);
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.dataset.torph = "true";
+    styleEl.textContent = TORPH_CSS;
+    document.head.appendChild(styleEl);
+  }
+  for (const css of extra) {
+    if (included.has(css)) continue;
+    included.add(css);
+    styleEl.textContent += css;
+  }
 }
 
 export function removeStyles() {
@@ -161,4 +170,5 @@ export function removeStyles() {
 
   styleEl.remove();
   styleEl = null;
+  included.clear();
 }

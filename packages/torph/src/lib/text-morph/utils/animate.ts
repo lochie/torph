@@ -8,16 +8,13 @@ export function animateExit(
     dy: number;
     duration: number;
     ease: string;
-    scale: boolean;
   },
 ) {
-  const { dx, dy, duration, ease, scale } = options;
+  const { dx, dy, duration, ease } = options;
 
-  child.animate(
+  const slide = child.animate(
     {
-      transform: scale
-        ? `translate(${dx}px, ${dy}px) scale(0.95)`
-        : `translate(${dx}px, ${dy}px)`,
+      transform: `translate(${dx}px, ${dy}px)`,
       offset: 1,
     },
     {
@@ -40,6 +37,7 @@ export function animateExit(
   );
 
   fadeAnimation.onfinish = () => child.remove();
+  return [slide, fadeAnimation];
 }
 
 export function animateEnterOrPersist(
@@ -61,28 +59,33 @@ export function animateEnterOrPersist(
   const startY = deltaY + prev.ty;
   const startOpacity = isNew && prev.opacity >= 1 ? 0 : prev.opacity;
 
-  if (!isNew && startX === 0 && startY === 0 && startOpacity === 1) return;
+  if (!isNew && startX === 0 && startY === 0 && startOpacity === 1) return [];
 
-  child.animate(
-    [
+  const motion = [
+    child.animate(
+      [
+        {
+          transform: `translate(${startX}px, ${startY}px)`,
+        },
+        { transform: "none" },
+      ],
       {
-        transform: `translate(${startX}px, ${startY}px) scale(${isNew ? 0.95 : 1})`,
+        duration,
+        easing: ease,
+        fill: ARRIVE,
       },
-      { transform: "none" },
-    ],
-    {
-      duration,
-      easing: ease,
-      fill: ARRIVE,
-    },
-  );
+    ),
+  ];
 
   if (startOpacity < 1) {
-    child.animate([{ opacity: startOpacity }, { opacity: 1 }], {
-      duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
-      delay: isNew ? fadeDuration(duration, 0.25) : 0,
-      easing: "linear",
-      fill: ARRIVE,
-    });
+    motion.push(
+      child.animate([{ opacity: startOpacity }, { opacity: 1 }], {
+        duration: fadeDuration(duration, isNew ? 0.5 : 0.25),
+        delay: isNew ? fadeDuration(duration, 0.25) : 0,
+        easing: "linear",
+        fill: ARRIVE,
+      }),
+    );
   }
+  return motion;
 }

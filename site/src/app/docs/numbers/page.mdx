@@ -1,0 +1,61 @@
+import { NumbersDemo } from "@/surfaces/docs";
+
+export const metadata = {
+  title: "Numbers • Torph",
+  description: "How torph animates figures by place value, and how to match by caret in input fields.",
+};
+
+# Numbers
+
+Figures morph by place value. Digits roll up or down in their place, and the symbols around them (currency, separators, signs, suffixes) move with the places they belong to. `1,204` to `1,318` rolls the hundreds and tens and leaves the thousands alone.
+
+<NumbersDemo />
+
+It's on by default: any value with a number in it already animates this way. It comes from the `numbers()` plugin in torph's default set, and a `plugins` list without it falls back to the ordinary text morph.
+
+```tsx
+<TextMorph>{`$${total.toLocaleString("en")}`}</TextMorph>
+```
+
+## Formatting
+
+A value passed as a number, not a string, is formatted for you with `locale` and `decimals`:
+
+```tsx
+<TextMorph decimals={2} locale="de-DE">
+  {1234.5}
+</TextMorph>
+```
+
+## Input fields
+
+Place matching suits a value that changes by itself, like a counter, a total or a chart readout. It doesn't suit a field someone is typing in: typing `1` in front of `20` should insert a digit, not renumber every place.
+
+Pass `cursorIndex` to match by the caret instead. It's a prop on the React component and the second argument to `update()`. A caret is a DOM concern, so Vue and Svelte don't have the prop.
+
+```tsx
+const [value, setValue] = useState("");
+const [caret, setCaret] = useState<number>();
+
+<input
+  value={value}
+  onChange={(e) => {
+    setCaret(e.target.selectionStart ?? undefined);
+    setValue(e.target.value);
+  }}
+/>
+<TextMorph cursorIndex={caret}>{value}</TextMorph>
+```
+
+```js
+morph.update("$120", 2);
+```
+
+## Other looks
+
+These plugins change how figures move. See them all on the [plugins page](/plugins#numbers).
+
+- `odometer` turns every wheel the way the value went.
+- `countup` counts through the values in between.
+- `trend` flashes green as a figure rises and red as it falls.
+- `roll`, `slot`, `reveal` and `flap` give other mechanical looks.

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TextMorph } from "../index";
+import { fade, groups, scale } from "../plugins";
 import { animateEnterOrPersist } from "../utils/animate";
 import { ATTR_EXITING, ATTR_ID, ATTR_SR } from "../../utils/constants";
 
@@ -33,7 +34,7 @@ describe("engine work budgets", () => {
     const morph = new TextMorph({
       element,
       respectReducedMotion: false,
-      numbers: false,
+      plugins: [groups(), fade(), scale()],
     });
     mounted.push(morph);
     morph.update("newline-1");

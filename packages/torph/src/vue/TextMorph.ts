@@ -27,13 +27,12 @@ export default defineComponent({
     style: { type: Object, default: undefined },
     as: { type: String, default: DEFAULT_AS },
     locale: { type: String, default: DEFAULT_TEXT_MORPH_OPTIONS.locale },
-    duration: { type: Number, default: DEFAULT_TEXT_MORPH_OPTIONS.duration },
+    // Left undefined, so a plugin's ease can stand in when none is chosen.
+    duration: { type: Number, default: undefined },
     ease: {
       type: [String, Object] as PropType<TextMorphProps["ease"]>,
-      default: DEFAULT_TEXT_MORPH_OPTIONS.ease,
+      default: undefined,
     },
-    scale: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.scale },
-    numbers: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.numbers },
     debug: { type: Boolean, default: undefined },
     disabled: { type: Boolean, default: DEFAULT_TEXT_MORPH_OPTIONS.disabled },
     respectReducedMotion: {
@@ -43,6 +42,10 @@ export default defineComponent({
     onAnimationStart: { type: Function, default: undefined },
     onAnimationComplete: { type: Function, default: undefined },
     onAnimationCancel: { type: Function, default: undefined },
+    plugins: {
+      type: Array as PropType<TextMorphProps["plugins"]>,
+      default: undefined,
+    },
   },
   setup(props) {
     const containerRef = ref<HTMLElement | null>(null);
@@ -58,10 +61,9 @@ export default defineComponent({
         duration: props.duration,
         ease: props.ease,
         debug: props.debug,
-        scale: props.scale,
-        numbers: props.numbers,
         disabled: props.disabled,
         respectReducedMotion: props.respectReducedMotion,
+        plugins: props.plugins,
       }),
     );
 
@@ -72,10 +74,9 @@ export default defineComponent({
           duration: props.duration,
           ease: props.ease as TextMorphProps["ease"],
           debug: props.debug,
-          scale: props.scale,
-          numbers: props.numbers,
           disabled: props.disabled,
           respectReducedMotion: props.respectReducedMotion,
+          plugins: props.plugins,
           onAnimationStart: props.onAnimationStart as (() => void) | undefined,
           onAnimationComplete: props.onAnimationComplete as
             | (() => void)

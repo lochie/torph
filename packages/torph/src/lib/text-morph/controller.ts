@@ -38,12 +38,12 @@ export class MorphController {
       ease: options.ease,
       duration: options.duration,
       locale: options.locale,
-      scale: options.scale,
-      numbers: options.numbers,
       decimals: options.decimals,
       debug: options.debug,
       disabled: options.disabled,
       respectReducedMotion: options.respectReducedMotion,
+      // A plugin is functions, so it's known by its name and its own key.
+      plugins: options.plugins?.map((p) => `${p.name}\u0000${p.key ?? ""}`),
     });
   }
 }

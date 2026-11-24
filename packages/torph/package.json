@@ -32,6 +32,171 @@
       "import": "./dist/vue/index.mjs",
       "require": "./dist/vue/index.js"
     },
+    "./plugins/blur": {
+      "types": "./dist/plugins/blur/index.d.ts",
+      "import": "./dist/plugins/blur/index.mjs",
+      "require": "./dist/plugins/blur/index.js"
+    },
+    "./plugins/words": {
+      "types": "./dist/plugins/words/index.d.ts",
+      "import": "./dist/plugins/words/index.mjs",
+      "require": "./dist/plugins/words/index.js"
+    },
+    "./plugins/scramble": {
+      "types": "./dist/plugins/scramble/index.d.ts",
+      "import": "./dist/plugins/scramble/index.mjs",
+      "require": "./dist/plugins/scramble/index.js"
+    },
+    "./plugins/flap": {
+      "types": "./dist/plugins/flap/index.d.ts",
+      "import": "./dist/plugins/flap/index.mjs",
+      "require": "./dist/plugins/flap/index.js"
+    },
+    "./plugins/typewriter": {
+      "types": "./dist/plugins/typewriter/index.d.ts",
+      "import": "./dist/plugins/typewriter/index.mjs",
+      "require": "./dist/plugins/typewriter/index.js"
+    },
+    "./plugins/tokens": {
+      "types": "./dist/plugins/tokens/index.d.ts",
+      "import": "./dist/plugins/tokens/index.mjs",
+      "require": "./dist/plugins/tokens/index.js"
+    },
+    "./plugins/odometer": {
+      "types": "./dist/plugins/odometer/index.d.ts",
+      "import": "./dist/plugins/odometer/index.mjs",
+      "require": "./dist/plugins/odometer/index.js"
+    },
+    "./plugins/wave": {
+      "types": "./dist/plugins/wave/index.d.ts",
+      "import": "./dist/plugins/wave/index.mjs",
+      "require": "./dist/plugins/wave/index.js"
+    },
+    "./plugins/caseless": {
+      "types": "./dist/plugins/caseless/index.d.ts",
+      "import": "./dist/plugins/caseless/index.mjs",
+      "require": "./dist/plugins/caseless/index.js"
+    },
+    "./plugins/stack": {
+      "types": "./dist/plugins/stack/index.d.ts",
+      "import": "./dist/plugins/stack/index.mjs",
+      "require": "./dist/plugins/stack/index.js"
+    },
+    "./plugins/squash": {
+      "types": "./dist/plugins/squash/index.d.ts",
+      "import": "./dist/plugins/squash/index.mjs",
+      "require": "./dist/plugins/squash/index.js"
+    },
+    "./plugins/redline": {
+      "types": "./dist/plugins/redline/index.d.ts",
+      "import": "./dist/plugins/redline/index.mjs",
+      "require": "./dist/plugins/redline/index.js"
+    },
+    "./plugins/countup": {
+      "types": "./dist/plugins/countup/index.d.ts",
+      "import": "./dist/plugins/countup/index.mjs",
+      "require": "./dist/plugins/countup/index.js"
+    },
+    "./plugins/rows": {
+      "types": "./dist/plugins/rows/index.d.ts",
+      "import": "./dist/plugins/rows/index.mjs",
+      "require": "./dist/plugins/rows/index.js"
+    },
+    "./plugins/trend": {
+      "types": "./dist/plugins/trend/index.d.ts",
+      "import": "./dist/plugins/trend/index.mjs",
+      "require": "./dist/plugins/trend/index.js"
+    },
+    "./plugins/reveal": {
+      "types": "./dist/plugins/reveal/index.d.ts",
+      "import": "./dist/plugins/reveal/index.mjs",
+      "require": "./dist/plugins/reveal/index.js"
+    },
+    "./plugins/smoke": {
+      "types": "./dist/plugins/smoke/index.d.ts",
+      "import": "./dist/plugins/smoke/index.mjs",
+      "require": "./dist/plugins/smoke/index.js"
+    },
+    "./plugins/glitch": {
+      "types": "./dist/plugins/glitch/index.d.ts",
+      "import": "./dist/plugins/glitch/index.mjs",
+      "require": "./dist/plugins/glitch/index.js"
+    },
+    "./plugins/neon": {
+      "types": "./dist/plugins/neon/index.d.ts",
+      "import": "./dist/plugins/neon/index.mjs",
+      "require": "./dist/plugins/neon/index.js"
+    },
+    "./plugins/shatter": {
+      "types": "./dist/plugins/shatter/index.d.ts",
+      "import": "./dist/plugins/shatter/index.mjs",
+      "require": "./dist/plugins/shatter/index.js"
+    },
+    "./plugins/stamp": {
+      "types": "./dist/plugins/stamp/index.d.ts",
+      "import": "./dist/plugins/stamp/index.mjs",
+      "require": "./dist/plugins/stamp/index.js"
+    },
+    "./plugins/roll": {
+      "types": "./dist/plugins/roll/index.d.ts",
+      "import": "./dist/plugins/roll/index.mjs",
+      "require": "./dist/plugins/roll/index.js"
+    },
+    "./plugins/lookalike": {
+      "types": "./dist/plugins/lookalike/index.d.ts",
+      "import": "./dist/plugins/lookalike/index.mjs",
+      "require": "./dist/plugins/lookalike/index.js"
+    },
+    "./plugins/mask": {
+      "types": "./dist/plugins/mask/index.d.ts",
+      "import": "./dist/plugins/mask/index.mjs",
+      "require": "./dist/plugins/mask/index.js"
+    },
+    "./plugins/fadeUp": {
+      "types": "./dist/plugins/fadeUp/index.d.ts",
+      "import": "./dist/plugins/fadeUp/index.mjs",
+      "require": "./dist/plugins/fadeUp/index.js"
+    },
+    "./plugins/cascade": {
+      "types": "./dist/plugins/cascade/index.d.ts",
+      "import": "./dist/plugins/cascade/index.mjs",
+      "require": "./dist/plugins/cascade/index.js"
+    },
+    "./plugins/ticker": {
+      "types": "./dist/plugins/ticker/index.d.ts",
+      "import": "./dist/plugins/ticker/index.mjs",
+      "require": "./dist/plugins/ticker/index.js"
+    },
+    "./plugins/fadeThrough": {
+      "types": "./dist/plugins/fadeThrough/index.d.ts",
+      "import": "./dist/plugins/fadeThrough/index.mjs",
+      "require": "./dist/plugins/fadeThrough/index.js"
+    },
+    "./plugins/sharedAxis": {
+      "types": "./dist/plugins/sharedAxis/index.d.ts",
+      "import": "./dist/plugins/sharedAxis/index.mjs",
+      "require": "./dist/plugins/sharedAxis/index.js"
+    },
+    "./plugins/slot": {
+      "types": "./dist/plugins/slot/index.d.ts",
+      "import": "./dist/plugins/slot/index.mjs",
+      "require": "./dist/plugins/slot/index.js"
+    },
+    "./plugins/dissolve": {
+      "types": "./dist/plugins/dissolve/index.d.ts",
+      "import": "./dist/plugins/dissolve/index.mjs",
+      "require": "./dist/plugins/dissolve/index.js"
+    },
+    "./plugins/ripple": {
+      "types": "./dist/plugins/ripple/index.d.ts",
+      "import": "./dist/plugins/ripple/index.mjs",
+      "require": "./dist/plugins/ripple/index.js"
+    },
+    "./debug": {
+      "types": "./dist/debug/index.d.ts",
+      "import": "./dist/debug/index.mjs",
+      "require": "./dist/debug/index.js"
+    },
     "./svelte": {
       "types": {
         "import": "./dist/svelte/index.d.mts",

@@ -1,0 +1,89 @@
+export const metadata = {
+  title: "Plugin reference • Torph",
+  description: "Every field of a torph plugin, and everything a hook is handed.",
+};
+
+# Plugin reference
+
+Every type here is exported from `torph`. The [guide](/docs/writing-plugins) explains how they fit together.
+
+## TorphPlugin
+
+| Field | What it is |
+| --- | --- |
+| `name` | Required, unique, with no NULL characters. It namespaces the plugin's ids. |
+| `key` | The plugin's options as a string. The morph is rebuilt when it changes. |
+| `animate` | Hooks for kinds the plugin doesn't own, by kind: `"text"` for plain text, or another plugin's kind. `slot` and `ink` on `"text"` mask plain text. |
+| `kinds` | Hooks for kinds the plugin's own segments carry, with `slot` and `ink`. |
+| `decorate` | Hooks that run alongside whatever moves a box, by kind or `"*"`. |
+| `runs` | `claim(run, side)`, with optional `enter` and `exit`, to move a run of replaced text as one shape. |
+| `claim(word, ctx)` | Whether this plugin cuts up `word`. The first plugin to claim a word gets it. |
+| `segment(word, ctx)` | Cuts a claimed word into segments. |
+| `whole(value, ctx)` | Cuts the whole value, in place of the word-by-word match. `null` leaves it to the match. |
+| `touches(value)` | Whether a value could hold a word this plugin claims. Lets torph skip work. |
+| `token(word)` | A token to match words by: words with the same token pair up in order. |
+| `affinity(from, to)` | How alike two words are, 0 to 1, or `null` to use letter similarity. |
+| `fold(char)` | A key letters match by: `(c) => c.toLowerCase()` ignores case. |
+| `maxShift` | How far, in characters, a word moves and stays the same word. |
+| `letters` | Draws plain text a box per letter, not per word. |
+| `linger` | How long leaving text keeps its place, in durations, before it goes. |
+| `tween(from, to, ctx)` | Values to morph through, each `{ value, at }` with `at` in ms. The last should be `to`. |
+| `boxes(value)` | Keeps `value` in boxes at rest, not plain text. |
+| `ease` | The morph's easing when the component doesn't set one. |
+| `read(root, style, change)` | Runs once per morph before anything changes. Its result is `ctx.state`. |
+| `idle` | The state for a morph where `read` was skipped. |
+| `prepare(root, state)` | Writes that change layout, before torph measures. |
+| `teardown(root)` | Undoes `prepare` when the instance is destroyed. |
+| `css` | Styles for the plugin's boxes, added once. |
+
+## Motion hooks
+
+`enter`, `persist` and `exit` each get `(box, ctx)` and return what to wait on: an array of `Animation`s, a promise, or nothing.
+
+| `ctx` field | What it is |
+| --- | --- |
+| `animate(element, keyframes, options)` | `element.animate`, resumed from where an interrupted morph left `element`. |
+| `delta` | `{ x, y }` from the box's new place back to where it was drawn. |
+| `from` | Where the box was when this morph interrupted it, `{ tx, ty, opacity }`. |
+| `moverFrom` | The same, for the inner box of a slot. |
+| `mover` | A slot's inner box, or the box itself. |
+| `line` | `{ height, clear }`: the line's height, and how far a slot's mover travels to be hidden. |
+| `duration`, `ease` | The morph's timing. |
+| `index` | The box's place in reading order among the boxes on its side. |
+| `arriving`, `leaving` | How many boxes arrive and leave. |
+| `was` | What a staying box read before. Its text can change. |
+| `replaces` | The leaving box an arriving one takes the place of. |
+| `replacedBy` | The arriving box that takes a leaving one's place. |
+| `kind` | The box's kind, `"text"` for plain text. |
+| `state` | What `read` returned. |
+| `signal` | Aborts when a later morph interrupts this one. |
+| `run` | Set on a decoration when the box moves as part of a run. |
+
+## Run hooks
+
+`runs.enter` and `runs.exit` get `(boxes, ctx)`:
+
+| `ctx` field | What it is |
+| --- | --- |
+| `rects` | Each box's rect on screen. |
+| `from` | Where each box was when interrupted. |
+| `animate`, `line`, `state`, `duration`, `ease`, `signal` | As for motion hooks. |
+
+## Cutting contexts
+
+| Field | In | What it is |
+| --- | --- | --- |
+| `locale` | all | The component's locale. |
+| `id(base?)` | `segment`, `whole` | Mints an id. Pass a base for one derived from it, or nothing for a fresh one. |
+| `previous` | `segment` | The old word this one was paired with, as segments. Absent for a new word. |
+| `previous` | `whole` | The whole old value, as segments. |
+| `split()` | `segment` | `previous` cut to one segment per letter. |
+| `cursor` | `segment` | The caret's place in the word, when the value has one claimed word. |
+
+## Segment
+
+| Field | What it is |
+| --- | --- |
+| `id` | Unique within the value. Reuse a previous id to keep its box. |
+| `string` | The text. |
+| `kind` | Picks the segment's hooks from a plugin's `kinds`. Absent for plain text. |

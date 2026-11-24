@@ -1,13 +1,10 @@
 import type { SpringParams } from "./spring";
 
-/** Numeric segments slide instead of fading, and digits and symbols slide opposite ways. */
-export type SegmentKind = "digit" | "symbol";
-
 export type Segment = {
   id: string;
   string: string;
-  /** Absent for ordinary text. */
-  kind?: SegmentKind;
+  /** The plugin-defined kind that picks the segment's hooks; absent for ordinary text. */
+  kind?: string;
 };
 
 export interface BaseMorphOptions {

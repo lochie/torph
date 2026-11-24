@@ -4,6 +4,7 @@ import React from "react";
 import { TextMorph } from "torph/react";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { SpeechBubble } from "@/components/speech-bubble";
+import { mask } from "torph/plugins/mask";
 
 const states = [
   {
@@ -50,7 +51,9 @@ export const ExampleRewrite = () => {
             fill="currentColor"
           />
         </svg>
-        <TextMorph>{states[currentStateIndex].tone}</TextMorph>
+        <TextMorph plugins={[mask()]}>
+          {states[currentStateIndex].tone}
+        </TextMorph>
       </div>
     </div>
   );
