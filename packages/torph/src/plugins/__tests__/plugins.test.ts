@@ -850,6 +850,32 @@ describe("mask", () => {
     ).toBe(true);
   });
 
+  it("asks a from function each morph, without rebuilding", () => {
+    let side: "left" | "right" = "right";
+    const asked: string[] = [];
+    const { morph } = mount({
+      plugins: [
+        mask({
+          from: ({ to }) => {
+            asked.push(to);
+            return side;
+          },
+        }),
+      ],
+    });
+    morph.update("Monday");
+    const right = animations(() => morph.update("Friday"));
+    side = "left";
+    const left = animations(() => morph.update("Sunday"));
+    expect(asked).toEqual(["Friday", "Sunday"]);
+    expect(right.some((c) => c.frames.includes("translateX(calc(100%"))).toBe(
+      true,
+    );
+    expect(left.some((c) => c.frames.includes("translateX(calc(-100%"))).toBe(
+      true,
+    );
+  });
+
   it("comes in sideways inside a mask clipped at the box's sides too", () => {
     const { morph } = mount({ plugins: [mask({ from: "right" })] });
     morph.update("Monday");

@@ -11,15 +11,16 @@ export type MaskOptions = {
   cascade?: "word" | "line";
   /** A mask per letter, rather than per word. */
   letters?: boolean;
-  /** Where new text comes in from. `"auto"` rises for a higher figure and drops for a lower one. */
-  from?: "below" | "above" | "left" | "right" | "auto";
+  /** Where new text comes in from. `"auto"` rises for a higher figure and drops for a lower one; a function picks per morph. */
+  from?: Side | "auto" | ((change: { from: string; to: string }) => Side);
   /** New text overshoots its place a little, and settles back. */
   bounce?: boolean;
   /** The share of the duration old text has to leave before new text follows; 0 moves them together. */
   clear?: number;
 };
 
-type State = Lines & { went: "up" | "down" | null };
+type Side = "below" | "above" | "left" | "right";
+type State = Lines & { edge: Side };
 
 const LENS = "perspective(10em)";
 // Letters that reach furthest above and below the line, so the mask clears them.
@@ -72,18 +73,30 @@ export function mask({
     left: "right",
     right: "left",
   } as const;
-  const entering = (state: State) =>
-    side === "auto" ? (state.went === "down" ? "above" : "below") : side;
+  const pick = (change: { from: string; to: string }): Side =>
+    typeof side === "function"
+      ? side(change)
+      : side === "auto"
+        ? went(change.from, change.to) === "down"
+          ? "above"
+          : "below"
+        : side;
 
   return {
     name: "mask",
-    key: [tilt, stagger, cascade, letters, side, bounce, clear].join("\u0000"),
+    // A function is kept from the first morph, not rebuilt per render: it should read live values from a ref.
+    key: [
+      tilt,
+      stagger,
+      cascade,
+      letters,
+      typeof side === "function" ? "fn" : side,
+      bounce,
+      clear,
+    ].join("\u0000"),
     letters,
-    read: (_root, _style, change) => ({
-      lines: null,
-      went: went(change.from, change.to),
-    }),
-    idle: { lines: null, went: null },
+    read: (_root, _style, change) => ({ lines: null, edge: pick(change) }),
+    idle: { lines: null, edge: "below" },
     // Every replaced run, so groups() can't move one as a single shape in its place.
     runs: { claim: () => true },
     animate: {
@@ -104,7 +117,7 @@ export function mask({
             state,
             animate,
           } = ctx;
-          const edge = entering(state);
+          const edge = state.edge;
           const start = outside(edge, line.clear);
           const x = delta.x + (from?.tx ?? 0);
           const y = delta.y + (from?.ty ?? 0);
@@ -145,7 +158,7 @@ export function mask({
         },
         // Quickly, so the mask is clear before anything comes into it; with no head start, in step with what arrives.
         exit: (box, { mover, line, duration, ease, state, animate }) => {
-          const edge = opposite[entering(state)];
+          const edge = opposite[state.edge];
           const end = outside(edge, line.clear);
           const sideways = edge === "left" || edge === "right";
           const time = clear > 0 ? duration * clear * 1.6 : duration;
