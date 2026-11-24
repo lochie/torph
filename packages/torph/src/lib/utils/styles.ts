@@ -18,7 +18,6 @@ const TORPH_CSS =
   vertical-align: top;
   will-change: width, height;
   white-space: nowrap;
-  text-align: inherit;
 }
 
 [${ATTR_TEXT}] {
@@ -76,7 +75,8 @@ const TORPH_CSS =
    * inside the border box. The matching negative margin keeps the line box and
    * baseline where they were. Whole pixels where round() exists, because an exit
    * is pinned with offsetTop, which rounds. Not @property: registering a custom
-   * property made every morph's restyle about 60% slower in Chrome.
+   * property made every morph's restyle about 60% slower in Chrome. Inset a pixel:
+   * at 0, Chrome composites the row a moving glyph meets the edge on unmasked.
    */
   `
 [${ATTR_SLOT}] {
@@ -84,7 +84,7 @@ const TORPH_CSS =
   --torph-bottom: 0px;
   padding-block: var(--torph-top) var(--torph-bottom);
   margin-block: calc(-1 * var(--torph-top)) calc(-1 * var(--torph-bottom));
-  clip-path: inset(0 -100vw);
+  clip-path: inset(1px -100vw);
 }
 
 @supports (height: 1lh) {
