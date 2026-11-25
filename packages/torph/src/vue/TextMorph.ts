@@ -52,44 +52,33 @@ export default defineComponent({
     // controller owns the children, and re-rendering here would wipe its segments.
     const initialText = props.text;
 
-    const configKey = computed(() =>
-      MorphController.serializeConfig({
-        locale: props.locale,
-        duration: props.duration,
-        ease: props.ease,
-        debug: props.debug,
-        scale: props.scale,
-        numbers: props.numbers,
-        disabled: props.disabled,
-        respectReducedMotion: props.respectReducedMotion,
-      }),
+    const options = computed(() => ({
+      locale: props.locale,
+      duration: props.duration,
+      ease: props.ease as TextMorphProps["ease"],
+      debug: props.debug,
+      scale: props.scale,
+      numbers: props.numbers,
+      disabled: props.disabled,
+      respectReducedMotion: props.respectReducedMotion,
+      onAnimationStart: props.onAnimationStart as (() => void) | undefined,
+      onAnimationComplete: props.onAnimationComplete as
+        | (() => void)
+        | undefined,
+      onAnimationCancel: props.onAnimationCancel as (() => void) | undefined,
+    }));
+
+    watch(
+      containerRef,
+      (element) => {
+        if (element) {
+          controller.attach(element, options.value);
+          controller.update(props.text);
+        }
+      },
+      { flush: "post" },
     );
-
-    function createInstance() {
-      if (containerRef.value) {
-        controller.attach(containerRef.value, {
-          locale: props.locale,
-          duration: props.duration,
-          ease: props.ease as TextMorphProps["ease"],
-          debug: props.debug,
-          scale: props.scale,
-          numbers: props.numbers,
-          disabled: props.disabled,
-          respectReducedMotion: props.respectReducedMotion,
-          onAnimationStart: props.onAnimationStart as (() => void) | undefined,
-          onAnimationComplete: props.onAnimationComplete as
-            | (() => void)
-            | undefined,
-          onAnimationCancel: props.onAnimationCancel as
-            | (() => void)
-            | undefined,
-        });
-        controller.update(props.text);
-      }
-    }
-
-    watch(containerRef, () => createInstance(), { flush: "post" });
-    watch(configKey, () => createInstance());
+    watch(options, (value) => controller.configure(value));
 
     onUnmounted(() => {
       controller.destroy();

@@ -434,11 +434,13 @@ function flush() {
   if (failure) throw failure;
 }
 
+type Options = Omit<TextMorphOptions, "element">;
+
 export class TextMorph {
   private element: HTMLElement;
-  private options: Omit<TextMorphOptions, "element" | "ease"> & {
-    ease?: string;
-  } = {};
+  // As given, so a later `configure` can change one option and keep the rest.
+  private given: Options = {};
+  private options: Omit<Options, "ease"> & { ease?: string } = {};
 
   private data: HTMLElement | string;
 
@@ -469,12 +471,22 @@ export class TextMorph {
   private steps: Generator<void, void, void> | null = null;
   private animations: Map<Element, Animation[]> | null = null;
 
-  constructor(options: TextMorphOptions) {
+  constructor({ element, ...options }: TextMorphOptions) {
+    this.element = element;
+    this.data = "";
+    this.configure(options);
+
+    if (!this.isDisabled()) this.setup();
+  }
+
+  /** Changes options on the live instance; the next update morphs with them. An option given as `undefined` goes back to its default. */
+  configure(options: Options) {
+    this.given = { ...this.given, ...options };
     // A prop left off in JSX arrives as an explicit `undefined`, which would spread
     // over the default rather than fall back to it — and `undefined * fraction` is NaN.
     const given = Object.fromEntries(
-      Object.entries(options).filter(([, value]) => value !== undefined),
-    ) as TextMorphOptions;
+      Object.entries(this.given).filter(([, value]) => value !== undefined),
+    ) as Options;
 
     const { ease: rawEase, ...rest } = {
       ...DEFAULT_TEXT_MORPH_OPTIONS,
@@ -484,15 +496,13 @@ export class TextMorph {
 
     this.options = { ...rest, ease, duration };
 
-    this.element = options.element;
+    if (!this.options.respectReducedMotion) {
+      this.reducedMotion?.destroy();
+      this.reducedMotion = null;
+    } else this.reducedMotion ??= createReducedMotionListener();
 
-    if (this.options.respectReducedMotion) {
-      this.reducedMotion = createReducedMotionListener();
-    }
-
-    this.data = "";
-
-    if (!this.isDisabled()) this.setup();
+    if (this.hasSetup)
+      this.element.toggleAttribute(ATTR_DEBUG, Boolean(this.options.debug));
   }
 
   /** Deferred, not done in the constructor: `prefers-reduced-motion` can change after it. */

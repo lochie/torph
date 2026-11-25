@@ -5,12 +5,10 @@ export class MorphController {
   private instance: TextMorph | null = null;
   private lastText: string | number = "";
   private lastCursorIndex?: number;
-  private configKey = "";
 
   attach(element: HTMLElement, options: Omit<TextMorphOptions, "element">) {
     this.instance?.destroy();
     this.instance = new TextMorph({ element, ...options });
-    this.configKey = MorphController.serializeConfig(options);
 
     if (this.lastText !== "") {
       this.instance.update(this.lastText, this.lastCursorIndex);
@@ -24,8 +22,12 @@ export class MorphController {
     this.instance?.queue(text, cursorIndex);
   }
 
-  needsRecreate(options: Omit<TextMorphOptions, "element">): boolean {
-    return MorphController.serializeConfig(options) !== this.configKey;
+  configure(options: Omit<TextMorphOptions, "element">) {
+    this.instance?.configure(options);
+    // A new `locale` or `decimals` formats the same number differently.
+    if (this.lastText !== "") {
+      this.instance?.queue(this.lastText, this.lastCursorIndex);
+    }
   }
 
   destroy() {

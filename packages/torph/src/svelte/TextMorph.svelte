@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { DEFAULT_AS, DEFAULT_TEXT_MORPH_OPTIONS, type TextMorphOptions } from '../lib/text-morph';
   import { MorphController } from '../lib/text-morph/controller';
 
@@ -35,20 +36,18 @@
     onAnimationStart, onAnimationComplete, onAnimationCancel,
   });
 
-  const configKey = $derived(
-    MorphController.serializeConfig(options)
-  );
-
   $effect(() => {
-    configKey;
-
     if (containerRef) {
-      controller.attach(containerRef, options);
+      controller.attach(containerRef, untrack(() => options));
 
       return () => {
         controller.destroy();
       };
     }
+  });
+
+  $effect(() => {
+    controller.configure(options);
   });
 
   $effect(() => {

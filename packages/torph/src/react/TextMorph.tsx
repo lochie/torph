@@ -82,26 +82,31 @@ export function useTextMorph(props: Omit<TextMorphOptions, "element">) {
 
   const configKey = MorphController.serializeConfig(props);
 
-  // Callbacks are kept out of the config key so changing one does not tear the morph
-  // down, and read through a ref so they don't freeze on the state they saw at mount.
+  // Callbacks are kept out of the config key so changing one does not reconfigure
+  // the morph, and read through a ref so they don't freeze on the state they saw at mount.
   const handlers = React.useRef(props);
   handlers.current = props;
 
+  const options = () => ({
+    ...handlers.current,
+    onAnimationStart: () => handlers.current.onAnimationStart?.(),
+    onAnimationComplete: () => handlers.current.onAnimationComplete?.(),
+    onAnimationCancel: () => handlers.current.onAnimationCancel?.(),
+  });
+
   React.useEffect(() => {
-    if (ref.current) {
-      controller.attach(ref.current, {
-        ...props,
-        onAnimationStart: () => handlers.current.onAnimationStart?.(),
-        onAnimationComplete: () => handlers.current.onAnimationComplete?.(),
-      });
-    }
+    if (ref.current) controller.attach(ref.current, options());
 
     return () => {
       controller.destroy();
     };
-    // Keyed on the serialized config; `props` identity would re-attach every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configKey]);
+    // Attached once; an option change goes through `configure` below.
+  }, [controller]);
+
+  React.useEffect(() => {
+    controller.configure(options());
+    // Keyed on the serialized config; `props` identity would reconfigure every render.
+  }, [controller, configKey]);
 
   const update = React.useCallback(
     (value: string | number, cursorIndex?: number) => {
